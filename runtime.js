@@ -7,6 +7,33 @@
 // API CONFIGURATION
 // ============================================
 const API_URL = 'https://parkoreen.ikunbeautiful.workers.dev';
+const API_TIMEOUT = 10000; // 10 seconds timeout
+
+// Set to true to use local storage instead of API (for testing without backend)
+const USE_LOCAL_MODE = true;
+
+// ============================================
+// FETCH WITH TIMEOUT
+// ============================================
+async function fetchWithTimeout(url, options = {}, timeout = API_TIMEOUT) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out. Please check your connection.');
+        }
+        throw new Error('Network error. Please check your connection.');
+    }
+}
 
 // ============================================
 // AUTH MANAGER
@@ -52,7 +79,12 @@ class AuthManager {
     }
 
     async login(username, password) {
-        const response = await fetch(`${API_URL}/auth/login`, {
+        // Local mode - check local storage
+        if (USE_LOCAL_MODE) {
+            return this.localLogin(username, password);
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -72,7 +104,12 @@ class AuthManager {
     }
 
     async signup(name, username, password) {
-        const response = await fetch(`${API_URL}/auth/signup`, {
+        // Local mode - store in local storage
+        if (USE_LOCAL_MODE) {
+            return this.localSignup(name, username, password);
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/auth/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, username, password })
@@ -91,8 +128,60 @@ class AuthManager {
         return data;
     }
 
+    // ========== LOCAL MODE METHODS (for testing without backend) ==========
+    
+    localLogin(username, password) {
+        const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
+        const user = users[username.toLowerCase()];
+        
+        if (!user) {
+            throw new Error('Invalid username or password');
+        }
+        
+        // Simple password check (not secure, just for local testing)
+        if (user.password !== password) {
+            throw new Error('Invalid username or password');
+        }
+        
+        this.user = { id: user.id, name: user.name, username: user.username };
+        this.token = 'local_' + user.id;
+        this.saveToStorage();
+        
+        return { user: this.user, token: this.token };
+    }
+
+    localSignup(name, username, password) {
+        const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
+        
+        if (users[username.toLowerCase()]) {
+            throw new Error('Username already taken');
+        }
+        
+        const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        users[username.toLowerCase()] = {
+            id: userId,
+            name,
+            username,
+            password, // In local mode, we store password directly (not secure, just for testing)
+            createdAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem('parkoreen_local_users', JSON.stringify(users));
+        
+        this.user = { id: userId, name, username };
+        this.token = 'local_' + userId;
+        this.saveToStorage();
+        
+        return { user: this.user, token: this.token };
+    }
+
     async updateProfile(updates) {
-        const response = await fetch(`${API_URL}/auth/profile`, {
+        if (USE_LOCAL_MODE) {
+            return this.localUpdateProfile(updates);
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/auth/profile`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -114,7 +203,11 @@ class AuthManager {
     }
 
     async changePassword(currentPassword, newPassword) {
-        const response = await fetch(`${API_URL}/auth/password`, {
+        if (USE_LOCAL_MODE) {
+            return this.localChangePassword(currentPassword, newPassword);
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/auth/password`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -129,6 +222,38 @@ class AuthManager {
         }
 
         return response.json();
+    }
+
+    localUpdateProfile(updates) {
+        const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
+        const userKey = this.user.username.toLowerCase();
+        
+        if (users[userKey] && updates.name) {
+            users[userKey].name = updates.name;
+            localStorage.setItem('parkoreen_local_users', JSON.stringify(users));
+            this.user.name = updates.name;
+            this.saveToStorage();
+        }
+        
+        return { user: this.user };
+    }
+
+    localChangePassword(currentPassword, newPassword) {
+        const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
+        const userKey = this.user.username.toLowerCase();
+        
+        if (!users[userKey]) {
+            throw new Error('User not found');
+        }
+        
+        if (users[userKey].password !== currentPassword) {
+            throw new Error('Current password is incorrect');
+        }
+        
+        users[userKey].password = newPassword;
+        localStorage.setItem('parkoreen_local_users', JSON.stringify(users));
+        
+        return { success: true };
     }
 
     logout() {
@@ -155,8 +280,32 @@ class MapManager {
         this.auth = auth;
     }
 
+    // Get local maps storage key for current user
+    _getLocalMapsKey() {
+        const user = this.auth.getUser();
+        return user ? `parkoreen_local_maps_${user.id}` : 'parkoreen_local_maps';
+    }
+
+    _getLocalMaps() {
+        return JSON.parse(localStorage.getItem(this._getLocalMapsKey()) || '{}');
+    }
+
+    _saveLocalMaps(maps) {
+        localStorage.setItem(this._getLocalMapsKey(), JSON.stringify(maps));
+    }
+
     async listMaps() {
-        const response = await fetch(`${API_URL}/maps`, {
+        if (USE_LOCAL_MODE) {
+            const maps = this._getLocalMaps();
+            return Object.values(maps).map(m => ({
+                id: m.id,
+                name: m.name,
+                createdAt: m.createdAt,
+                updatedAt: m.updatedAt
+            }));
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/maps`, {
             headers: {
                 'Authorization': `Bearer ${this.auth.getToken()}`
             }
@@ -171,7 +320,16 @@ class MapManager {
     }
 
     async getMap(mapId) {
-        const response = await fetch(`${API_URL}/maps/${mapId}`, {
+        if (USE_LOCAL_MODE) {
+            const maps = this._getLocalMaps();
+            const map = maps[mapId];
+            if (!map) {
+                throw new Error('Map not found');
+            }
+            return map;
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/maps/${mapId}`, {
             headers: {
                 'Authorization': `Bearer ${this.auth.getToken()}`
             }
@@ -186,7 +344,24 @@ class MapManager {
     }
 
     async createMap(name) {
-        const response = await fetch(`${API_URL}/maps`, {
+        if (USE_LOCAL_MODE) {
+            const mapId = 'map_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            const map = {
+                id: mapId,
+                name,
+                data: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            const maps = this._getLocalMaps();
+            maps[mapId] = map;
+            this._saveLocalMaps(maps);
+            
+            return { id: mapId, name };
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/maps`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -204,7 +379,23 @@ class MapManager {
     }
 
     async saveMap(mapId, data) {
-        const response = await fetch(`${API_URL}/maps/${mapId}`, {
+        if (USE_LOCAL_MODE) {
+            const maps = this._getLocalMaps();
+            if (!maps[mapId]) {
+                throw new Error('Map not found');
+            }
+            
+            maps[mapId] = {
+                ...maps[mapId],
+                ...data,
+                updatedAt: new Date().toISOString()
+            };
+            this._saveLocalMaps(maps);
+            
+            return { success: true };
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/maps/${mapId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -222,7 +413,19 @@ class MapManager {
     }
 
     async deleteMap(mapId) {
-        const response = await fetch(`${API_URL}/maps/${mapId}`, {
+        if (USE_LOCAL_MODE) {
+            const maps = this._getLocalMaps();
+            if (!maps[mapId]) {
+                throw new Error('Map not found');
+            }
+            
+            delete maps[mapId];
+            this._saveLocalMaps(maps);
+            
+            return { success: true };
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/maps/${mapId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${this.auth.getToken()}`
