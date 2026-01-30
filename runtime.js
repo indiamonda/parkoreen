@@ -11,7 +11,7 @@ const API_TIMEOUT = 10000; // 10 seconds timeout
 
 // Set to true to use local storage instead of API (for testing without backend)
 // Enable this if you haven't set up Cloudflare KV namespaces yet
-const USE_LOCAL_MODE = true;
+const USE_LOCAL_MODE = false;
 
 // ============================================
 // FETCH WITH TIMEOUT
@@ -756,6 +756,7 @@ function createFooter() {
 // ============================================
 // GLOBAL INSTANCES
 // ============================================
+console.log('[Runtime] Initializing global instances...');
 window.API_URL = API_URL;
 window.Auth = new AuthManager();
 window.MapManager = new MapManager(window.Auth);
@@ -763,6 +764,12 @@ window.MultiplayerManager = new MultiplayerManager(window.Auth);
 window.Settings = new SettingsManager();
 window.Navigation = Navigation;
 window.createFooter = createFooter;
+console.log('[Runtime] Global instances initialized:', {
+    Auth: typeof window.Auth,
+    MapManager: typeof window.MapManager,
+    MultiplayerManager: typeof window.MultiplayerManager,
+    'MultiplayerManager.on': typeof window.MultiplayerManager?.on
+});
 
 // Auto-add footer to pages
 document.addEventListener('DOMContentLoaded', () => {

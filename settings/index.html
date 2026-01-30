@@ -103,27 +103,40 @@
     </footer>
 
     <script>
-        // Safe toast functions
+        // Safe toast functions with inline fallback (no browser alerts)
+        function showInlineToast(msg, type) {
+            var existing = document.getElementById('inline-toast');
+            if (existing) existing.remove();
+            
+            var toast = document.createElement('div');
+            toast.id = 'inline-toast';
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;font-weight:500;z-index:99999;animation:fadeIn 0.3s;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:90%;text-align:center;';
+            toast.style.background = type === 'error' ? '#e74c3c' : type === 'success' ? '#27ae60' : '#3498db';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 3000);
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 3500);
+        }
         function toastError(msg) {
             console.log('[Toast Error]', msg);
             try {
                 if (window.ToastManager && typeof window.ToastManager.show === 'function') {
                     window.ToastManager.show(msg, 'error');
-                } else { alert('Error: ' + msg); }
-            } catch (e) { alert('Error: ' + msg); }
+                } else { showInlineToast(msg, 'error'); }
+            } catch (e) { showInlineToast(msg, 'error'); }
         }
         function toastSuccess(msg) {
             console.log('[Toast Success]', msg);
             try {
                 if (window.ToastManager && typeof window.ToastManager.show === 'function') {
                     window.ToastManager.show(msg, 'success');
-                } else { alert(msg); }
-            } catch (e) { alert(msg); }
+                } else { showInlineToast(msg, 'success'); }
+            } catch (e) { showInlineToast(msg, 'success'); }
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=10"></script>
-    <script src="/parkoreen/assets/js/style.js?v=10"></script>
+    <script src="/parkoreen/runtime.js?v=11"></script>
+    <script src="/parkoreen/assets/js/style.js?v=11"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {

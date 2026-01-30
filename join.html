@@ -53,35 +53,48 @@
     </footer>
 
     <script>
-        // Safe toast functions
+        // Safe toast functions with inline fallback (no browser alerts)
+        function showInlineToast(msg, type) {
+            var existing = document.getElementById('inline-toast');
+            if (existing) existing.remove();
+            
+            var toast = document.createElement('div');
+            toast.id = 'inline-toast';
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;font-weight:500;z-index:99999;animation:fadeIn 0.3s;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:90%;text-align:center;';
+            toast.style.background = type === 'error' ? '#e74c3c' : type === 'success' ? '#27ae60' : type === 'warning' ? '#f39c12' : '#3498db';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 3000);
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 3500);
+        }
         function toastError(msg) {
             console.log('[Toast Error]', msg);
             try {
                 if (window.ToastManager && typeof window.ToastManager.show === 'function') {
                     window.ToastManager.show(msg, 'error');
-                } else { alert('Error: ' + msg); }
-            } catch (e) { alert('Error: ' + msg); }
+                } else { showInlineToast(msg, 'error'); }
+            } catch (e) { showInlineToast(msg, 'error'); }
         }
         function toastSuccess(msg) {
             console.log('[Toast Success]', msg);
             try {
                 if (window.ToastManager && typeof window.ToastManager.show === 'function') {
                     window.ToastManager.show(msg, 'success');
-                } else { alert(msg); }
-            } catch (e) { alert(msg); }
+                } else { showInlineToast(msg, 'success'); }
+            } catch (e) { showInlineToast(msg, 'success'); }
         }
         function toastWarning(msg) {
             console.log('[Toast Warning]', msg);
             try {
                 if (window.ToastManager && typeof window.ToastManager.show === 'function') {
                     window.ToastManager.show(msg, 'warning');
-                } else { alert('Warning: ' + msg); }
-            } catch (e) { alert('Warning: ' + msg); }
+                } else { showInlineToast(msg, 'warning'); }
+            } catch (e) { showInlineToast(msg, 'warning'); }
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=10"></script>
-    <script src="/parkoreen/assets/js/style.js?v=10"></script>
+    <script src="/parkoreen/runtime.js?v=11"></script>
+    <script src="/parkoreen/assets/js/style.js?v=11"></script>
     <script>
         var needsPassword = false;
 
@@ -117,6 +130,11 @@
                     return;
                 }
 
+                if (gameCode.length !== 6) {
+                    toastError('Game code must be 6 characters');
+                    return;
+                }
+
                 if (needsPassword && !password) {
                     toastError('Please enter the room password');
                     return;
@@ -125,9 +143,22 @@
                 btnJoin.disabled = true;
                 btnJoin.innerHTML = '<div class="spinner" style="width: 20px; height: 20px;"></div> Joining...';
 
+                function resetButton() {
+                    btnJoin.disabled = false;
+                    btnJoin.innerHTML = '<span class="material-symbols-outlined">login</span> Join';
+                }
+
                 try {
+                    // Check if MultiplayerManager is available
+                    var mp = window.MultiplayerManager;
+                    if (!mp || typeof mp.on !== 'function') {
+                        toastError('Multiplayer service not available. Please refresh the page.');
+                        resetButton();
+                        return;
+                    }
+
                     // Setup multiplayer handlers
-                    MultiplayerManager.on('roomJoined', function(data) {
+                    mp.on('roomJoined', function(data) {
                         toastSuccess('Joined room!');
                         sessionStorage.setItem('parkoreen_game', JSON.stringify({
                             roomCode: data.roomCode,
@@ -137,24 +168,30 @@
                         window.location.href = '/parkoreen/host.html?room=' + data.roomCode + '&mode=play';
                     });
 
-                    MultiplayerManager.on('error', function(data) {
+                    mp.on('error', function(data) {
                         if (data.message === 'Password required') {
                             needsPassword = true;
                             passwordGroup.classList.remove('hidden');
                             joinTitle.textContent = 'Enter Password';
                             toastWarning('This room requires a password');
                         } else {
-                            toastError(data.message);
+                            toastError(data.message || 'Failed to join room');
                         }
-                        btnJoin.disabled = false;
-                        btnJoin.innerHTML = '<span class="material-symbols-outlined">login</span> Join';
+                        resetButton();
                     });
 
-                    await MultiplayerManager.joinGame(gameCode, password || null);
+                    await mp.joinGame(gameCode, password || null);
+
+                    // Set a timeout in case connection fails silently
+                    setTimeout(function() {
+                        if (btnJoin.disabled) {
+                            toastError('Connection timed out. Please try again.');
+                            resetButton();
+                        }
+                    }, 15000);
                 } catch (err) {
-                    toastError('Failed to join: ' + err.message);
-                    btnJoin.disabled = false;
-                    btnJoin.innerHTML = '<span class="material-symbols-outlined">login</span> Join';
+                    toastError('Failed to join: ' + (err.message || 'Connection error'));
+                    resetButton();
                 }
             });
         });

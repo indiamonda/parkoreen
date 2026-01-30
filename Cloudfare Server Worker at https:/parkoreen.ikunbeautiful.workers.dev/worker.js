@@ -515,9 +515,15 @@ class GameRoom {
             return;
         }
 
+        // Check if already in a room
+        if (session.roomCode) {
+            this.send(session, { type: 'error', message: 'You are already in a room. Leave it first.' });
+            return;
+        }
+
         const roomData = await this.state.storage.get(`room:${data.roomCode}`);
         if (!roomData) {
-            this.send(session, { type: 'error', message: 'Room not found' });
+            this.send(session, { type: 'error', message: 'Room not found. Please check the game code.' });
             return;
         }
 
@@ -533,6 +539,13 @@ class GameRoom {
         const playersInRoom = this.getPlayersInRoom(data.roomCode);
         if (playersInRoom.length >= room.maxPlayers) {
             this.send(session, { type: 'error', message: 'Room is full' });
+            return;
+        }
+
+        // Check if this user is already in the room (same account from different device/tab)
+        const existingPlayer = playersInRoom.find(p => p.userId === session.userId);
+        if (existingPlayer) {
+            this.send(session, { type: 'error', message: 'This account is already in this room.' });
             return;
         }
 

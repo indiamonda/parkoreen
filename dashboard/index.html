@@ -56,19 +56,83 @@
     </div>
 
     <script>
-        // Safe toast functions that ALWAYS work
+        // Inline toast fallback (no browser alerts)
+        function showInlineToast(msg, type) {
+            var existing = document.getElementById('inline-toast');
+            if (existing) existing.remove();
+            
+            var toast = document.createElement('div');
+            toast.id = 'inline-toast';
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;font-weight:500;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:90%;text-align:center;';
+            toast.style.background = type === 'error' ? '#e74c3c' : type === 'success' ? '#27ae60' : type === 'warning' ? '#f39c12' : '#3498db';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 3000);
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 3500);
+        }
+        
+        // Inline modal fallback (no browser alerts/prompts)
+        function showInlineModal(title, text, type) {
+            return new Promise(function(resolve) {
+                var overlay = document.createElement('div');
+                overlay.id = 'inline-modal-overlay';
+                overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;';
+                
+                var modal = document.createElement('div');
+                modal.style.cssText = 'background:#1a1a2e;padding:24px;border-radius:12px;max-width:400px;width:90%;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,0.3);';
+                
+                var titleEl = document.createElement('h3');
+                titleEl.style.cssText = 'margin:0 0 12px 0;font-size:1.25rem;';
+                titleEl.textContent = title;
+                modal.appendChild(titleEl);
+                
+                var textEl = document.createElement('p');
+                textEl.style.cssText = 'margin:0 0 20px 0;color:#b8b8b8;';
+                textEl.textContent = text;
+                modal.appendChild(textEl);
+                
+                var input = null;
+                if (type === 'prompt') {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.style.cssText = 'width:100%;padding:10px;border:1px solid #353555;border-radius:6px;background:#252540;color:#fff;margin-bottom:16px;box-sizing:border-box;';
+                    input.placeholder = text;
+                    modal.appendChild(input);
+                }
+                
+                var btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display:flex;gap:12px;justify-content:flex-end;';
+                
+                if (type === 'confirm' || type === 'prompt') {
+                    var cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.style.cssText = 'padding:10px 20px;border:none;border-radius:6px;cursor:pointer;background:#353555;color:#fff;';
+                    cancelBtn.onclick = function() { overlay.remove(); resolve(type === 'prompt' ? null : false); };
+                    btnContainer.appendChild(cancelBtn);
+                }
+                
+                var okBtn = document.createElement('button');
+                okBtn.textContent = type === 'confirm' ? 'Confirm' : 'OK';
+                okBtn.style.cssText = 'padding:10px 20px;border:none;border-radius:6px;cursor:pointer;background:#2d5a27;color:#fff;';
+                okBtn.onclick = function() { overlay.remove(); resolve(type === 'prompt' ? (input ? input.value : '') : true); };
+                btnContainer.appendChild(okBtn);
+                
+                modal.appendChild(btnContainer);
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
+                
+                if (input) input.focus();
+            });
+        }
+        
+        // Safe toast functions
         function showToast(msg, type) {
             console.log('[Toast ' + type + ']', msg);
             try {
                 if (window.ToastManager && typeof window.ToastManager.show === 'function') {
                     window.ToastManager.show(msg, type);
-                } else {
-                    alert(msg);
-                }
-            } catch (e) {
-                console.error('Toast error:', e);
-                alert(msg);
-            }
+                } else { showInlineToast(msg, type); }
+            } catch (e) { showInlineToast(msg, type); }
         }
         function toastSuccess(msg) { showToast(msg, 'success'); }
         function toastError(msg) { showToast(msg, 'error'); }
@@ -82,7 +146,7 @@
                     return window.ModalManager.confirm(title, text);
                 }
             } catch (e) { console.error('Modal error:', e); }
-            return Promise.resolve(confirm(text || title));
+            return showInlineModal(title, text, 'confirm');
         }
         function modalPrompt(title, placeholder) {
             try {
@@ -90,12 +154,12 @@
                     return window.ModalManager.prompt(title, placeholder);
                 }
             } catch (e) { console.error('Modal error:', e); }
-            return Promise.resolve(prompt(title, placeholder || ''));
+            return showInlineModal(title, placeholder || '', 'prompt');
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=9"></script>
-    <script src="/parkoreen/assets/js/style.js?v=9"></script>
+    <script src="/parkoreen/runtime.js?v=11"></script>
+    <script src="/parkoreen/assets/js/style.js?v=11"></script>
     
     <script>
         console.log('[Dashboard] Version: v7');
