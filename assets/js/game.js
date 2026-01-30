@@ -111,13 +111,13 @@ class Player {
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
-    update(world, audioManager) {
+    update(world, audioManager, editorMode = false) {
         if (this.isDead) return;
 
         if (this.isFlying) {
-            this.updateFlying(world);
+            this.updateFlying(world, editorMode);
         } else {
-            this.updatePhysics(world, audioManager);
+            this.updatePhysics(world, audioManager, editorMode);
         }
     }
 
@@ -238,12 +238,21 @@ class Player {
     }
 
     checkHurtCollisions(world) {
-        const box = this.getHurtTouchbox();
+        if (!world || !world.objects) return;
+        
+        // Use the full player hitbox for spike detection, not the smaller hurt touchbox
+        // This ensures spikes hurt even when standing on them
+        const playerBox = {
+            x: this.x,
+            y: this.y,
+            width: this.width,
+            height: this.height
+        };
         
         for (const obj of world.objects) {
-            // Spikes only hurt if collision is enabled
+            // Only check objects that act as spikes and have collision enabled
             if (obj.actingType === 'spike' && obj.collision !== false) {
-                if (this.boxIntersects(box, obj)) {
+                if (this.boxIntersects(playerBox, obj)) {
                     this.die();
                     return;
                 }

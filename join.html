@@ -190,7 +190,12 @@
                         }
                     }, 15000);
                 } catch (err) {
-                    toastError('Failed to join: ' + (err.message || 'Connection error'));
+                    var errorMsg = err.message || 'Connection error';
+                    if (errorMsg.includes('unavailable') || errorMsg.includes('WebSocket')) {
+                        toastError('Multiplayer is currently unavailable. The server may need Durable Objects configured.');
+                    } else {
+                        toastError('Failed to join: ' + errorMsg);
+                    }
                     resetButton();
                 }
             });

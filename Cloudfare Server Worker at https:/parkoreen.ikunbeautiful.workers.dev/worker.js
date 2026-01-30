@@ -480,7 +480,22 @@ class GameRoom {
             return;
         }
 
-        const roomCode = generateRoomCode();
+        // Generate unique room code (retry if already exists)
+        let roomCode;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        do {
+            roomCode = generateRoomCode();
+            const existingRoom = await this.state.storage.get(`room:${roomCode}`);
+            if (!existingRoom) break;
+            attempts++;
+        } while (attempts < maxAttempts);
+        
+        if (attempts >= maxAttempts) {
+            this.send(session, { type: 'error', message: 'Failed to generate unique room code. Please try again.' });
+            return;
+        }
         
         // Store room data
         const room = {

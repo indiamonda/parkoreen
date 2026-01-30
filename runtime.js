@@ -11,7 +11,8 @@ const API_TIMEOUT = 10000; // 10 seconds timeout
 
 // Set to true to use local storage instead of API (for testing without backend)
 // Enable this if you haven't set up Cloudflare KV namespaces yet
-const USE_LOCAL_MODE = false;
+// NOTE: Set to false after configuring Cloudflare KV namespaces
+const USE_LOCAL_MODE = true;
 
 // ============================================
 // FETCH WITH TIMEOUT
@@ -494,10 +495,27 @@ class MultiplayerManager {
     connect() {
         return new Promise((resolve, reject) => {
             const wsUrl = API_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/ws';
+            console.log('[Multiplayer] Connecting to:', wsUrl);
             
-            this.ws = new WebSocket(wsUrl);
+            try {
+                this.ws = new WebSocket(wsUrl);
+            } catch (error) {
+                console.error('[Multiplayer] Failed to create WebSocket:', error);
+                reject(new Error('Multiplayer service unavailable. WebSocket connection failed.'));
+                return;
+            }
+            
+            // Connection timeout
+            const timeout = setTimeout(() => {
+                if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
+                    this.ws.close();
+                    reject(new Error('Connection timed out. Multiplayer server may be unavailable.'));
+                }
+            }, 10000);
             
             this.ws.onopen = () => {
+                clearTimeout(timeout);
+                console.log('[Multiplayer] Connected!');
                 // Authenticate
                 this.send({
                     type: 'auth',
@@ -507,7 +525,9 @@ class MultiplayerManager {
             };
             
             this.ws.onerror = (error) => {
-                reject(error);
+                clearTimeout(timeout);
+                console.error('[Multiplayer] WebSocket error:', error);
+                reject(new Error('Multiplayer server unavailable. You can still edit maps locally.'));
             };
             
             this.ws.onmessage = (event) => {
@@ -515,11 +535,13 @@ class MultiplayerManager {
                     const data = JSON.parse(event.data);
                     this.handleMessage(data);
                 } catch (e) {
-                    console.error('Failed to parse message:', e);
+                    console.error('[Multiplayer] Failed to parse message:', e);
                 }
             };
             
-            this.ws.onclose = () => {
+            this.ws.onclose = (event) => {
+                clearTimeout(timeout);
+                console.log('[Multiplayer] Connection closed:', event.code, event.reason);
                 this.emit('disconnected');
                 this.ws = null;
             };
