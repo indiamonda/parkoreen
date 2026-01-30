@@ -3,7 +3,7 @@
  * Handles offline caching and PWA functionality
  */
 
-const CACHE_NAME = 'parkoreen-v8';
+const CACHE_NAME = 'parkoreen-v9';
 const ASSETS_TO_CACHE = [
     '/parkoreen/',
     '/parkoreen/index.html',
@@ -108,12 +108,15 @@ self.addEventListener('fetch', (event) => {
                 // No cache, fetch from network
                 return fetch(event.request)
                     .then((networkResponse) => {
-                        // Cache the response for future
-                        if (networkResponse.ok) {
+                        // Cache the response for future (only cache complete 200 responses)
+                        if (networkResponse.ok && networkResponse.status === 200) {
                             const responseToCache = networkResponse.clone();
                             caches.open(CACHE_NAME)
                                 .then((cache) => {
                                     cache.put(event.request, responseToCache);
+                                })
+                                .catch(() => {
+                                    // Ignore cache errors
                                 });
                         }
                         return networkResponse;

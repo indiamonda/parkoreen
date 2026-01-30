@@ -140,7 +140,7 @@ class Player {
         }
     }
 
-    updatePhysics(world, audioManager) {
+    updatePhysics(world, audioManager, editorMode = false) {
         // Horizontal movement
         if (this.input.left) {
             this.vx = -MOVE_SPEED;
@@ -156,10 +156,13 @@ class Player {
         // Cap fall speed
         if (this.vy > 20) this.vy = 20;
 
-        // Handle jump
-        if (this.input.jump && this.canJump && this.jumpsRemaining > 0) {
+        // Handle jump - infinite jumps in editor mode
+        const canJumpNow = editorMode ? true : (this.jumpsRemaining > 0);
+        if (this.input.jump && this.canJump && canJumpNow) {
             this.vy = JUMP_FORCE;
-            this.jumpsRemaining--;
+            if (!editorMode) {
+                this.jumpsRemaining--;
+            }
             this.canJump = false;
             this.isOnGround = false;
             if (audioManager) audioManager.play('jump');
@@ -170,10 +173,10 @@ class Player {
         }
 
         // Apply movement with collision
-        this.moveWithCollision(world);
+        this.moveWithCollision(world, editorMode);
     }
 
-    moveWithCollision(world) {
+    moveWithCollision(world, editorMode = false) {
         // Move horizontally
         this.x += this.vx;
         
@@ -213,8 +216,10 @@ class Player {
             }
         }
 
-        // Check hurt collisions
-        this.checkHurtCollisions(world);
+        // Check hurt collisions (skip in editor mode)
+        if (!editorMode) {
+            this.checkHurtCollisions(world);
+        }
     }
 
     checkCollisions(world, direction) {
@@ -951,7 +956,8 @@ class GameEngine {
     onKeyDown(e) {
         this.keys[e.code] = true;
         
-        if (this.localPlayer && (this.state === GameState.PLAYING || this.state === GameState.TESTING)) {
+        // Update player input in all active modes (including editor)
+        if (this.localPlayer) {
             this.updatePlayerInput();
         }
         
@@ -1127,11 +1133,15 @@ class GameEngine {
                 // Remote players just interpolate to their positions
             }
         } else if (this.state === GameState.EDITOR) {
-            // In editor mode, update player movement (fly mode) without death mechanics
+            // In editor mode, update player movement
             if (this.localPlayer) {
-                // Force fly mode in editor
-                this.localPlayer.isFlying = true;
-                this.localPlayer.updateFlying(this.world, true); // true = editor mode, no hurt checks
+                // Update player (respects fly mode toggle)
+                if (this.localPlayer.isFlying) {
+                    this.localPlayer.updateFlying(this.world, true); // true = editor mode, no hurt checks
+                } else {
+                    // Platformer physics in editor (for testing) - but no death
+                    this.localPlayer.updatePhysics(this.world, null, true); // true = editor mode
+                }
                 
                 // Camera follows player in editor mode
                 this.camera.follow(this.localPlayer);
