@@ -403,7 +403,7 @@ class WorldObject {
         
         // Text specific
         this.content = config.content || '';
-        this.font = config.font || 'Arial';
+        this.font = config.font || 'Parkoreen Game';
         this.fontSize = config.fontSize || 24;
         this.hAlign = config.hAlign || 'center'; // left, center, right
         this.vAlign = config.vAlign || 'center'; // top, center, bottom

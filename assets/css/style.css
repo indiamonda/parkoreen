@@ -3,6 +3,23 @@
    A multiplayer parkour game
    ==================================== */
 
+/* Custom Fonts */
+@font-face {
+    font-family: 'Parkoreen Game';
+    src: url('/parkoreen/assets/ttf/jersey10.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Tektur';
+    src: url('/parkoreen/assets/ttf/tektur.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* CSS Variables */
 :root {
     /* Colors */

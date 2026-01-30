@@ -23,9 +23,18 @@ const PlacementMode = {
 };
 
 // ============================================
+// CUSTOM FONTS (loaded from assets/ttf/)
+// ============================================
+const CUSTOM_FONTS = [
+    'Parkoreen Game',  // assets/ttf/jersey10.ttf
+    'Tektur'           // assets/ttf/tektur.ttf
+];
+
+// ============================================
 // GOOGLE FONTS (Popular subset)
 // ============================================
 const GOOGLE_FONTS = [
+    ...CUSTOM_FONTS,
     'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins',
     'Oswald', 'Raleway', 'Merriweather', 'Ubuntu', 'Playfair Display',
     'Nunito', 'PT Sans', 'Rubik', 'Work Sans', 'Quicksand',
@@ -83,7 +92,7 @@ class Editor {
         this.textSettings = {
             content: 'Text',
             actingType: 'text',
-            font: 'Arial',
+            font: 'Parkoreen Game',
             color: '#000000',
             opacity: 1,
             hAlign: 'center',
@@ -461,7 +470,7 @@ class Editor {
                 <span class="placement-option-label">Font</span>
                 <div class="font-dropdown" id="font-dropdown">
                     <button class="font-dropdown-trigger" id="font-dropdown-trigger">
-                        <span id="font-dropdown-value">Arial</span>
+                        <span id="font-dropdown-value">Parkoreen Game</span>
                         <span class="material-symbols-outlined">expand_more</span>
                     </button>
                     <div class="font-dropdown-menu" id="font-dropdown-menu">
@@ -1013,12 +1022,27 @@ class Editor {
             html += `</div>`;
         }
 
-        // All fonts section
+        // Custom fonts section (Parkoreen fonts)
+        html += `
+            <div class="font-dropdown-section" id="font-section-custom">
+                <div class="font-dropdown-section-title">Parkoreen Fonts</div>
+        `;
+        for (const font of CUSTOM_FONTS) {
+            html += `
+                <div class="font-dropdown-item" data-font="${font}">
+                    <span style="font-family: '${font}'">${font}</span>
+                </div>
+            `;
+        }
+        html += `</div>`;
+
+        // Google fonts section
+        const googleOnlyFonts = GOOGLE_FONTS.filter(f => !CUSTOM_FONTS.includes(f));
         html += `
             <div class="font-dropdown-section" id="font-section-all">
-                <div class="font-dropdown-section-title">All Fonts</div>
+                <div class="font-dropdown-section-title">Google Fonts</div>
         `;
-        for (const font of GOOGLE_FONTS) {
+        for (const font of googleOnlyFonts) {
             html += `
                 <div class="font-dropdown-item" data-font="${font}">
                     <span style="font-family: '${font}'">${font}</span>
@@ -1059,11 +1083,12 @@ class Editor {
     }
 
     loadGoogleFonts() {
-        // Create link elements for Google Fonts
-        const fontsToLoad = [...new Set([...this.recentFonts, ...GOOGLE_FONTS])];
+        // Create link elements for Google Fonts (exclude custom fonts, they're loaded via CSS)
+        const fontsToLoad = [...new Set([...this.recentFonts, ...GOOGLE_FONTS])]
+            .filter(f => !CUSTOM_FONTS.includes(f));
         const fontFamilies = fontsToLoad.map(f => f.replace(/ /g, '+')).join('&family=');
         
-        if (!document.getElementById('google-fonts-link')) {
+        if (!document.getElementById('google-fonts-link') && fontFamilies) {
             const link = document.createElement('link');
             link.id = 'google-fonts-link';
             link.rel = 'stylesheet';
