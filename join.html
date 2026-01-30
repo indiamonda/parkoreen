@@ -26,8 +26,8 @@
                 <div class="form-group">
                     <label class="form-label" for="game-code">Game Code</label>
                     <input type="text" class="form-input" id="game-code" name="gameCode" 
-                           placeholder="Enter 6-digit code" required maxlength="6"
-                           style="text-align: center; font-size: 1.5rem; letter-spacing: 8px; text-transform: uppercase;">
+                           placeholder="XXXXXX" required maxlength="6"
+                           style="text-align: center; font-size: 1.5rem; letter-spacing: 4px; text-transform: uppercase; max-width: 200px; margin: 0 auto;">
                 </div>
 
                 <div class="form-group hidden" id="password-group">
@@ -52,20 +52,36 @@
         </a>
     </footer>
 
-    <!-- Fallbacks first -->
     <script>
-        window.ToastManager = {
-            show: function(msg) { alert(msg); },
-            success: function(msg) { alert('✓ ' + msg); },
-            error: function(msg) { alert('✗ ' + msg); },
-            warning: function(msg) { alert('⚠ ' + msg); },
-            info: function(msg) { alert('ℹ ' + msg); }
-        };
+        // Safe toast functions
+        function toastError(msg) {
+            console.log('[Toast Error]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'error');
+                } else { alert('Error: ' + msg); }
+            } catch (e) { alert('Error: ' + msg); }
+        }
+        function toastSuccess(msg) {
+            console.log('[Toast Success]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'success');
+                } else { alert(msg); }
+            } catch (e) { alert(msg); }
+        }
+        function toastWarning(msg) {
+            console.log('[Toast Warning]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'warning');
+                } else { alert('Warning: ' + msg); }
+            } catch (e) { alert('Warning: ' + msg); }
+        }
     </script>
 
-    <!-- Scripts -->
-    <script src="/parkoreen/runtime.js"></script>
-    <script src="/parkoreen/assets/js/style.js"></script>
+    <script src="/parkoreen/runtime.js?v=6"></script>
+    <script src="/parkoreen/assets/js/style.js?v=6"></script>
     <script>
         var needsPassword = false;
 
@@ -97,12 +113,12 @@
                 var password = document.getElementById('password').value;
 
                 if (!gameCode) {
-                    ToastManager.error('Please enter a game code');
+                    toastError('Please enter a game code');
                     return;
                 }
 
                 if (needsPassword && !password) {
-                    ToastManager.error('Please enter the room password');
+                    toastError('Please enter the room password');
                     return;
                 }
 
@@ -112,8 +128,7 @@
                 try {
                     // Setup multiplayer handlers
                     MultiplayerManager.on('roomJoined', function(data) {
-                        ToastManager.success('Joined room!');
-                        // Store game data and redirect to game page
+                        toastSuccess('Joined room!');
                         sessionStorage.setItem('parkoreen_game', JSON.stringify({
                             roomCode: data.roomCode,
                             mapData: data.mapData,
@@ -127,17 +142,17 @@
                             needsPassword = true;
                             passwordGroup.classList.remove('hidden');
                             joinTitle.textContent = 'Enter Password';
-                            ToastManager.warning('This room requires a password');
+                            toastWarning('This room requires a password');
                         } else {
-                            ToastManager.error(data.message);
+                            toastError(data.message);
                         }
                         btnJoin.disabled = false;
                         btnJoin.innerHTML = '<span class="material-symbols-outlined">login</span> Join';
                     });
 
                     await MultiplayerManager.joinGame(gameCode, password || null);
-                } catch (error) {
-                    ToastManager.error('Failed to join: ' + error.message);
+                } catch (err) {
+                    toastError('Failed to join: ' + err.message);
                     btnJoin.disabled = false;
                     btnJoin.innerHTML = '<span class="material-symbols-outlined">login</span> Join';
                 }

@@ -48,7 +48,7 @@
         </button>
         
         <!-- Room code display -->
-        <div id="room-code-display" class="hidden" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 8px; font-family: monospace; font-size: 1.25rem; letter-spacing: 4px;"></div>
+        <div id="room-code-display" class="hidden" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 12px; font-family: monospace; font-size: 1.5rem; letter-spacing: 6px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); box-shadow: 0 4px 20px rgba(0,0,0,0.5);"></div>
     </div>
 
     <!-- Players Panel -->
@@ -77,31 +77,46 @@
         </div>
     </div>
 
-    <!-- Fallbacks FIRST before loading any scripts -->
+    <!-- Safe wrapper functions -->
     <script>
-        window.ToastManager = {
-            show: function(msg, type) { console.log('[Toast]', type, msg); alert(msg); },
-            success: function(msg) { console.log('[Toast] success:', msg); alert('✓ ' + msg); },
-            error: function(msg) { console.log('[Toast] error:', msg); alert('✗ ' + msg); },
-            warning: function(msg) { console.log('[Toast] warning:', msg); alert('⚠ ' + msg); },
-            info: function(msg) { console.log('[Toast] info:', msg); alert('ℹ ' + msg); }
-        };
-        window.ModalManager = {
-            show: function(opts) { return Promise.resolve(confirm(opts.text || opts.title || 'Confirm?')); },
-            confirm: function(title, text) { return Promise.resolve(confirm(text || title)); },
-            alert: function(title, text) { alert(text || title); return Promise.resolve(); },
-            prompt: function(title, placeholder) { return Promise.resolve(prompt(title, placeholder || '')); }
-        };
-        window.LoadingManager = { show: function() {}, hide: function() {}, update: function() {} };
-        window.AnimationUtils = { shake: function() {} };
+        function toastSuccess(msg) {
+            console.log('[Toast Success]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'success');
+                } else { alert(msg); }
+            } catch (e) { alert(msg); }
+        }
+        function toastError(msg) {
+            console.log('[Toast Error]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'error');
+                } else { alert('Error: ' + msg); }
+            } catch (e) { alert('Error: ' + msg); }
+        }
+        function loadingShow(msg) {
+            try {
+                if (window.LoadingManager && typeof window.LoadingManager.show === 'function') {
+                    window.LoadingManager.show(msg);
+                }
+            } catch (e) {}
+        }
+        function loadingHide() {
+            try {
+                if (window.LoadingManager && typeof window.LoadingManager.hide === 'function') {
+                    window.LoadingManager.hide();
+                }
+            } catch (e) {}
+        }
     </script>
     
     <!-- Scripts -->
-    <script src="/parkoreen/runtime.js"></script>
-    <script src="/parkoreen/assets/js/style.js"></script>
-    <script src="/parkoreen/assets/js/game.js"></script>
-    <script src="/parkoreen/assets/js/editor.js"></script>
-    <script src="/parkoreen/assets/js/exportImport.js"></script>
+    <script src="/parkoreen/runtime.js?v=6"></script>
+    <script src="/parkoreen/assets/js/style.js?v=6"></script>
+    <script src="/parkoreen/assets/js/game.js?v=6"></script>
+    <script src="/parkoreen/assets/js/editor.js?v=6"></script>
+    <script src="/parkoreen/assets/js/exportImport.js?v=6"></script>
     <script>
         // Global state
         let engine;
@@ -128,6 +143,10 @@
             editor = new Editor(engine);
             editor.initUI();
             editor.updateBackground();
+            
+            // Ensure we're in editor mode (not play mode)
+            engine.state = GameState.EDITOR;
+            engine.localPlayer = null;
 
             // Load map or game data
             if (currentMode === 'play' && roomCode) {
@@ -155,8 +174,9 @@
 
         async function loadMap(mapId) {
             try {
-                LoadingManager.show('Loading map...');
-                const mapData = await MapManager.getMap(mapId);
+                loadingShow('Loading map...');
+                var getMapFn = window.MapManager.getMap;
+                const mapData = await getMapFn.call(window.MapManager, mapId);
                 
                 if (mapData.data) {
                     engine.world.fromJSON(mapData.data);
@@ -164,27 +184,28 @@
                 engine.world.mapName = mapData.name || 'Untitled Map';
                 
                 editor.updateBackground();
-                LoadingManager.hide();
+                loadingHide();
                 
-                ToastManager.success('Map loaded!');
+                toastSuccess('Map loaded!');
             } catch (error) {
-                LoadingManager.hide();
-                ToastManager.error('Failed to load map: ' + error.message);
+                loadingHide();
+                toastError('Failed to load map: ' + error.message);
             }
         }
 
         async function saveMap() {
             if (!currentMapId) {
-                ToastManager.error('No map to save');
+                toastError('No map to save');
                 return;
             }
 
             try {
                 const data = engine.world.toJSON();
-                await MapManager.saveMap(currentMapId, { data });
-                ToastManager.success('Map saved!');
+                var saveFn = window.MapManager.saveMap;
+                await saveFn.call(window.MapManager, currentMapId, { data });
+                toastSuccess('Map saved!');
             } catch (error) {
-                ToastManager.error('Failed to save map: ' + error.message);
+                toastError('Failed to save map: ' + error.message);
             }
         }
 
@@ -208,7 +229,7 @@
             // Show room code
             if (roomCode) {
                 const roomCodeDisplay = document.getElementById('room-code-display');
-                roomCodeDisplay.textContent = roomCode;
+                roomCodeDisplay.innerHTML = '<span style="font-size: 0.9rem; opacity: 0.8; letter-spacing: 1px;">Game Code:</span> ' + roomCode;
                 roomCodeDisplay.classList.remove('hidden');
             }
 

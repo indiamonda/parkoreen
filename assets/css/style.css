@@ -253,7 +253,8 @@ a:hover {
     -webkit-appearance: none;
     width: 100%;
     height: 8px;
-    background: var(--surface);
+    background: var(--bg-dark);
+    border: 1px solid var(--surface-light);
     border-radius: 4px;
     outline: none;
 }
@@ -292,10 +293,11 @@ a:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--surface);
+    background: var(--bg-dark);
+    border: 1px solid var(--surface-light);
     border-radius: 28px;
     cursor: pointer;
-    transition: background var(--transition);
+    transition: background var(--transition), border-color var(--transition);
 }
 
 .toggle-slider::before {
@@ -1437,8 +1439,12 @@ a:hover {
 .settings-container {
     min-height: 100vh;
     min-height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow-y: auto;
     background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 100%);
     padding: var(--spacing-lg);
+    padding-bottom: 80px; /* Space for footer */
     position: relative;
 }
 
