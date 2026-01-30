@@ -778,6 +778,26 @@ a:hover {
     display: flex;
 }
 
+/* Settings Panel */
+.settings-panel {
+    position: fixed;
+    right: var(--spacing-md);
+    top: 80px;
+    width: 280px;
+    max-height: calc(100vh - 160px);
+    background: var(--bg-medium);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-panel);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.settings-panel.active {
+    display: flex;
+}
+
 .config-section {
     padding: var(--spacing-md);
     border-bottom: 1px solid var(--surface);

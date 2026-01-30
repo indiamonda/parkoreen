@@ -518,9 +518,8 @@ class Editor {
 
     createSettingsPanel() {
         const settingsPanel = document.createElement('div');
-        settingsPanel.className = 'panel hidden';
+        settingsPanel.className = 'settings-panel';
         settingsPanel.id = 'settings-panel';
-        settingsPanel.style.cssText = 'position: fixed; top: 80px; right: 16px; width: 280px;';
         settingsPanel.innerHTML = `
             <div class="panel-header">
                 <span class="panel-title">Settings</span>
@@ -585,10 +584,19 @@ class Editor {
     }
 
     attachEventListeners() {
-        // Corner buttons
-        this.ui.btnConfig.addEventListener('click', () => this.togglePanel('config'));
-        this.ui.btnSettings.addEventListener('click', () => this.togglePanel('settings'));
-        this.ui.btnAdd.addEventListener('click', () => {
+        // Corner buttons - use explicit function calls with error handling
+        this.ui.btnConfig.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.togglePanel('config');
+        });
+        
+        this.ui.btnSettings.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.togglePanel('settings');
+        });
+        
+        this.ui.btnAdd.addEventListener('click', (e) => {
+            e.stopPropagation();
             // If in placement mode, stop it; otherwise toggle add menu
             if (this.placementMode !== PlacementMode.NONE) {
                 this.stopPlacement();
@@ -596,8 +604,16 @@ class Editor {
                 this.toggleAddMenu();
             }
         });
-        this.ui.btnLayers.addEventListener('click', () => this.togglePanel('layers'));
-        this.ui.btnStopTest.addEventListener('click', () => this.stopTest());
+        
+        this.ui.btnLayers.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.togglePanel('layers');
+        });
+        
+        this.ui.btnStopTest.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.stopTest();
+        });
 
         // Close buttons
         document.getElementById('close-config').addEventListener('click', () => this.closePanel('config'));
@@ -642,6 +658,11 @@ class Editor {
                 document.querySelectorAll('[data-appearance]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.placementSettings.appearanceType = btn.dataset.appearance;
+                
+                // Sync acting type with appearance type (spike looks like spike AND acts like spike)
+                this.placementSettings.actingType = btn.dataset.appearance;
+                this.syncActingTypeUI(btn.dataset.appearance);
+                
                 this.updateDefaultColor();
             });
         });
@@ -1169,9 +1190,17 @@ class Editor {
         // Reset UI - restore add icon (click handler checks placementMode)
         this.ui.btnAdd.innerHTML = '<span class="material-symbols-outlined">add</span>';
         
+        // Make sure button is visible and enabled
+        this.ui.btnAdd.classList.remove('hidden');
+        this.ui.btnAdd.disabled = false;
+        this.ui.btnAdd.style.pointerEvents = '';
+        
         this.ui.btnLayers.classList.remove('hidden');
         this.ui.toolbar.classList.remove('hidden');
         this.ui.placementToolbar.classList.remove('active');
+        
+        // Ensure add menu is closed
+        this.closeAddMenu();
     }
 
     updatePlacementOptions() {
@@ -1276,6 +1305,9 @@ class Editor {
                 btn.classList.add('active');
                 if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.appearanceType = btn.dataset.appearance;
+                    // Sync acting type with appearance type for blocks
+                    this.placementSettings.actingType = btn.dataset.appearance;
+                    this.syncActingTypeUI(btn.dataset.appearance);
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.appearanceType = btn.dataset.appearance;
                 }
@@ -1325,6 +1357,19 @@ class Editor {
         
         document.getElementById('placement-color-preview').style.background = color;
         document.getElementById('placement-color-input').value = color;
+    }
+    
+    syncActingTypeUI(actingType) {
+        // Update the acting type buttons to show the correct active state
+        const actingContainer = document.querySelector('#placement-acting .placement-option-btns');
+        if (!actingContainer) return;
+        
+        actingContainer.querySelectorAll('[data-acting]').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.acting === actingType) {
+                btn.classList.add('active');
+            }
+        });
     }
 
     // ========================================
@@ -1635,7 +1680,7 @@ class Editor {
             case EditorTool.ROTATE:
                 const objToRotate = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (objToRotate) {
-                    objToRotate.rotation = (objToRotate.rotation + 90) % 360;
+                    objToRotate.rotation = (objToRotate.rotation - 90 + 360) % 360;
                     this.triggerMapChange();
                 }
                 break;
@@ -1679,7 +1724,7 @@ class Editor {
         const worldPos = this.engine.getMouseWorldPos();
         const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
         if (obj) {
-            obj.rotation = (obj.rotation + 90) % 360;
+            obj.rotation = (obj.rotation - 90 + 360) % 360;
             this.triggerMapChange();
         }
     }
