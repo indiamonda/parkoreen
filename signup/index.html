@@ -59,7 +59,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="page-footer" style="position: fixed; bottom: 0; left: 0; right: 0;">
         <span>© Copyright JimmyQrg 2026</span>
         <a href="https://github.com/jimmyqrg/" target="_blank" rel="noopener" class="github-link">
@@ -67,30 +66,38 @@
         </a>
     </footer>
 
-    <!-- Fallbacks first -->
     <script>
-        window.ToastManager = {
-            show: function(msg) { alert(msg); },
-            success: function(msg) { alert('✓ ' + msg); },
-            error: function(msg) { alert('✗ ' + msg); },
-            warning: function(msg) { alert('⚠ ' + msg); },
-            info: function(msg) { alert('ℹ ' + msg); }
-        };
-        window.AnimationUtils = { shake: function() {} };
+        // Safe toast function
+        function toastError(msg) {
+            console.log('[Toast Error]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'error');
+                } else {
+                    alert('Error: ' + msg);
+                }
+            } catch (e) { alert('Error: ' + msg); }
+        }
+        function toastSuccess(msg) {
+            console.log('[Toast Success]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'success');
+                } else {
+                    alert(msg);
+                }
+            } catch (e) { alert(msg); }
+        }
     </script>
 
-    <!-- Scripts -->
-    <script src="/parkoreen/runtime.js"></script>
-    <script src="/parkoreen/assets/js/style.js"></script>
+    <script src="/parkoreen/runtime.js?v=5"></script>
+    <script src="/parkoreen/assets/js/style.js?v=5"></script>
+    
     <script>
-        // Get redirect URL from query params
         function getRedirectUrl() {
             var params = new URLSearchParams(window.location.search);
             var redirect = params.get('redirect');
-            if (redirect) {
-                return decodeURIComponent(redirect);
-            }
-            return '/parkoreen/dashboard/';
+            return redirect ? decodeURIComponent(redirect) : '/parkoreen/dashboard/';
         }
 
         // Pass redirect to login link
@@ -120,39 +127,35 @@
 
                 // Validation
                 if (!name || !username || !password) {
-                    ToastManager.error('Please fill in all fields');
+                    toastError('Please fill in all fields');
                     return;
                 }
-
                 if (username.length < 3) {
-                    ToastManager.error('Username must be at least 3 characters');
+                    toastError('Username must be at least 3 characters');
                     return;
                 }
-
                 if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-                    ToastManager.error('Username can only contain letters, numbers, and underscores');
+                    toastError('Username can only contain letters, numbers, and underscores');
                     return;
                 }
-
                 if (password.length < 6) {
-                    ToastManager.error('Password must be at least 6 characters');
+                    toastError('Password must be at least 6 characters');
                     return;
                 }
-
                 if (password !== confirmPassword) {
-                    ToastManager.error('Passwords do not match');
+                    toastError('Passwords do not match');
                     return;
                 }
 
                 btnSignup.disabled = true;
-                btnSignup.innerHTML = '<div class="spinner" style="width: 20px; height: 20px;"></div> Creating account...';
+                btnSignup.innerHTML = '<div class="spinner" style="width: 20px; height: 20px;"></div> Creating...';
 
                 try {
                     await Auth.signup(name, username, password);
-                    ToastManager.success('Welcome to Parkoreen!');
+                    toastSuccess('Welcome to Parkoreen!');
                     window.location.href = getRedirectUrl();
-                } catch (error) {
-                    ToastManager.error(error.message);
+                } catch (err) {
+                    toastError(err.message);
                     btnSignup.disabled = false;
                     btnSignup.innerHTML = '<span class="material-symbols-outlined">person_add</span> Create Account';
                 }
