@@ -444,7 +444,6 @@
 
         // Override editor's host game function
         if (typeof Editor !== 'undefined') {
-            const originalHostGame = Editor.prototype.hostGame;
             Editor.prototype.hostGame = async function() {
                 // Validate
                 if (!this.world.spawnPoint) {
@@ -461,45 +460,65 @@
                 }
 
                 try {
-                    LoadingManager.show('Creating room...');
+                    loadingShow('Creating room...');
 
                     // Save map first
                     if (currentMapId) {
                         await saveMap();
                     }
 
-                    // Setup multiplayer handlers
-                    MultiplayerManager.on('roomCreated', (data) => {
-                        LoadingManager.hide();
-                        
-                        // Store game data
-                        sessionStorage.setItem('parkoreen_game', JSON.stringify({
-                            roomCode: data.roomCode,
-                            mapData: this.world.toJSON(),
-                            isHost: true
-                        }));
-
-                        // Redirect to play mode
-                        window.location.href = `/parkoreen/host.html?room=${data.roomCode}&mode=play`;
-                    });
-
-                    MultiplayerManager.on('error', (data) => {
-                        LoadingManager.hide();
-                        this.showToast(data.message, 'error');
-                    });
-
-                    // Host the game
-                    await MultiplayerManager.hostGame({
+                    // Generate a local room code (6 digits)
+                    const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    
+                    // Store game data in session storage
+                    sessionStorage.setItem('parkoreen_game', JSON.stringify({
+                        roomCode: roomCode,
                         mapData: this.world.toJSON(),
-                        maxPlayers: parseInt(document.getElementById('config-max-players').value) || 10,
-                        usePassword: usePassword,
-                        password: password
-                    });
+                        isHost: true
+                    }));
+                    
+                    loadingHide();
+                    
+                    // Enter play mode locally
+                    await startHostedGame(roomCode, this.world.toJSON());
+                    
                 } catch (error) {
-                    LoadingManager.hide();
-                    this.showToast('Failed to host game: ' + error.message, 'error');
+                    loadingHide();
+                    toastError('Failed to host game: ' + error.message);
                 }
             };
+        }
+        
+        // Start a hosted game session
+        async function startHostedGame(roomCode, mapData) {
+            currentMode = 'play';
+            isHost = true;
+            
+            // Hide editor UI
+            document.getElementById('editor-ui')?.classList.add('hidden');
+            document.getElementById('toolbar')?.classList.add('hidden');
+            
+            // Close config panel
+            editor.closePanel('config');
+            
+            // Show game HUD
+            document.getElementById('game-hud').classList.remove('hidden');
+            
+            // Show room code display
+            const roomCodeDisplay = document.getElementById('room-code-display');
+            roomCodeDisplay.innerHTML = '<span style="font-size: 0.9rem; opacity: 0.8; letter-spacing: 1px;">Game Code:</span> ' + roomCode;
+            roomCodeDisplay.classList.remove('hidden');
+            
+            // Start the game
+            const user = Auth.getUser();
+            engine.startGame(user.name, null);
+            
+            // Setup touch controls if enabled
+            if (Settings.get('touchscreenMode')) {
+                editor.updateTouchControls();
+            }
+            
+            toastSuccess('Room created! Share the code: ' + roomCode);
         }
 
         // Save on page visibility change (user switches tabs)
