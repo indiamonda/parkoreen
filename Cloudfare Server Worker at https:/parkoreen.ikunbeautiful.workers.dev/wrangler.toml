@@ -18,23 +18,19 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "USERS"
-id = "REPLACE_WITH_YOUR_USERS_KV_ID"
-# ^ Get this from: wrangler kv:namespace create "USERS"
+id = "4c9e8e0bbf5e43de964a55e2d3433c15"
 
 [[kv_namespaces]]
 binding = "MAPS"
-id = "REPLACE_WITH_YOUR_MAPS_KV_ID"
-# ^ Get this from: wrangler kv:namespace create "MAPS"
+id = "dde89b1faa604d08ba549a40fba25e3e"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "REPLACE_WITH_YOUR_SESSIONS_KV_ID"
-# ^ Get this from: wrangler kv:namespace create "SESSIONS"
+id = "cf190d62b45e4e1e80099b3fa2f2b083"
 
 [[kv_namespaces]]
 binding = "ROOMS"
-id = "REPLACE_WITH_YOUR_ROOMS_KV_ID"
-# ^ Get this from: wrangler kv:namespace create "ROOMS"
+id = "e0026b47bf10450d9dc542beaba00289"
 
 # Durable Objects for real-time multiplayer
 [[durable_objects.bindings]]

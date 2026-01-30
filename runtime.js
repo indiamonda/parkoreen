@@ -10,8 +10,8 @@ const API_URL = 'https://parkoureen.ikunbeautiful.workers.dev';
 const API_TIMEOUT = 10000; // 10 seconds timeout
 
 // Set to true to use local storage instead of API (for testing without backend)
-// Set to false AFTER you configure Cloudflare KV namespaces (see README)
-const USE_LOCAL_MODE = true;
+// KV namespaces are now configured!
+const USE_LOCAL_MODE = false;
 
 // ============================================
 // FETCH WITH TIMEOUT
