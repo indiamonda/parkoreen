@@ -133,7 +133,14 @@
                 // Use .call() to ensure proper binding
                 var listFn = window.MapManager.listMaps;
                 var maps = await listFn.call(window.MapManager);
+                
+                // Hide loading
                 loading.classList.add('hidden');
+                
+                // Reset both states first
+                emptyState.classList.add('hidden');
+                mapGrid.classList.add('hidden');
+                mapGrid.innerHTML = '';
 
                 if (maps.length === 0) {
                     emptyState.classList.remove('hidden');

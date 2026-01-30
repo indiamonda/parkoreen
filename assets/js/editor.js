@@ -51,8 +51,9 @@ class Editor {
         // Tool state
         this.currentTool = EditorTool.NONE;
         this.placementMode = PlacementMode.NONE;
-        this.isFlying = false;
+        this.isFlying = true; // Start with fly mode enabled by default
         this.isErasing = false;
+        this.isPlacing = false; // Track if we're actively placing blocks (brush mode)
         
         // Selection state
         this.selectedObject = null;
@@ -73,6 +74,7 @@ class Editor {
         this.koreenSettings = {
             appearanceType: 'checkpoint',
             actingType: 'checkpoint',
+            collision: false, // Koreens don't have collision by default
             fillMode: 'add',
             opacity: 1
         };
@@ -96,8 +98,18 @@ class Editor {
         // UI Elements (will be set by initUI)
         this.ui = {};
         
+        // Callback for map changes (set by host.html for auto-save)
+        this.onMapChange = null;
+        
         // Bind engine callbacks
         this.setupEngineCallbacks();
+    }
+    
+    // Trigger map change callback (for auto-save)
+    triggerMapChange() {
+        if (typeof this.onMapChange === 'function') {
+            this.onMapChange();
+        }
     }
 
     setupEngineCallbacks() {
@@ -118,6 +130,12 @@ class Editor {
         this.createColorPicker();
         this.createFontDropdown();
         this.attachEventListeners();
+        
+        // Set fly tool button as active since fly mode is on by default
+        const flyBtn = this.ui.toolbar.querySelector('[data-tool="fly"]');
+        if (flyBtn) {
+            flyBtn.classList.add('active');
+        }
     }
 
     createEditorUI() {
@@ -272,6 +290,15 @@ class Editor {
                             <input type="checkbox" id="config-collide" checked>
                             <span class="toggle-slider"></span>
                         </label>
+                    </div>
+                </div>
+                
+                <div class="config-section">
+                    <div class="config-section-title">World</div>
+                    <div class="form-group">
+                        <label class="form-label">Death Line Y Position</label>
+                        <input type="number" class="form-input" id="config-die-line-y" value="2000" title="Players die below this Y position (void death)">
+                        <small style="color: #888; font-size: 11px;">Players falling below this line will die</small>
                     </div>
                 </div>
                 
@@ -561,7 +588,14 @@ class Editor {
         // Corner buttons
         this.ui.btnConfig.addEventListener('click', () => this.togglePanel('config'));
         this.ui.btnSettings.addEventListener('click', () => this.togglePanel('settings'));
-        this.ui.btnAdd.addEventListener('click', () => this.toggleAddMenu());
+        this.ui.btnAdd.addEventListener('click', () => {
+            // If in placement mode, stop it; otherwise toggle add menu
+            if (this.placementMode !== PlacementMode.NONE) {
+                this.stopPlacement();
+            } else {
+                this.toggleAddMenu();
+            }
+        });
         this.ui.btnLayers.addEventListener('click', () => this.togglePanel('layers'));
         this.ui.btnStopTest.addEventListener('click', () => this.stopTest());
 
@@ -716,6 +750,7 @@ class Editor {
         document.getElementById('config-background').addEventListener('change', (e) => {
             this.world.background = e.target.value;
             this.updateBackground();
+            this.triggerMapChange();
         });
 
         // Default colors
@@ -734,6 +769,7 @@ class Editor {
                     if (type === 'block') this.world.defaultBlockColor = color;
                     else if (type === 'spike') this.world.defaultSpikeColor = color;
                     else if (type === 'text') this.world.defaultTextColor = color;
+                    this.triggerMapChange();
                 }
             });
         });
@@ -744,18 +780,28 @@ class Editor {
             this.world.infiniteJumps = isInfinite;
             document.getElementById('config-jumps-number-group').classList.toggle('hidden', isInfinite);
             document.getElementById('config-airjump-group').classList.toggle('hidden', isInfinite);
+            this.triggerMapChange();
         });
 
         document.getElementById('config-jumps-number').addEventListener('change', (e) => {
             this.world.maxJumps = Math.max(0, parseInt(e.target.value) || 1);
+            this.triggerMapChange();
         });
 
         document.getElementById('config-airjump').addEventListener('change', (e) => {
             this.world.additionalAirjump = e.target.checked;
+            this.triggerMapChange();
         });
 
         document.getElementById('config-collide').addEventListener('change', (e) => {
             this.world.collideWithEachOther = e.target.checked;
+            this.triggerMapChange();
+        });
+
+        // Die line Y
+        document.getElementById('config-die-line-y').addEventListener('change', (e) => {
+            this.world.dieLineY = parseInt(e.target.value) || 2000;
+            this.triggerMapChange();
         });
 
         // Test game
@@ -1104,9 +1150,8 @@ class Editor {
         this.closeAddMenu();
         this.placementMode = mode;
         
-        // Update UI
+        // Update UI - change add button to close icon (click handler checks placementMode)
         this.ui.btnAdd.innerHTML = '<span class="material-symbols-outlined">close</span>';
-        this.ui.btnAdd.onclick = () => this.stopPlacement();
         
         this.ui.btnLayers.classList.add('hidden');
         this.ui.toolbar.classList.add('hidden');
@@ -1119,10 +1164,10 @@ class Editor {
 
     stopPlacement() {
         this.placementMode = PlacementMode.NONE;
+        this.isPlacing = false;
         
-        // Reset UI
+        // Reset UI - restore add icon (click handler checks placementMode)
         this.ui.btnAdd.innerHTML = '<span class="material-symbols-outlined">add</span>';
-        this.ui.btnAdd.onclick = () => this.toggleAddMenu();
         
         this.ui.btnLayers.classList.remove('hidden');
         this.ui.toolbar.classList.remove('hidden');
@@ -1218,9 +1263,16 @@ class Editor {
     }
 
     reattachAppearanceListeners() {
-        document.querySelectorAll('[data-appearance]').forEach(btn => {
+        const container = document.querySelector('#placement-appearance .placement-option-btns');
+        if (!container) return;
+        
+        // Clone and replace to remove all event listeners
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+        
+        newContainer.querySelectorAll('[data-appearance]').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-appearance]').forEach(b => b.classList.remove('active'));
+                newContainer.querySelectorAll('[data-appearance]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.appearanceType = btn.dataset.appearance;
@@ -1233,10 +1285,16 @@ class Editor {
     }
 
     reattachActingListeners() {
-        document.querySelectorAll('[data-acting]').forEach(btn => {
+        const container = document.querySelector('#placement-acting .placement-option-btns');
+        if (!container) return;
+        
+        // Clone and replace to remove all event listeners
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+        
+        newContainer.querySelectorAll('[data-acting]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const container = btn.closest('.placement-option-btns');
-                container.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
+                newContainer.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.actingType = btn.dataset.acting;
@@ -1306,6 +1364,7 @@ class Editor {
             item.querySelector('.layer-delete').addEventListener('click', () => {
                 this.world.removeObject(obj.id);
                 this.updateLayersList();
+                this.triggerMapChange();
             });
 
             // Layer buttons
@@ -1313,6 +1372,7 @@ class Editor {
                 btn.addEventListener('click', () => {
                     obj.layer = parseInt(btn.dataset.layer);
                     this.updateLayersList();
+                    this.triggerMapChange();
                 });
             });
 
@@ -1338,6 +1398,7 @@ class Editor {
                 const realToIndex = this.world.objects.length - 1 - toIndex;
                 this.world.reorderLayers(realFromIndex, realToIndex);
                 this.updateLayersList();
+                this.triggerMapChange();
             });
 
             list.appendChild(item);
@@ -1506,16 +1567,21 @@ class Editor {
         if (this.engine.state !== GameState.EDITOR) return;
 
         const worldPos = this.engine.getMouseWorldPos();
+        const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
 
         // Fly mode camera movement
-        if (this.isFlying && this.engine.mouse.down) {
+        if (this.isFlying && this.engine.mouse.down && this.placementMode === PlacementMode.NONE) {
             this.camera.targetX -= e.movementX / this.camera.zoom;
             this.camera.targetY -= e.movementY / this.camera.zoom;
         }
 
+        // Brush-like placement - continue placing while mouse is held
+        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && !this.isOverUI(e)) {
+            this.placeObject(gridPos.x, gridPos.y);
+        }
+
         // Moving object
         if (this.movingObject) {
-            const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
             this.movingObject.x = gridPos.x;
             this.movingObject.y = gridPos.y;
         }
@@ -1525,6 +1591,7 @@ class Editor {
             const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
             if (obj) {
                 this.world.removeObject(obj.id);
+                this.triggerMapChange();
             }
         }
 
@@ -1539,8 +1606,9 @@ class Editor {
         const worldPos = this.engine.getMouseWorldPos();
         const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
 
-        // Placement mode
+        // Placement mode - start brush placement
         if (this.placementMode !== PlacementMode.NONE) {
+            this.isPlacing = true;
             this.placeObject(gridPos.x, gridPos.y);
             return;
         }
@@ -1560,6 +1628,7 @@ class Editor {
                     const clone = objToDupe.clone();
                     this.world.addObject(clone);
                     this.movingObject = clone;
+                    this.triggerMapChange();
                 }
                 break;
             
@@ -1567,6 +1636,7 @@ class Editor {
                 const objToRotate = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (objToRotate) {
                     objToRotate.rotation = (objToRotate.rotation + 90) % 360;
+                    this.triggerMapChange();
                 }
                 break;
             
@@ -1574,16 +1644,21 @@ class Editor {
                 const objToErase = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (objToErase) {
                     this.world.removeObject(objToErase.id);
+                    this.triggerMapChange();
                 }
                 break;
         }
     }
 
     handleMouseUp(e) {
+        // Stop brush placement
+        this.isPlacing = false;
+        
         if (this.movingObject) {
             this.movingObject.snapToGrid();
             this.movingObject = null;
             this.setTool(EditorTool.NONE);
+            this.triggerMapChange();
         }
     }
 
@@ -1605,6 +1680,7 @@ class Editor {
         const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
         if (obj) {
             obj.rotation = (obj.rotation + 90) % 360;
+            this.triggerMapChange();
         }
     }
 
@@ -1667,6 +1743,7 @@ class Editor {
         }
 
         this.world.addObject(obj);
+        this.triggerMapChange();
     }
 
     // ========================================
@@ -1685,8 +1762,24 @@ class Editor {
         this.ui.btnAdd.classList.add('hidden');
         this.ui.btnLayers.classList.add('hidden');
         this.ui.btnStopTest.classList.remove('hidden');
-        this.ui.toolbar.classList.add('hidden');
         this.ui.placementToolbar.classList.remove('active');
+        
+        // Show limited toolbar (fly, zoom in, zoom out only)
+        this.ui.toolbar.classList.remove('hidden');
+        this.ui.toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
+            const tool = btn.dataset.tool;
+            const action = btn.dataset.action;
+            // Show only fly, zoom-in, zoom-out
+            if (tool === 'fly' || action === 'zoom-in' || action === 'zoom-out') {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+            }
+        });
+        // Hide dividers
+        this.ui.toolbar.querySelectorAll('.toolbar-divider').forEach(div => {
+            div.classList.add('hidden');
+        });
         
         this.closePanel('config');
         this.closePanel('layers');
@@ -1702,7 +1795,15 @@ class Editor {
         this.ui.btnAdd.classList.remove('hidden');
         this.ui.btnLayers.classList.remove('hidden');
         this.ui.btnStopTest.classList.add('hidden');
+        
+        // Restore full toolbar
         this.ui.toolbar.classList.remove('hidden');
+        this.ui.toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
+            btn.classList.remove('hidden');
+        });
+        this.ui.toolbar.querySelectorAll('.toolbar-divider').forEach(div => {
+            div.classList.remove('hidden');
+        });
     }
 
     // ========================================
@@ -1735,6 +1836,7 @@ class Editor {
                 const data = JSON.parse(event.target.result);
                 this.world.fromJSON(data);
                 this.updateBackground();
+                this.triggerMapChange();
                 this.showToast('Map imported successfully!', 'success');
             } catch (err) {
                 this.showToast('Invalid map file!', 'error');
@@ -1801,6 +1903,52 @@ class Editor {
         }
 
         bgElement.className = `game-bg ${this.world.background}`;
+        
+        // Also sync config panel values with world
+        this.syncConfigPanel();
+    }
+    
+    syncConfigPanel() {
+        // Background
+        const bgSelect = document.getElementById('config-background');
+        if (bgSelect) bgSelect.value = this.world.background;
+        
+        // Colors
+        const blockColor = document.getElementById('config-block-color');
+        const blockPreview = document.getElementById('config-block-color-preview');
+        if (blockColor) blockColor.value = this.world.defaultBlockColor;
+        if (blockPreview) blockPreview.style.background = this.world.defaultBlockColor;
+        
+        const spikeColor = document.getElementById('config-spike-color');
+        const spikePreview = document.getElementById('config-spike-color-preview');
+        if (spikeColor) spikeColor.value = this.world.defaultSpikeColor;
+        if (spikePreview) spikePreview.style.background = this.world.defaultSpikeColor;
+        
+        const textColor = document.getElementById('config-text-color');
+        const textPreview = document.getElementById('config-text-color-preview');
+        if (textColor) textColor.value = this.world.defaultTextColor;
+        if (textPreview) textPreview.style.background = this.world.defaultTextColor;
+        
+        // Jumps
+        const jumpsSelect = document.getElementById('config-jumps');
+        const jumpsNumber = document.getElementById('config-jumps-number');
+        const jumpsNumberGroup = document.getElementById('config-jumps-number-group');
+        const airjumpGroup = document.getElementById('config-airjump-group');
+        const airjumpCheck = document.getElementById('config-airjump');
+        const collideCheck = document.getElementById('config-collide');
+        
+        if (jumpsSelect) {
+            jumpsSelect.value = this.world.infiniteJumps ? 'infinite' : 'set';
+        }
+        if (jumpsNumber) jumpsNumber.value = this.world.maxJumps;
+        if (jumpsNumberGroup) jumpsNumberGroup.classList.toggle('hidden', this.world.infiniteJumps);
+        if (airjumpGroup) airjumpGroup.classList.toggle('hidden', this.world.infiniteJumps);
+        if (airjumpCheck) airjumpCheck.checked = this.world.additionalAirjump;
+        if (collideCheck) collideCheck.checked = this.world.collideWithEachOther;
+        
+        // Die line Y
+        const dieLineY = document.getElementById('config-die-line-y');
+        if (dieLineY) dieLineY.value = this.world.dieLineY || 2000;
     }
 
     // ========================================
@@ -1850,6 +1998,7 @@ class Editor {
         // Grid (only in editor mode, not testing)
         if (this.engine.state === GameState.EDITOR) {
             this.renderGrid(ctx, camera);
+            this.renderDieLine(ctx, camera);
         }
 
         // Hover highlight
@@ -1880,6 +2029,45 @@ class Editor {
             ctx.lineWidth = 2;
             ctx.strokeRect(screenX, screenY, size, size);
         }
+    }
+    
+    renderDieLine(ctx, camera) {
+        // Die line - players die if they fall below this Y position
+        const dieLineY = this.world.dieLineY ?? 2000; // Default 2000 pixels below origin
+        const screenY = (dieLineY - camera.y) * camera.zoom;
+        
+        // Only render if visible on screen
+        if (screenY < 0 || screenY > camera.height) return;
+        
+        // Draw red dashed die line
+        ctx.save();
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([15, 10]);
+        
+        ctx.beginPath();
+        ctx.moveTo(0, screenY);
+        ctx.lineTo(camera.width, screenY);
+        ctx.stroke();
+        
+        // Draw label
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = '#ff3333';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.setLineDash([]);
+        
+        // Background for text
+        const text = '☠ DEATH LINE - Players die below this point';
+        const textWidth = ctx.measureText(text).width;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(10, screenY - 24, textWidth + 10, 22);
+        
+        // Text
+        ctx.fillStyle = '#ff3333';
+        ctx.fillText(text, 15, screenY - 6);
+        
+        ctx.restore();
     }
 
     renderGrid(ctx, camera) {

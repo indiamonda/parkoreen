@@ -170,7 +170,54 @@
             // Setup event handlers
             setupGameHUD();
             setupMultiplayer();
+            
+            // Setup auto-save for editor mode
+            if (currentMapId) {
+                console.log('[AutoSave] Setting up auto-save for map:', currentMapId);
+                
+                // Auto-save every 30 seconds
+                setInterval(async () => {
+                    if (engine && engine.state === GameState.EDITOR) {
+                        console.log('[AutoSave] Interval save (30s)...');
+                        await saveMap();
+                    }
+                }, 30000);
+                
+                // Setup save-on-change callback
+                editor.onMapChange = debounce(async () => {
+                    if (engine && engine.state === GameState.EDITOR) {
+                        console.log('[AutoSave] Change detected, saving...');
+                        await saveMapSilent();
+                    }
+                }, 2000); // Debounce: wait 2 seconds after last change before saving
+            }
         });
+        
+        // Silent save (no toast) for auto-save on change
+        async function saveMapSilent() {
+            if (!currentMapId) return;
+            try {
+                const data = engine.world.toJSON();
+                var saveFn = window.MapManager.saveMap;
+                await saveFn.call(window.MapManager, currentMapId, { data });
+                console.log('[AutoSave] Saved silently');
+            } catch (error) {
+                console.error('[AutoSave] Silent save failed:', error);
+            }
+        }
+        
+        // Debounce utility
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
 
         async function loadMap(mapId) {
             try {
@@ -455,19 +502,9 @@
             };
         }
 
-        // Auto-save every minute for editor mode
-        if (currentMapId) {
-            setInterval(async () => {
-                if (engine.state === GameState.EDITOR) {
-                    console.log('[AutoSave] Saving map...');
-                    await saveMap();
-                }
-            }, 60000); // Auto-save every minute
-        }
-
         // Save on page visibility change (user switches tabs)
         document.addEventListener('visibilitychange', async () => {
-            if (document.hidden && currentMapId && engine.state === GameState.EDITOR) {
+            if (document.hidden && currentMapId && engine && engine.state === GameState.EDITOR) {
                 console.log('[AutoSave] Tab hidden, saving...');
                 await saveMap();
             }
@@ -475,7 +512,7 @@
 
         // Save on page unload (user closes tab or navigates away)
         window.addEventListener('beforeunload', (e) => {
-            if (currentMapId && engine.state === GameState.EDITOR) {
+            if (currentMapId && engine && engine.state === GameState.EDITOR) {
                 // Use synchronous save for local mode
                 try {
                     const data = engine.world.toJSON();

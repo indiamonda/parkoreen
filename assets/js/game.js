@@ -114,13 +114,13 @@ class Player {
         if (this.isDead) return;
 
         if (this.isFlying) {
-            this.updateFlying();
+            this.updateFlying(world);
         } else {
             this.updatePhysics(world, audioManager);
         }
     }
 
-    updateFlying() {
+    updateFlying(world) {
         const speed = FLY_SPEED;
         
         if (this.input.left) this.x -= speed;
@@ -130,6 +130,11 @@ class Player {
         
         this.vx = 0;
         this.vy = 0;
+        
+        // Still check for hurt collisions while flying
+        if (world) {
+            this.checkHurtCollisions(world);
+        }
     }
 
     updatePhysics(world, audioManager) {
@@ -404,6 +409,9 @@ class WorldObject {
         this.hSpacing = config.hSpacing || 0;
         this.vSpacing = config.vSpacing || 0;
         
+        // Checkpoint state (default, active, touched)
+        this.checkpointState = config.checkpointState || 'default';
+        
         this.name = config.name || this.getDefaultName();
     }
 
@@ -493,8 +501,15 @@ class WorldObject {
         ctx.fillStyle = '#8B4513';
         ctx.fillRect(x + w * 0.4, y + h * 0.2, w * 0.1, h * 0.8);
         
-        // Flag
-        ctx.fillStyle = this.color || '#FFD700';
+        // Flag color based on state
+        let flagColor = this.color || '#FFD700'; // Default: gold
+        if (this.checkpointState === 'active') {
+            flagColor = '#4CAF50'; // Green for active (current checkpoint)
+        } else if (this.checkpointState === 'touched') {
+            flagColor = '#2196F3'; // Blue for previously touched
+        }
+        
+        ctx.fillStyle = flagColor;
         ctx.beginPath();
         ctx.moveTo(x + w * 0.5, y + h * 0.2);
         ctx.lineTo(x + w * 0.9, y + h * 0.35);
@@ -653,6 +668,7 @@ class World {
         this.checkpoints = [];
         this.endpoint = null;
         this.mapName = 'Untitled Map';
+        this.dieLineY = 2000; // Y position below which players die (void death)
     }
 
     addObject(obj) {
@@ -755,7 +771,8 @@ class World {
             infiniteJumps: this.infiniteJumps,
             additionalAirjump: this.additionalAirjump,
             collideWithEachOther: this.collideWithEachOther,
-            mapName: this.mapName
+            mapName: this.mapName,
+            dieLineY: this.dieLineY
         };
     }
 
@@ -770,6 +787,7 @@ class World {
         this.additionalAirjump = data.additionalAirjump || false;
         this.collideWithEachOther = data.collideWithEachOther !== false;
         this.mapName = data.mapName || 'Untitled Map';
+        this.dieLineY = data.dieLineY ?? 2000;
         
         if (data.objects) {
             for (const objData of data.objects) {
@@ -998,6 +1016,12 @@ class GameEngine {
             if (this.localPlayer) {
                 this.localPlayer.update(this.world, this.audioManager);
                 
+                // Check for die line (void death)
+                const dieLineY = this.world.dieLineY ?? 2000;
+                if (this.localPlayer.y > dieLineY) {
+                    this.localPlayer.die();
+                }
+                
                 // Check for respawn
                 if (this.localPlayer.isDead) {
                     this.respawnPlayer();
@@ -1028,6 +1052,12 @@ class GameEngine {
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
             if (obj.actingType === 'checkpoint') {
+                // Mark previous checkpoint as touched (blue)
+                if (this.lastCheckpoint && this.lastCheckpoint !== obj) {
+                    this.lastCheckpoint.checkpointState = 'touched';
+                }
+                // Mark new checkpoint as active (green)
+                obj.checkpointState = 'active';
                 this.lastCheckpoint = obj;
             } else if (obj.actingType === 'endpoint') {
                 this.onGameEnd();
@@ -1104,6 +1134,13 @@ class GameEngine {
         this.state = GameState.PLAYING;
         this.lastCheckpoint = null;
         
+        // Reset checkpoint states
+        for (const obj of this.world.objects) {
+            if (obj.actingType === 'checkpoint') {
+                obj.checkpointState = 'default';
+            }
+        }
+        
         // Create local player at spawn point
         let spawnX = 100, spawnY = 100;
         if (this.world.spawnPoint) {
@@ -1128,6 +1165,13 @@ class GameEngine {
     startTestGame() {
         this.state = GameState.TESTING;
         this.lastCheckpoint = null;
+        
+        // Reset checkpoint states
+        for (const obj of this.world.objects) {
+            if (obj.actingType === 'checkpoint') {
+                obj.checkpointState = 'default';
+            }
+        }
         
         // Store current camera position for returning
         this.editorCameraX = this.camera.x;
