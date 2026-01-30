@@ -161,8 +161,6 @@ self.addEventListener('push', (event) => {
     
     const options = {
         body: data.body || 'New notification from Parkoreen',
-        icon: '/parkoreen/assets/png/icon-192.png',
-        badge: '/parkoreen/assets/png/icon-192.png',
         data: data.url || '/parkoreen/'
     };
 

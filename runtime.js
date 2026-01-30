@@ -265,7 +265,9 @@ class AuthManager {
 
     requireAuth() {
         if (!this.isLoggedIn()) {
-            window.location.href = '/parkoreen/login/';
+            // Preserve current URL as redirect destination
+            var currentPath = window.location.pathname + window.location.search;
+            window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(currentPath);
             return false;
         }
         return true;

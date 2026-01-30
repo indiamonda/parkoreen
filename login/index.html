@@ -38,7 +38,7 @@
             </form>
 
             <div class="auth-footer">
-                <p>Don't have an account? <a href="/parkoreen/signup/">Sign up</a></p>
+                <p>Don't have an account? <a href="/parkoreen/signup/" id="signup-link">Sign up</a></p>
             </div>
         </div>
     </div>
@@ -51,37 +51,53 @@
         </a>
     </footer>
 
+    <!-- Fallbacks first -->
+    <script>
+        window.ToastManager = {
+            show: function(msg) { alert(msg); },
+            success: function(msg) { alert('✓ ' + msg); },
+            error: function(msg) { alert('✗ ' + msg); },
+            warning: function(msg) { alert('⚠ ' + msg); },
+            info: function(msg) { alert('ℹ ' + msg); }
+        };
+    </script>
+
     <!-- Scripts -->
     <script src="/parkoreen/runtime.js"></script>
     <script src="/parkoreen/assets/js/style.js"></script>
     <script>
-        // Fallback if style.js fails to load
-        if (typeof ToastManager === 'undefined') {
-            window.ToastManager = {
-                show: (msg, type) => alert(msg),
-                success: (msg) => alert('✓ ' + msg),
-                error: (msg) => alert('✗ ' + msg),
-                warning: (msg) => alert('⚠ ' + msg),
-                info: (msg) => alert('ℹ ' + msg)
-            };
+        // Get redirect URL from query params
+        function getRedirectUrl() {
+            var params = new URLSearchParams(window.location.search);
+            var redirect = params.get('redirect');
+            if (redirect) {
+                return decodeURIComponent(redirect);
+            }
+            return '/parkoreen/dashboard/';
         }
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
+
+        // Pass redirect to signup link
+        var signupLink = document.getElementById('signup-link');
+        var redirectParam = new URLSearchParams(window.location.search).get('redirect');
+        if (redirectParam) {
+            signupLink.href = '/parkoreen/signup/?redirect=' + encodeURIComponent(redirectParam);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
             // Redirect if already logged in
             if (Auth.isLoggedIn()) {
-                Navigation.toDashboard();
+                window.location.href = getRedirectUrl();
                 return;
             }
 
-            const form = document.getElementById('login-form');
-            const btnLogin = document.getElementById('btn-login');
+            var form = document.getElementById('login-form');
+            var btnLogin = document.getElementById('btn-login');
 
-            form.addEventListener('submit', async (e) => {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('password').value;
+                var username = document.getElementById('username').value.trim();
+                var password = document.getElementById('password').value;
 
                 if (!username || !password) {
                     ToastManager.error('Please fill in all fields');
@@ -94,7 +110,7 @@
                 try {
                     await Auth.login(username, password);
                     ToastManager.success('Welcome back!');
-                    Navigation.toDashboard();
+                    window.location.href = getRedirectUrl();
                 } catch (error) {
                     ToastManager.error(error.message);
                     btnLogin.disabled = false;

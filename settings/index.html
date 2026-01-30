@@ -104,76 +104,70 @@
         </a>
     </footer>
 
+    <!-- Fallbacks first -->
+    <script>
+        window.ToastManager = {
+            show: function(msg) { alert(msg); },
+            success: function(msg) { alert('✓ ' + msg); },
+            error: function(msg) { alert('✗ ' + msg); },
+            warning: function(msg) { alert('⚠ ' + msg); },
+            info: function(msg) { alert('ℹ ' + msg); }
+        };
+        window.ModalManager = {
+            confirm: function(title, text) { return Promise.resolve(confirm(text || title)); }
+        };
+    </script>
+
     <!-- Scripts -->
     <script src="/parkoreen/runtime.js"></script>
     <script src="/parkoreen/assets/js/style.js"></script>
     <script>
-        // Fallback if style.js fails to load
-        if (typeof ToastManager === 'undefined') {
-            window.ToastManager = {
-                show: (msg, type) => alert(msg),
-                success: (msg) => alert('✓ ' + msg),
-                error: (msg) => alert('✗ ' + msg),
-                warning: (msg) => alert('⚠ ' + msg),
-                info: (msg) => alert('ℹ ' + msg)
-            };
-        }
-        if (typeof ModalManager === 'undefined') {
-            window.ModalManager = {
-                confirm: (title, text) => Promise.resolve(confirm(text))
-            };
-        }
-        if (typeof AnimationUtils === 'undefined') {
-            window.AnimationUtils = { shake: () => {} };
-        }
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             // Check auth
             if (!Auth.requireAuth()) return;
 
             // Load current settings
-            const user = Auth.getUser();
+            var user = Auth.getUser();
             document.getElementById('display-name').value = user.name || '';
             document.getElementById('username').value = user.username || '';
 
             // Load saved settings
-            const volumeRange = document.getElementById('volume-range');
-            const volumeNumber = document.getElementById('volume-number');
-            const touchscreenToggle = document.getElementById('touchscreen-toggle');
+            var volumeRange = document.getElementById('volume-range');
+            var volumeNumber = document.getElementById('volume-number');
+            var touchscreenToggle = document.getElementById('touchscreen-toggle');
 
-            const savedVolume = Settings.get('volume');
+            var savedVolume = Settings.get('volume');
             volumeRange.value = savedVolume;
             volumeNumber.value = savedVolume;
 
             touchscreenToggle.checked = Settings.get('touchscreenMode');
 
             // Back button
-            document.getElementById('btn-back').addEventListener('click', () => {
+            document.getElementById('btn-back').addEventListener('click', function() {
                 Navigation.toDashboard();
             });
 
             // Volume controls
-            volumeRange.addEventListener('input', (e) => {
+            volumeRange.addEventListener('input', function(e) {
                 volumeNumber.value = e.target.value;
                 Settings.set('volume', parseInt(e.target.value));
             });
 
-            volumeNumber.addEventListener('change', (e) => {
-                const vol = Math.max(0, Math.min(100, parseInt(e.target.value) || 100));
+            volumeNumber.addEventListener('change', function(e) {
+                var vol = Math.max(0, Math.min(100, parseInt(e.target.value) || 100));
                 volumeRange.value = vol;
                 volumeNumber.value = vol;
                 Settings.set('volume', vol);
             });
 
             // Touchscreen toggle
-            touchscreenToggle.addEventListener('change', (e) => {
+            touchscreenToggle.addEventListener('change', function(e) {
                 Settings.set('touchscreenMode', e.target.checked);
             });
 
             // Update display name
-            document.getElementById('btn-update-name').addEventListener('click', async () => {
-                const name = document.getElementById('display-name').value.trim();
+            document.getElementById('btn-update-name').addEventListener('click', async function() {
+                var name = document.getElementById('display-name').value.trim();
                 
                 if (!name) {
                     ToastManager.error('Please enter a display name');
@@ -181,7 +175,7 @@
                 }
 
                 try {
-                    await Auth.updateProfile({ name });
+                    await Auth.updateProfile({ name: name });
                     ToastManager.success('Display name updated!');
                 } catch (error) {
                     ToastManager.error(error.message);
@@ -189,10 +183,10 @@
             });
 
             // Change password
-            document.getElementById('btn-change-password').addEventListener('click', async () => {
-                const currentPassword = document.getElementById('current-password').value;
-                const newPassword = document.getElementById('new-password').value;
-                const confirmPassword = document.getElementById('confirm-password').value;
+            document.getElementById('btn-change-password').addEventListener('click', async function() {
+                var currentPassword = document.getElementById('current-password').value;
+                var newPassword = document.getElementById('new-password').value;
+                var confirmPassword = document.getElementById('confirm-password').value;
 
                 if (!currentPassword || !newPassword || !confirmPassword) {
                     ToastManager.error('Please fill in all password fields');
@@ -206,7 +200,6 @@
 
                 if (newPassword !== confirmPassword) {
                     ToastManager.error('New passwords do not match');
-                    AnimationUtils.shake(document.getElementById('confirm-password'));
                     return;
                 }
 
@@ -224,8 +217,8 @@
             });
 
             // Logout
-            document.getElementById('btn-logout').addEventListener('click', async () => {
-                const confirmed = await ModalManager.confirm(
+            document.getElementById('btn-logout').addEventListener('click', async function() {
+                var confirmed = await ModalManager.confirm(
                     'Sign Out',
                     'Are you sure you want to sign out?'
                 );

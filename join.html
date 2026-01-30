@@ -51,50 +51,49 @@
         </a>
     </footer>
 
+    <!-- Fallbacks first -->
+    <script>
+        window.ToastManager = {
+            show: function(msg) { alert(msg); },
+            success: function(msg) { alert('✓ ' + msg); },
+            error: function(msg) { alert('✗ ' + msg); },
+            warning: function(msg) { alert('⚠ ' + msg); },
+            info: function(msg) { alert('ℹ ' + msg); }
+        };
+    </script>
+
     <!-- Scripts -->
     <script src="/parkoreen/runtime.js"></script>
     <script src="/parkoreen/assets/js/style.js"></script>
     <script>
-        // Fallback if style.js fails to load
-        if (typeof ToastManager === 'undefined') {
-            window.ToastManager = {
-                show: (msg, type) => alert(msg),
-                success: (msg) => alert('✓ ' + msg),
-                error: (msg) => alert('✗ ' + msg),
-                warning: (msg) => alert('⚠ ' + msg),
-                info: (msg) => alert('ℹ ' + msg)
-            };
-        }
-    </script>
-    <script>
-        let needsPassword = false;
+        var needsPassword = false;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             // Check auth
             if (!Auth.requireAuth()) return;
 
-            const form = document.getElementById('join-form');
-            const gameCodeInput = document.getElementById('game-code');
-            const passwordGroup = document.getElementById('password-group');
-            const joinTitle = document.getElementById('join-title');
-            const btnJoin = document.getElementById('btn-join');
+            var form = document.getElementById('join-form');
+            var gameCodeInput = document.getElementById('game-code');
+            var passwordGroup = document.getElementById('password-group');
+            var joinTitle = document.getElementById('join-title');
+            var btnJoin = document.getElementById('btn-join');
 
             // Back button
-            document.getElementById('btn-back').addEventListener('click', () => {
+            document.getElementById('btn-back').addEventListener('click', function() {
                 Navigation.toDashboard();
             });
 
             // Format game code input
-            gameCodeInput.addEventListener('input', (e) => {
+            gameCodeInput.addEventListener('input', function(e) {
                 e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
             });
 
             // Form submission
-            form.addEventListener('submit', async (e) => {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
-                const gameCode = gameCodeInput.value.trim().toUpperCase();
-                const password = document.getElementById('password').value;
+                var gameCode = gameCodeInput.value.trim().toUpperCase();
+                var password = document.getElementById('password').value;
 
                 if (!gameCode) {
                     ToastManager.error('Please enter a game code');
@@ -111,7 +110,7 @@
 
                 try {
                     // Setup multiplayer handlers
-                    MultiplayerManager.on('roomJoined', (data) => {
+                    MultiplayerManager.on('roomJoined', function(data) {
                         ToastManager.success('Joined room!');
                         // Store game data and redirect to game page
                         sessionStorage.setItem('parkoreen_game', JSON.stringify({
@@ -119,10 +118,10 @@
                             mapData: data.mapData,
                             isHost: false
                         }));
-                        window.location.href = `/parkoreen/host.html?room=${data.roomCode}&mode=play`;
+                        window.location.href = '/parkoreen/host.html?room=' + data.roomCode + '&mode=play';
                     });
 
-                    MultiplayerManager.on('error', (data) => {
+                    MultiplayerManager.on('error', function(data) {
                         if (data.message === 'Password required') {
                             needsPassword = true;
                             passwordGroup.classList.remove('hidden');
