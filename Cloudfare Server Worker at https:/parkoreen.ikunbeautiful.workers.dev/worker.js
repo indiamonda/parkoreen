@@ -678,35 +678,50 @@ class GameRoom {
 // ============================================
 export default {
     async fetch(request, env, ctx) {
-        const url = new URL(request.url);
-        const path = url.pathname;
-        const method = request.method;
-
-        // Handle CORS preflight
-        if (method === 'OPTIONS') {
-            return new Response(null, { headers: CORS_HEADERS });
-        }
-
-        // WebSocket handling - delegate to Durable Object
-        if (path === '/ws') {
-            const id = env.GAME_ROOMS.idFromName('main');
-            const room = env.GAME_ROOMS.get(id);
-            return room.fetch(request);
-        }
-
-        // Auth middleware
-        let userId = null;
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.slice(7);
-            const payload = verifyToken(token);
-            if (payload) {
-                userId = payload.userId;
-            }
-        }
-
-        // Routes
+        // ALWAYS wrap in try-catch to ensure CORS headers are returned
         try {
+            const url = new URL(request.url);
+            const path = url.pathname;
+            const method = request.method;
+
+            // Handle CORS preflight
+            if (method === 'OPTIONS') {
+                return new Response(null, { headers: CORS_HEADERS });
+            }
+
+            // Root path - health check
+            if (path === '/' || path === '') {
+                return jsonResponse({ status: 'ok', message: 'Parkoreen API is running' });
+            }
+
+            // Check if KV bindings are available
+            if (!env.USERS || !env.MAPS || !env.SESSIONS) {
+                console.error('KV namespaces not bound:', { USERS: !!env.USERS, MAPS: !!env.MAPS, SESSIONS: !!env.SESSIONS });
+                return errorResponse('Server not configured: KV namespaces not bound. Please check wrangler.toml', 503);
+            }
+
+            // WebSocket handling - delegate to Durable Object
+            if (path === '/ws') {
+                if (!env.GAME_ROOMS) {
+                    return errorResponse('Multiplayer not configured', 503);
+                }
+                const id = env.GAME_ROOMS.idFromName('main');
+                const room = env.GAME_ROOMS.get(id);
+                return room.fetch(request);
+            }
+
+            // Auth middleware
+            let userId = null;
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                const token = authHeader.slice(7);
+                const payload = verifyToken(token);
+                if (payload) {
+                    userId = payload.userId;
+                }
+            }
+
+            // Routes
             // Auth routes (no auth required)
             if (path === '/auth/signup' && method === 'POST') {
                 return handleSignup(request, env);
@@ -752,8 +767,15 @@ export default {
 
             return errorResponse('Not found', 404);
         } catch (error) {
-            console.error('Error:', error);
-            return errorResponse('Internal server error', 500);
+            console.error('Worker error:', error);
+            // Always return with CORS headers even on error
+            return new Response(JSON.stringify({ error: true, message: 'Internal server error: ' + error.message }), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...CORS_HEADERS
+                }
+            });
         }
     }
 };
