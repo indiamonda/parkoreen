@@ -30,7 +30,7 @@
                     <input type="text" class="form-input" id="username" name="username" 
                            placeholder="Choose a unique username" required autocomplete="username">
                     <small style="color: var(--text-muted); font-size: 0.75rem;">
-                        This cannot be changed later
+                        This cannot be changed after
                     </small>
                 </div>
 
@@ -69,6 +69,21 @@
     <!-- Scripts -->
     <script src="/parkoreen/runtime.js"></script>
     <script src="/parkoreen/assets/js/style.js"></script>
+    <script>
+        // Fallback if style.js fails to load
+        if (typeof ToastManager === 'undefined') {
+            window.ToastManager = {
+                show: (msg, type) => alert(msg),
+                success: (msg) => alert('✓ ' + msg),
+                error: (msg) => alert('✗ ' + msg),
+                warning: (msg) => alert('⚠ ' + msg),
+                info: (msg) => alert('ℹ ' + msg)
+            };
+        }
+        if (typeof AnimationUtils === 'undefined') {
+            window.AnimationUtils = { shake: () => {} };
+        }
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Redirect if already logged in

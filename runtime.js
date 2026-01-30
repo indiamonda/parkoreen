@@ -6,11 +6,11 @@
 // ============================================
 // API CONFIGURATION
 // ============================================
-const API_URL = 'https://parkoreen.ikunbeautiful.workers.dev';
+const API_URL = 'https://parkoureen.ikunbeautiful.workers.dev';
 const API_TIMEOUT = 10000; // 10 seconds timeout
 
 // Set to true to use local storage instead of API (for testing without backend)
-const USE_LOCAL_MODE = true;
+const USE_LOCAL_MODE = false;
 
 // ============================================
 // FETCH WITH TIMEOUT

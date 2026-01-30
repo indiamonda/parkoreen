@@ -55,6 +55,18 @@
     <script src="/parkoreen/runtime.js"></script>
     <script src="/parkoreen/assets/js/style.js"></script>
     <script>
+        // Fallback if style.js fails to load
+        if (typeof ToastManager === 'undefined') {
+            window.ToastManager = {
+                show: (msg, type) => alert(msg),
+                success: (msg) => alert('✓ ' + msg),
+                error: (msg) => alert('✗ ' + msg),
+                warning: (msg) => alert('⚠ ' + msg),
+                info: (msg) => alert('ℹ ' + msg)
+            };
+        }
+    </script>
+    <script>
         let needsPassword = false;
 
         document.addEventListener('DOMContentLoaded', () => {

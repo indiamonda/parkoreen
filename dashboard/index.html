@@ -72,6 +72,27 @@
                 .then(reg => console.log('SW registered'))
                 .catch(err => console.log('SW registration failed:', err));
         }
+        // Fallback if style.js fails to load
+        if (typeof ToastManager === 'undefined') {
+            window.ToastManager = {
+                show: (msg, type) => alert(msg),
+                success: (msg) => alert('✓ ' + msg),
+                error: (msg) => alert('✗ ' + msg),
+                warning: (msg) => alert('⚠ ' + msg),
+                info: (msg) => alert('ℹ ' + msg)
+            };
+        }
+        if (typeof ModalManager === 'undefined') {
+            window.ModalManager = {
+                show: (opts) => Promise.resolve(confirm(opts.text)),
+                confirm: (title, text) => Promise.resolve(confirm(text)),
+                alert: (title, text) => Promise.resolve(alert(text)),
+                prompt: (title, placeholder) => Promise.resolve(prompt(title))
+            };
+        }
+        if (typeof LoadingManager === 'undefined') {
+            window.LoadingManager = { show: () => {}, hide: () => {}, update: () => {} };
+        }
     </script>
     <script>
         // DOM Elements

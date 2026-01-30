@@ -79,6 +79,29 @@
     <!-- Scripts -->
     <script src="/parkoreen/runtime.js"></script>
     <script src="/parkoreen/assets/js/style.js"></script>
+    <script>
+        // Fallback if style.js fails to load
+        if (typeof ToastManager === 'undefined') {
+            window.ToastManager = {
+                show: (msg, type) => alert(msg),
+                success: (msg) => alert('✓ ' + msg),
+                error: (msg) => alert('✗ ' + msg),
+                warning: (msg) => alert('⚠ ' + msg),
+                info: (msg) => alert('ℹ ' + msg)
+            };
+        }
+        if (typeof ModalManager === 'undefined') {
+            window.ModalManager = {
+                show: (opts) => Promise.resolve(confirm(opts.text || '')),
+                confirm: (title, text) => Promise.resolve(confirm(text)),
+                alert: (title, text) => { alert(text); return Promise.resolve(); },
+                prompt: (title, placeholder) => Promise.resolve(prompt(title))
+            };
+        }
+        if (typeof LoadingManager === 'undefined') {
+            window.LoadingManager = { show: () => {}, hide: () => {}, update: () => {} };
+        }
+    </script>
     <script src="/parkoreen/assets/js/game.js"></script>
     <script src="/parkoreen/assets/js/editor.js"></script>
     <script src="/parkoreen/assets/js/exportImport.js"></script>
