@@ -112,11 +112,11 @@
     </script>
     
     <!-- Scripts -->
-    <script src="/parkoreen/runtime.js?v=9"></script>
-    <script src="/parkoreen/assets/js/style.js?v=9"></script>
-    <script src="/parkoreen/assets/js/game.js?v=9"></script>
-    <script src="/parkoreen/assets/js/editor.js?v=9"></script>
-    <script src="/parkoreen/assets/js/exportImport.js?v=9"></script>
+    <script src="/parkoreen/runtime.js?v=10"></script>
+    <script src="/parkoreen/assets/js/style.js?v=10"></script>
+    <script src="/parkoreen/assets/js/game.js?v=10"></script>
+    <script src="/parkoreen/assets/js/editor.js?v=10"></script>
+    <script src="/parkoreen/assets/js/exportImport.js?v=10"></script>
     <script>
         // Global state
         let engine;
@@ -310,11 +310,15 @@
                     );
                     
                     if (confirmed) {
-                        MultiplayerManager.leaveRoom();
+                        if (window.MultiplayerManager?.leaveRoom) {
+                            window.MultiplayerManager.leaveRoom();
+                        }
                         Navigation.toDashboard();
                     }
                 } else {
-                    MultiplayerManager.leaveRoom();
+                    if (window.MultiplayerManager?.leaveRoom) {
+                        window.MultiplayerManager.leaveRoom();
+                    }
                     Navigation.toDashboard();
                 }
             });
@@ -354,7 +358,9 @@
             const message = input.value.trim();
             
             if (message) {
-                MultiplayerManager.sendChatMessage(message);
+                if (window.MultiplayerManager?.sendChatMessage) {
+                    window.MultiplayerManager.sendChatMessage(message);
+                }
                 input.value = '';
             }
         }
@@ -373,7 +379,7 @@
 
         function updatePlayersList() {
             const container = document.getElementById('players-list');
-            const players = MultiplayerManager.getPlayers();
+            const players = window.MultiplayerManager?.getPlayers?.() || [];
             
             container.innerHTML = '';
             
@@ -392,7 +398,9 @@
 
                 if (isHost) {
                     item.querySelector('[data-kick]')?.addEventListener('click', () => {
-                        MultiplayerManager.kickPlayer(player.id);
+                        if (window.MultiplayerManager?.kickPlayer) {
+                            window.MultiplayerManager.kickPlayer(player.id);
+                        }
                     });
                 }
 
@@ -402,57 +410,58 @@
 
         function setupMultiplayer() {
             // Check if MultiplayerManager is available
-            if (!window.MultiplayerManager || typeof window.MultiplayerManager.on !== 'function') {
+            const mp = window.MultiplayerManager;
+            if (!mp || typeof mp.on !== 'function') {
                 console.log('[Multiplayer] MultiplayerManager not available, skipping setup');
                 return;
             }
             
             // Player joined
-            MultiplayerManager.on('playerJoined', (data) => {
+            mp.on('playerJoined', (data) => {
                 engine.addRemotePlayer(data.playerId, data.playerName, data.playerColor, 0, 0);
                 addChatMessage('System', `${data.playerName} joined the parky!`, '#4CAF50');
                 updatePlayersList();
             });
 
             // Player left
-            MultiplayerManager.on('playerLeft', (data) => {
+            mp.on('playerLeft', (data) => {
                 engine.removeRemotePlayer(data.playerId);
                 addChatMessage('System', `${data.playerName} left the parky.`, '#f44336');
                 updatePlayersList();
             });
 
             // Player position update
-            MultiplayerManager.on('playerPosition', (data) => {
+            mp.on('playerPosition', (data) => {
                 engine.updateRemotePlayer(data.playerId, data.x, data.y);
             });
 
             // Chat message
-            MultiplayerManager.on('chatMessage', (data) => {
+            mp.on('chatMessage', (data) => {
                 addChatMessage(data.playerName, data.message, data.playerColor);
             });
 
             // Kicked
-            MultiplayerManager.on('kicked', async () => {
+            mp.on('kicked', async () => {
                 await ModalManager.alert('You Are Kicked!', "Looks like the host doesn't want you to be in here anymore :(");
                 Navigation.toDashboard();
             });
 
             // Room closed
-            MultiplayerManager.on('roomClosed', async () => {
+            mp.on('roomClosed', async () => {
                 await ModalManager.alert('Uh Oh', 'The host has left the parky :(');
                 Navigation.toDashboard();
             });
 
             // Game end
-            MultiplayerManager.on('gameEnd', (data) => {
+            mp.on('gameEnd', (data) => {
                 ModalManager.alert('Game Over!', `${data.winnerName} has reached the finish line!`);
             });
 
             // Send position updates
             if (engine.state === GameState.PLAYING) {
                 setInterval(() => {
-                    if (engine.localPlayer) {
-                        MultiplayerManager.sendPosition(engine.localPlayer.x, engine.localPlayer.y);
+                    if (engine.localPlayer && mp.sendPosition) {
+                        mp.sendPosition(engine.localPlayer.x, engine.localPlayer.y);
                     }
                 }, 50); // 20 updates per second
             }
