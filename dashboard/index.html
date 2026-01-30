@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- VERSION: 2026-01-30-v2 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,6 +8,7 @@
     <title>Dashboard - Parkoreen</title>
     <link rel="manifest" href="/parkoreen/manifest.json">
     <meta name="theme-color" content="#2d5a27">
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/parkoreen/assets/css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,10 +88,48 @@
         window.AnimationUtils = { shake: function() {} };
     </script>
 
-    <!-- Scripts -->
-    <script src="/parkoreen/runtime.js"></script>
-    <script src="/parkoreen/assets/js/style.js"></script>
+    <!-- Scripts (v=2 for cache busting) -->
+    <script src="/parkoreen/runtime.js?v=2"></script>
+    <script src="/parkoreen/assets/js/style.js?v=2" onerror="console.error('style.js failed to load');"></script>
     <script>
+        // Debug: Check page version
+        console.log('[Parkoreen Dashboard] Version: 2026-01-30-v2');
+        
+        // Ensure ToastManager has all required methods (fix partial load issues)
+        (function() {
+            console.log('[Debug] ToastManager check:', {
+                exists: !!window.ToastManager,
+                type: typeof window.ToastManager,
+                hasError: window.ToastManager ? typeof window.ToastManager.error : 'N/A'
+            });
+            
+            var fallback = {
+                show: function(msg) { console.log('[Toast]', msg); alert(msg); },
+                success: function(msg) { console.log('[Toast] ✓', msg); alert('✓ ' + msg); },
+                error: function(msg) { console.log('[Toast] ✗', msg); alert('✗ ' + msg); },
+                warning: function(msg) { console.log('[Toast] ⚠', msg); alert('⚠ ' + msg); },
+                info: function(msg) { console.log('[Toast] ℹ', msg); alert('ℹ ' + msg); }
+            };
+            if (!window.ToastManager || typeof window.ToastManager.error !== 'function') {
+                console.warn('[Debug] ToastManager not fully initialized, using fallback');
+                window.ToastManager = fallback;
+            }
+            if (!window.ModalManager || typeof window.ModalManager.confirm !== 'function') {
+                console.warn('[Debug] ModalManager not fully initialized, using fallback');
+                window.ModalManager = {
+                    show: function(opts) { return Promise.resolve(confirm(opts.text || opts.title || 'Confirm?')); },
+                    confirm: function(title, text) { return Promise.resolve(confirm(text || title)); },
+                    alert: function(title, text) { alert(text || title); return Promise.resolve(); },
+                    prompt: function(title, placeholder) { return Promise.resolve(prompt(title, placeholder || '')); }
+                };
+            }
+            if (!window.LoadingManager) {
+                window.LoadingManager = { show: function(){}, hide: function(){}, update: function(){} };
+            }
+            
+            console.log('[Debug] After fix - ToastManager.error:', typeof window.ToastManager.error);
+        })();
+        
         // Register service worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/parkoreen/sw.js')
