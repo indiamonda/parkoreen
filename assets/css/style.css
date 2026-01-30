@@ -1012,17 +1012,14 @@ a:hover {
 }
 
 .font-dropdown-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    position: fixed;
     background: var(--bg-medium);
     border: 2px solid var(--surface-light);
     border-radius: var(--border-radius);
-    margin-top: var(--spacing-xs);
     max-height: 300px;
+    width: 200px;
     overflow-y: auto;
-    z-index: var(--z-popup);
+    z-index: 99999;
     display: none;
 }
 

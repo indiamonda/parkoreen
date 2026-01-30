@@ -144,9 +144,8 @@
             editor.initUI();
             editor.updateBackground();
             
-            // Ensure we're in editor mode (not play mode)
-            engine.state = GameState.EDITOR;
-            engine.localPlayer = null;
+            // Create editor player (fly mode, camera follows, no death)
+            engine.createEditorPlayer();
 
             // Load map or game data
             if (currentMode === 'play' && roomCode) {
@@ -190,6 +189,12 @@
                         await saveMapSilent();
                     }
                 }, 2000); // Debounce: wait 2 seconds after last change before saving
+                
+                // Setup save-before-test callback
+                editor.onBeforeTest = async () => {
+                    console.log('[AutoSave] Saving before test...');
+                    await saveMapSilent();
+                };
             }
         });
         

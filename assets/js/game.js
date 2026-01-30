@@ -120,7 +120,7 @@ class Player {
         }
     }
 
-    updateFlying(world) {
+    updateFlying(world, editorMode = false) {
         const speed = FLY_SPEED;
         
         if (this.input.left) this.x -= speed;
@@ -131,8 +131,8 @@ class Player {
         this.vx = 0;
         this.vy = 0;
         
-        // Still check for hurt collisions while flying
-        if (world) {
+        // Check for hurt collisions while flying (but not in editor mode)
+        if (world && !editorMode) {
             this.checkHurtCollisions(world);
         }
     }
@@ -233,7 +233,8 @@ class Player {
         const box = this.getHurtTouchbox();
         
         for (const obj of world.objects) {
-            if (obj.actingType === 'spike') {
+            // Spikes only hurt if collision is enabled
+            if (obj.actingType === 'spike' && obj.collision !== false) {
                 if (this.boxIntersects(box, obj)) {
                     this.die();
                     return;
@@ -576,33 +577,72 @@ class WorldObject {
 
     renderText(ctx, x, y, w, h) {
         ctx.fillStyle = this.color;
-        ctx.font = `${this.fontSize * (w / this.width)}px "${this.font}"`;
+        const scaleFactor = w / this.width;
+        const fontSize = this.fontSize * scaleFactor;
+        ctx.font = `${fontSize}px "${this.font}"`;
         
-        // Calculate text position based on alignment
-        let textX = x;
-        let textY = y;
+        // Apply letter spacing (hSpacing is a percentage)
+        const letterSpacing = (this.hSpacing / 100) * fontSize;
         
-        if (this.hAlign === 'center') {
-            ctx.textAlign = 'center';
-            textX = x + w / 2;
-        } else if (this.hAlign === 'right') {
-            ctx.textAlign = 'right';
-            textX = x + w;
-        } else {
-            ctx.textAlign = 'left';
-        }
+        // Split content into lines
+        const lines = this.content.split('\n');
+        const lineHeight = fontSize * (1 + this.vSpacing / 100);
+        const totalTextHeight = lines.length * lineHeight;
         
+        // Calculate starting Y based on vertical alignment
+        let startY = y;
         if (this.vAlign === 'center') {
-            ctx.textBaseline = 'middle';
-            textY = y + h / 2;
+            startY = y + (h - totalTextHeight) / 2 + fontSize * 0.8;
         } else if (this.vAlign === 'bottom') {
-            ctx.textBaseline = 'bottom';
-            textY = y + h;
+            startY = y + h - totalTextHeight + fontSize * 0.8;
         } else {
-            ctx.textBaseline = 'top';
+            startY = y + fontSize * 0.8; // top alignment
         }
         
-        ctx.fillText(this.content, textX + this.hSpacing, textY + this.vSpacing);
+        // Render each line
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const lineY = startY + i * lineHeight;
+            
+            // Calculate X based on horizontal alignment
+            let lineX = x;
+            if (this.hAlign === 'center') {
+                const lineWidth = this.measureTextWithSpacing(ctx, line, letterSpacing);
+                lineX = x + (w - lineWidth) / 2;
+            } else if (this.hAlign === 'right') {
+                const lineWidth = this.measureTextWithSpacing(ctx, line, letterSpacing);
+                lineX = x + w - lineWidth;
+            }
+            
+            // Draw text with letter spacing
+            if (letterSpacing === 0) {
+                ctx.fillText(line, lineX, lineY);
+            } else {
+                this.fillTextWithSpacing(ctx, line, lineX, lineY, letterSpacing);
+            }
+        }
+    }
+    
+    measureTextWithSpacing(ctx, text, spacing) {
+        if (spacing === 0) {
+            return ctx.measureText(text).width;
+        }
+        let width = 0;
+        for (let i = 0; i < text.length; i++) {
+            width += ctx.measureText(text[i]).width;
+            if (i < text.length - 1) {
+                width += spacing;
+            }
+        }
+        return width;
+    }
+    
+    fillTextWithSpacing(ctx, text, x, y, spacing) {
+        let currentX = x;
+        for (let i = 0; i < text.length; i++) {
+            ctx.fillText(text[i], currentX, y);
+            currentX += ctx.measureText(text[i]).width + spacing;
+        }
     }
 
     containsPoint(px, py) {
@@ -1073,6 +1113,16 @@ class GameEngine {
             for (const player of this.remotePlayers.values()) {
                 // Remote players just interpolate to their positions
             }
+        } else if (this.state === GameState.EDITOR) {
+            // In editor mode, update player movement (fly mode) without death mechanics
+            if (this.localPlayer) {
+                // Force fly mode in editor
+                this.localPlayer.isFlying = true;
+                this.localPlayer.updateFlying(this.world, true); // true = editor mode, no hurt checks
+                
+                // Camera follows player in editor mode
+                this.camera.follow(this.localPlayer);
+            }
         }
         
         this.camera.update();
@@ -1143,7 +1193,7 @@ class GameEngine {
         }
         
         // Render players
-        if (this.state === GameState.PLAYING || this.state === GameState.TESTING) {
+        if (this.state === GameState.PLAYING || this.state === GameState.TESTING || this.state === GameState.EDITOR) {
             // Remote players
             for (const player of this.remotePlayers.values()) {
                 player.render(this.ctx, this.camera);
@@ -1239,6 +1289,26 @@ class GameEngine {
             this.camera.x = this.editorCameraX;
             this.camera.y = this.editorCameraY;
         }
+        
+        // Recreate editor player
+        this.createEditorPlayer();
+    }
+
+    createEditorPlayer() {
+        // Create a player for editor mode (fly mode, no death)
+        let spawnX = 100;
+        let spawnY = 100;
+        
+        if (this.world.spawnPoint) {
+            spawnX = this.world.spawnPoint.x + this.world.spawnPoint.width / 2 - PLAYER_SIZE / 2;
+            spawnY = this.world.spawnPoint.y - PLAYER_SIZE;
+        }
+        
+        this.localPlayer = new Player(spawnX, spawnY, 'Editor', '#45B7D1');
+        this.localPlayer.isLocal = true;
+        this.localPlayer.isFlying = true; // Always fly in editor mode
+        
+        this.state = GameState.EDITOR;
     }
 
     addRemotePlayer(id, name, color, x, y) {

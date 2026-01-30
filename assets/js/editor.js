@@ -191,7 +191,7 @@ class Editor {
             </button>
             <button class="toolbar-btn" data-tool="rotate" title="Rotate (R)">
                 <span class="material-symbols-outlined">rotate_left</span>
-                <span class="toolbar-btn-label">Rotator (R)</span>
+                <span class="toolbar-btn-label">Rotate Left (R)</span>
             </button>
             <div class="toolbar-divider"></div>
             <button class="toolbar-btn" data-action="zoom-in" title="Zoom In">
@@ -452,9 +452,9 @@ class Editor {
             </div>
             
             <!-- Text-specific options (hidden by default) -->
-            <div class="placement-option hidden" id="placement-content">
+            <div class="placement-option hidden" id="placement-content" style="flex-direction: column; align-items: flex-start;">
                 <span class="placement-option-label">Content</span>
-                <input type="text" class="form-input form-input-sm" id="placement-content-input" value="Text" style="width: 120px;">
+                <textarea class="form-input form-input-sm" id="placement-content-input" rows="3" style="width: 180px; resize: vertical; font-family: inherit;">Text</textarea>
             </div>
             
             <div class="placement-option hidden" id="placement-font">
@@ -501,13 +501,13 @@ class Editor {
             </div>
             
             <div class="placement-option hidden" id="placement-hspacing">
-                <span class="placement-option-label">H-Spacing</span>
+                <span class="placement-option-label" title="Space between characters">Char Spacing</span>
                 <input type="number" class="form-input form-input-sm" id="placement-hspacing-input" value="0" style="width: 60px;">
                 <span style="font-size: 12px; color: var(--text-muted);">%</span>
             </div>
             
             <div class="placement-option hidden" id="placement-vspacing">
-                <span class="placement-option-label">V-Spacing</span>
+                <span class="placement-option-label" title="Space between lines">Line Spacing</span>
                 <input type="number" class="form-input form-input-sm" id="placement-vspacing-input" value="0" style="width: 60px;">
                 <span style="font-size: 12px; color: var(--text-muted);">%</span>
             </div>
@@ -946,6 +946,34 @@ class Editor {
         trigger.addEventListener('click', () => {
             dropdown.classList.toggle('active');
             if (dropdown.classList.contains('active')) {
+                // Position the menu to stay on screen
+                const rect = trigger.getBoundingClientRect();
+                const menuHeight = 300; // max-height
+                const menuWidth = 200;
+                
+                // Calculate position
+                let top = rect.bottom + 4;
+                let left = rect.left;
+                
+                // Check if menu would go off bottom of screen
+                if (top + menuHeight > window.innerHeight) {
+                    // Open upwards instead
+                    top = rect.top - menuHeight - 4;
+                }
+                
+                // Check if menu would go off right of screen
+                if (left + menuWidth > window.innerWidth) {
+                    left = window.innerWidth - menuWidth - 10;
+                }
+                
+                // Ensure it's not off the left
+                if (left < 10) left = 10;
+                
+                // Ensure it's not off the top
+                if (top < 10) top = 10;
+                
+                menu.style.top = top + 'px';
+                menu.style.left = left + 'px';
                 this.populateFontDropdown();
             }
         });
@@ -1230,16 +1258,29 @@ class Editor {
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
 
+            // Update appearance buttons for block
+            const appearanceBtns = options.appearance.querySelector('.placement-option-btns');
+            appearanceBtns.innerHTML = `
+                <button class="placement-opt-btn ${this.placementSettings.appearanceType === 'ground' ? 'active' : ''}" data-appearance="ground">Ground</button>
+                <button class="placement-opt-btn ${this.placementSettings.appearanceType === 'spike' ? 'active' : ''}" data-appearance="spike">Spike</button>
+            `;
+            this.reattachAppearanceListeners();
+
             // Update acting type buttons for block
             const actingBtns = options.acting.querySelector('.placement-option-btns');
             actingBtns.innerHTML = `
-                <button class="placement-opt-btn active" data-acting="ground">Ground</button>
-                <button class="placement-opt-btn" data-acting="spike">Spike</button>
-                <button class="placement-opt-btn" data-acting="checkpoint">Check</button>
-                <button class="placement-opt-btn" data-acting="spawnpoint">Spawn</button>
-                <button class="placement-opt-btn" data-acting="endpoint">End</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
             `;
             this.reattachActingListeners();
+            
+            // Update collision buttons
+            document.querySelectorAll('[data-collision]').forEach(btn => {
+                btn.classList.toggle('active', (btn.dataset.collision === 'true') === this.placementSettings.collision);
+            });
         } else if (this.placementMode === PlacementMode.KOREEN) {
             options.appearance.classList.remove('hidden');
             options.acting.classList.remove('hidden');
@@ -1249,21 +1290,19 @@ class Editor {
             // Update appearance for koreen
             const appearanceBtns = options.appearance.querySelector('.placement-option-btns');
             appearanceBtns.innerHTML = `
-                <button class="placement-opt-btn active" data-appearance="checkpoint">Checkpoint</button>
-                <button class="placement-opt-btn" data-appearance="spawnpoint">Spawnpoint</button>
-                <button class="placement-opt-btn" data-appearance="endpoint">Endpoint</button>
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'checkpoint' ? 'active' : ''}" data-appearance="checkpoint">Checkpoint</button>
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'spawnpoint' ? 'active' : ''}" data-appearance="spawnpoint">Spawnpoint</button>
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'endpoint' ? 'active' : ''}" data-appearance="endpoint">Endpoint</button>
             `;
             this.reattachAppearanceListeners();
 
             // Update acting type buttons for koreen
             const actingBtns = options.acting.querySelector('.placement-option-btns');
             actingBtns.innerHTML = `
-                <button class="placement-opt-btn active" data-acting="ground">Ground</button>
-                <button class="placement-opt-btn" data-acting="spike">Spike</button>
-                <button class="placement-opt-btn" data-acting="checkpoint">Check</button>
-                <button class="placement-opt-btn" data-acting="spawnpoint">Spawn</button>
-                <button class="placement-opt-btn" data-acting="endpoint">End</button>
-                <button class="placement-opt-btn" data-acting="text">Text</button>
+                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
+                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
+                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
+                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
             `;
             this.reattachActingListeners();
         } else if (this.placementMode === PlacementMode.TEXT) {
@@ -1280,14 +1319,26 @@ class Editor {
             // Update acting type buttons for text
             const actingBtns = options.acting.querySelector('.placement-option-btns');
             actingBtns.innerHTML = `
-                <button class="placement-opt-btn" data-acting="ground">Ground</button>
-                <button class="placement-opt-btn" data-acting="spike">Spike</button>
-                <button class="placement-opt-btn" data-acting="checkpoint">Check</button>
-                <button class="placement-opt-btn" data-acting="spawnpoint">Spawn</button>
-                <button class="placement-opt-btn" data-acting="endpoint">End</button>
-                <button class="placement-opt-btn active" data-acting="text">Text</button>
+                <button class="placement-opt-btn ${this.textSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
+                <button class="placement-opt-btn ${this.textSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
+                <button class="placement-opt-btn ${this.textSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
+                <button class="placement-opt-btn ${this.textSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
+                <button class="placement-opt-btn ${this.textSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
+                <button class="placement-opt-btn ${this.textSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
             `;
             this.reattachActingListeners();
+            
+            // Update content input (textarea)
+            const contentInput = document.getElementById('placement-content-input');
+            if (contentInput) {
+                contentInput.value = this.textSettings.content || '';
+            }
+            
+            // Update color picker
+            const colorInput = document.querySelector('#placement-color input[type="color"]');
+            if (colorInput) {
+                colorInput.value = this.textSettings.color || '#000000';
+            }
         }
     }
 
@@ -1310,6 +1361,9 @@ class Editor {
                     this.syncActingTypeUI(btn.dataset.appearance);
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.appearanceType = btn.dataset.appearance;
+                    // Sync acting type with appearance type for koreens
+                    this.koreenSettings.actingType = btn.dataset.appearance;
+                    this.syncActingTypeUI(btn.dataset.appearance);
                 }
                 this.updateDefaultColor();
             });
@@ -1794,10 +1848,15 @@ class Editor {
     // ========================================
     // TEST MODE
     // ========================================
-    startTest() {
+    async startTest() {
         if (!this.world.spawnPoint) {
             this.showToast('Please add a spawn point first!', 'error');
             return;
+        }
+
+        // Save before testing
+        if (this.onBeforeTest) {
+            await this.onBeforeTest();
         }
 
         this.engine.startTestGame();
