@@ -832,22 +832,57 @@ class GameEngine {
     }
 
     setupCanvas() {
+        // Make canvas always fill the viewport visually using CSS
+        this.canvas.style.position = 'fixed';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.width = '100vw';
+        this.canvas.style.height = '100vh';
+        
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
         
-        // Prevent zoom
+        // Also handle visual viewport changes (for mobile and zoom)
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => this.resizeCanvas());
+        }
+        
+        // Prevent zoom via Ctrl+wheel
         document.addEventListener('wheel', (e) => {
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
             }
         }, { passive: false });
+        
+        // Prevent zoom via Ctrl+/- keys
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_')) {
+                e.preventDefault();
+            }
+        });
     }
 
     resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        this.camera.width = window.innerWidth;
-        this.camera.height = window.innerHeight;
+        // Get the actual rendered size of the canvas (accounts for browser zoom)
+        const rect = this.canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set internal canvas resolution to match actual pixel size
+        // This ensures crisp rendering regardless of browser zoom
+        const width = Math.round(rect.width * dpr);
+        const height = Math.round(rect.height * dpr);
+        
+        if (this.canvas.width !== width || this.canvas.height !== height) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+            
+            // Scale the context to account for devicePixelRatio
+            this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        
+        // Camera uses CSS pixel dimensions (what the user sees)
+        this.camera.width = rect.width;
+        this.camera.height = rect.height;
     }
 
     setupInput() {
@@ -1092,7 +1127,8 @@ class GameEngine {
     }
 
     render() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Clear using camera dimensions (DPR transform is already applied)
+        this.ctx.clearRect(0, 0, this.camera.width, this.camera.height);
         
         // Apply zoom
         this.ctx.save();
