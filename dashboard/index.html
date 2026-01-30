@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- VERSION: 2026-01-30-v6 -->
+<!-- VERSION: 2026-01-30-v7 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -94,11 +94,11 @@
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=6"></script>
-    <script src="/parkoreen/assets/js/style.js?v=6"></script>
+    <script src="/parkoreen/runtime.js?v=7"></script>
+    <script src="/parkoreen/assets/js/style.js?v=7"></script>
     
     <script>
-        console.log('[Dashboard] Version: v6');
+        console.log('[Dashboard] Version: v7');
         console.log('[Debug] Auth:', window.Auth);
         console.log('[Debug] Auth.isLoggedIn:', window.Auth ? window.Auth.isLoggedIn() : 'N/A');
         console.log('[Debug] MapManager:', window.MapManager);
@@ -122,7 +122,7 @@
             if (!Auth.requireAuth()) return;
             await loadMaps();
 
-            document.getElementById('btn-join').onclick = function() { Navigation.toJoin(); };
+            document.getElementById('btn-join').onclick = function() { window.open('/parkoreen/join.html', '_blank'); };
             document.getElementById('btn-settings').onclick = function() { Navigation.toSettings(); };
             document.getElementById('btn-new-map').onclick = createNewMap;
             document.getElementById('btn-create-first').onclick = createNewMap;
@@ -177,18 +177,18 @@
                 var createFn = window.MapManager.createMap;
                 var result = await createFn.call(window.MapManager, name.trim());
                 toastSuccess('Map created!');
-                window.location.href = '/parkoreen/host.html?map=' + result.id;
+                window.open('/parkoreen/host.html?map=' + result.id, '_blank');
             } catch (e) {
                 toastError('Failed to create map: ' + e.message);
             }
         }
 
         function hostMap(id) {
-            window.location.href = '/parkoreen/host.html?map=' + id + '&mode=host';
+            window.open('/parkoreen/host.html?map=' + id + '&mode=host', '_blank');
         }
 
         function editMap(id) {
-            window.location.href = '/parkoreen/host.html?map=' + id;
+            window.open('/parkoreen/host.html?map=' + id, '_blank');
         }
 
         async function deleteMap(id, name) {

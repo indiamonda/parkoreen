@@ -112,11 +112,11 @@
     </script>
     
     <!-- Scripts -->
-    <script src="/parkoreen/runtime.js?v=6"></script>
-    <script src="/parkoreen/assets/js/style.js?v=6"></script>
-    <script src="/parkoreen/assets/js/game.js?v=6"></script>
-    <script src="/parkoreen/assets/js/editor.js?v=6"></script>
-    <script src="/parkoreen/assets/js/exportImport.js?v=6"></script>
+    <script src="/parkoreen/runtime.js?v=7"></script>
+    <script src="/parkoreen/assets/js/style.js?v=7"></script>
+    <script src="/parkoreen/assets/js/game.js?v=7"></script>
+    <script src="/parkoreen/assets/js/editor.js?v=7"></script>
+    <script src="/parkoreen/assets/js/exportImport.js?v=7"></script>
     <script>
         // Global state
         let engine;
@@ -455,21 +455,41 @@
             };
         }
 
-        // Auto-save periodically for editor mode
-        if (currentMode === 'edit' && currentMapId) {
+        // Auto-save every minute for editor mode
+        if (currentMapId) {
             setInterval(async () => {
                 if (engine.state === GameState.EDITOR) {
+                    console.log('[AutoSave] Saving map...');
                     await saveMap();
                 }
             }, 60000); // Auto-save every minute
         }
 
-        // Save on page unload
-        window.addEventListener('beforeunload', () => {
-            if (currentMode === 'edit' && currentMapId && engine.state === GameState.EDITOR) {
-                // Attempt to save (may not complete)
-                const data = engine.world.toJSON();
-                navigator.sendBeacon(`${API_URL}/maps/${currentMapId}`, JSON.stringify({ data }));
+        // Save on page visibility change (user switches tabs)
+        document.addEventListener('visibilitychange', async () => {
+            if (document.hidden && currentMapId && engine.state === GameState.EDITOR) {
+                console.log('[AutoSave] Tab hidden, saving...');
+                await saveMap();
+            }
+        });
+
+        // Save on page unload (user closes tab or navigates away)
+        window.addEventListener('beforeunload', (e) => {
+            if (currentMapId && engine.state === GameState.EDITOR) {
+                // Use synchronous save for local mode
+                try {
+                    const data = engine.world.toJSON();
+                    // Try to save synchronously to local storage
+                    const maps = JSON.parse(localStorage.getItem('parkoreen_local_maps_' + (Auth.getUser()?.id || 'guest')) || '{}');
+                    if (maps[currentMapId]) {
+                        maps[currentMapId].data = data;
+                        maps[currentMapId].updatedAt = new Date().toISOString();
+                        localStorage.setItem('parkoreen_local_maps_' + (Auth.getUser()?.id || 'guest'), JSON.stringify(maps));
+                        console.log('[AutoSave] Saved on unload');
+                    }
+                } catch (err) {
+                    console.error('[AutoSave] Failed to save on unload:', err);
+                }
             }
         });
 
