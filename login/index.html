@@ -121,7 +121,8 @@
                     toastSuccess('Welcome back!');
                     window.location.href = getRedirectUrl();
                 } catch (err) {
-                    toastError(err.message);
+                    // Always show generic error for security
+                    toastError('The username or password you entered is incorrect.');
                     btnLogin.disabled = false;
                     btnLogin.innerHTML = '<span class="material-symbols-outlined">login</span> Sign In';
                 }

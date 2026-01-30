@@ -13,12 +13,10 @@
 </head>
 <body>
     <div class="settings-container">
-        <!-- Back Button -->
         <button class="btn btn-icon btn-secondary settings-back" id="btn-back">
             <span class="material-symbols-outlined">home</span>
         </button>
 
-        <!-- Settings Card -->
         <div class="settings-card">
             <h2 class="settings-title">Settings</h2>
 
@@ -87,7 +85,7 @@
                 </button>
             </div>
 
-            <!-- Logout -->
+            <!-- Sign Out -->
             <div class="settings-section">
                 <button class="btn btn-danger" id="btn-logout" style="width: 100%;">
                     <span class="material-symbols-outlined">logout</span>
@@ -97,7 +95,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="page-footer" style="position: fixed; bottom: 0; left: 0; right: 0;">
         <span>© Copyright JimmyQrg 2026</span>
         <a href="https://github.com/jimmyqrg/" target="_blank" rel="noopener" class="github-link">
@@ -105,34 +102,37 @@
         </a>
     </footer>
 
-    <!-- Fallbacks first -->
     <script>
-        window.ToastManager = {
-            show: function(msg) { alert(msg); },
-            success: function(msg) { alert('✓ ' + msg); },
-            error: function(msg) { alert('✗ ' + msg); },
-            warning: function(msg) { alert('⚠ ' + msg); },
-            info: function(msg) { alert('ℹ ' + msg); }
-        };
-        window.ModalManager = {
-            confirm: function(title, text) { return Promise.resolve(confirm(text || title)); }
-        };
+        // Safe toast functions
+        function toastError(msg) {
+            console.log('[Toast Error]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'error');
+                } else { alert('Error: ' + msg); }
+            } catch (e) { alert('Error: ' + msg); }
+        }
+        function toastSuccess(msg) {
+            console.log('[Toast Success]', msg);
+            try {
+                if (window.ToastManager && typeof window.ToastManager.show === 'function') {
+                    window.ToastManager.show(msg, 'success');
+                } else { alert(msg); }
+            } catch (e) { alert(msg); }
+        }
     </script>
 
-    <!-- Scripts -->
-    <script src="/parkoreen/runtime.js"></script>
-    <script src="/parkoreen/assets/js/style.js"></script>
+    <script src="/parkoreen/runtime.js?v=5"></script>
+    <script src="/parkoreen/assets/js/style.js?v=5"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check auth
             if (!Auth.requireAuth()) return;
 
-            // Load current settings
             var user = Auth.getUser();
             document.getElementById('display-name').value = user.name || '';
             document.getElementById('username').value = user.username || '';
 
-            // Load saved settings
             var volumeRange = document.getElementById('volume-range');
             var volumeNumber = document.getElementById('volume-number');
             var touchscreenToggle = document.getElementById('touchscreen-toggle');
@@ -140,95 +140,85 @@
             var savedVolume = Settings.get('volume');
             volumeRange.value = savedVolume;
             volumeNumber.value = savedVolume;
-
             touchscreenToggle.checked = Settings.get('touchscreenMode');
 
             // Back button
-            document.getElementById('btn-back').addEventListener('click', function() {
+            document.getElementById('btn-back').onclick = function() {
                 Navigation.toDashboard();
-            });
+            };
 
             // Volume controls
-            volumeRange.addEventListener('input', function(e) {
+            volumeRange.oninput = function(e) {
                 volumeNumber.value = e.target.value;
                 Settings.set('volume', parseInt(e.target.value));
-            });
+            };
 
-            volumeNumber.addEventListener('change', function(e) {
+            volumeNumber.onchange = function(e) {
                 var vol = Math.max(0, Math.min(100, parseInt(e.target.value) || 100));
                 volumeRange.value = vol;
                 volumeNumber.value = vol;
                 Settings.set('volume', vol);
-            });
+            };
 
             // Touchscreen toggle
-            touchscreenToggle.addEventListener('change', function(e) {
+            touchscreenToggle.onchange = function(e) {
                 Settings.set('touchscreenMode', e.target.checked);
-            });
+            };
 
             // Update display name
-            document.getElementById('btn-update-name').addEventListener('click', async function() {
+            document.getElementById('btn-update-name').onclick = async function() {
                 var name = document.getElementById('display-name').value.trim();
-                
                 if (!name) {
-                    ToastManager.error('Please enter a display name');
+                    toastError('Please enter a display name');
                     return;
                 }
-
                 try {
-                    await Auth.updateProfile({ name: name });
-                    ToastManager.success('Display name updated!');
-                } catch (error) {
-                    ToastManager.error(error.message);
+                    var updateFn = Auth.updateProfile;
+                    await updateFn.call(Auth, { name: name });
+                    toastSuccess('Display name updated!');
+                } catch (e) {
+                    toastError(e.message);
                 }
-            });
+            };
 
             // Change password
-            document.getElementById('btn-change-password').addEventListener('click', async function() {
+            document.getElementById('btn-change-password').onclick = async function() {
                 var currentPassword = document.getElementById('current-password').value;
                 var newPassword = document.getElementById('new-password').value;
                 var confirmPassword = document.getElementById('confirm-password').value;
 
                 if (!currentPassword || !newPassword || !confirmPassword) {
-                    ToastManager.error('Please fill in all password fields');
+                    toastError('Please fill in all password fields');
                     return;
                 }
-
                 if (newPassword.length < 6) {
-                    ToastManager.error('New password must be at least 6 characters');
+                    toastError('New password must be at least 6 characters');
                     return;
                 }
-
                 if (newPassword !== confirmPassword) {
-                    ToastManager.error('New passwords do not match');
+                    toastError('New passwords do not match');
                     return;
                 }
 
                 try {
-                    await Auth.changePassword(currentPassword, newPassword);
-                    ToastManager.success('Password changed successfully!');
-                    
-                    // Clear password fields
+                    var changeFn = Auth.changePassword;
+                    await changeFn.call(Auth, currentPassword, newPassword);
+                    toastSuccess('Password changed successfully!');
                     document.getElementById('current-password').value = '';
                     document.getElementById('new-password').value = '';
                     document.getElementById('confirm-password').value = '';
-                } catch (error) {
-                    ToastManager.error(error.message);
+                } catch (e) {
+                    toastError(e.message);
                 }
-            });
+            };
 
-            // Logout
-            document.getElementById('btn-logout').addEventListener('click', async function() {
-                var confirmed = await ModalManager.confirm(
-                    'Sign Out',
-                    'Are you sure you want to sign out?'
-                );
-
-                if (confirmed) {
+            // Sign Out
+            document.getElementById('btn-logout').onclick = function() {
+                if (confirm('Are you sure you want to sign out?')) {
                     Auth.logout();
-                    Navigation.toLogin();
+                    window.location.href = '/parkoreen/login/';
                 }
-            });
+            };
         });
     </script>
 </body>

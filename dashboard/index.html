@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- VERSION: 2026-01-30-v5 -->
+<!-- VERSION: 2026-01-30-v6 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -94,11 +94,11 @@
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=5"></script>
-    <script src="/parkoreen/assets/js/style.js?v=5"></script>
+    <script src="/parkoreen/runtime.js?v=6"></script>
+    <script src="/parkoreen/assets/js/style.js?v=6"></script>
     
     <script>
-        console.log('[Dashboard] Version: v5');
+        console.log('[Dashboard] Version: v6');
         console.log('[Debug] Auth:', window.Auth);
         console.log('[Debug] Auth.isLoggedIn:', window.Auth ? window.Auth.isLoggedIn() : 'N/A');
         console.log('[Debug] MapManager:', window.MapManager);
@@ -130,7 +130,9 @@
 
         async function loadMaps() {
             try {
-                var maps = await MapManager.listMaps();
+                // Use .call() to ensure proper binding
+                var listFn = window.MapManager.listMaps;
+                var maps = await listFn.call(window.MapManager);
                 loading.classList.add('hidden');
 
                 if (maps.length === 0) {
@@ -172,7 +174,8 @@
             if (!name || !name.trim()) return;
 
             try {
-                var result = await MapManager.createMap(name.trim());
+                var createFn = window.MapManager.createMap;
+                var result = await createFn.call(window.MapManager, name.trim());
                 toastSuccess('Map created!');
                 window.location.href = '/parkoreen/host.html?map=' + result.id;
             } catch (e) {
@@ -197,7 +200,8 @@
             
             if (typed === confirmName) {
                 try {
-                    await MapManager.deleteMap(id);
+                    var deleteFn = window.MapManager.deleteMap;
+                    await deleteFn.call(window.MapManager, id);
                     toastSuccess('Map deleted!');
                     await loadMaps();
                 } catch (e) {
