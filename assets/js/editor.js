@@ -1136,6 +1136,11 @@ class Editor {
             this.isFlying = false;
             if (this.engine.localPlayer) {
                 this.engine.localPlayer.isFlying = false;
+                // Reset velocity when leaving fly mode
+                this.engine.localPlayer.vx = 0;
+                this.engine.localPlayer.vy = 0;
+                // Reset jumps so player can jump again
+                this.engine.localPlayer.resetJumps();
             }
         }
         if (this.currentTool === EditorTool.ERASE) {
@@ -1158,6 +1163,12 @@ class Editor {
             // Activate tool
             if (tool === EditorTool.FLY) {
                 this.isFlying = true;
+                if (this.engine.localPlayer) {
+                    this.engine.localPlayer.isFlying = true;
+                    // Reset velocity when entering fly mode
+                    this.engine.localPlayer.vx = 0;
+                    this.engine.localPlayer.vy = 0;
+                }
             } else if (tool === EditorTool.ERASE) {
                 this.isErasing = true;
             }

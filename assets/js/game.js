@@ -90,7 +90,8 @@ class Player {
             right: false,
             up: false,
             down: false,
-            jump: false
+            jump: false,
+            shift: false
         };
         
         // Touchboxes
@@ -125,8 +126,10 @@ class Player {
         
         if (this.input.left) this.x -= speed;
         if (this.input.right) this.x += speed;
+        // W/ArrowUp OR Space moves up in fly mode
         if (this.input.up || this.input.jump) this.y -= speed;
-        if (this.input.down) this.y += speed;
+        // S/ArrowDown OR Shift moves down in fly mode
+        if (this.input.down || this.input.shift) this.y += speed;
         
         this.vx = 0;
         this.vy = 0;
@@ -973,7 +976,17 @@ class GameEngine {
         this.localPlayer.input.right = this.keys['KeyD'] || this.keys['ArrowRight'];
         this.localPlayer.input.up = this.keys['KeyW'] || this.keys['ArrowUp'];
         this.localPlayer.input.down = this.keys['KeyS'] || this.keys['ArrowDown'];
-        this.localPlayer.input.jump = this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'];
+        
+        // In fly mode: W/Up moves up, Space also moves up, Shift moves down
+        // In platformer mode: Space jumps, W/Up has no effect (only left/right movement)
+        if (this.localPlayer.isFlying) {
+            this.localPlayer.input.jump = this.keys['Space'];
+            this.localPlayer.input.shift = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
+        } else {
+            // In platformer mode, Space is jump
+            this.localPlayer.input.jump = this.keys['Space'];
+            this.localPlayer.input.shift = false;
+        }
     }
 
     onMouseMove(e) {

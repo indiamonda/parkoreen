@@ -396,6 +396,12 @@
         }
 
         function setupMultiplayer() {
+            // Check if MultiplayerManager is available
+            if (!window.MultiplayerManager || typeof window.MultiplayerManager.on !== 'function') {
+                console.log('[Multiplayer] MultiplayerManager not available, skipping setup');
+                return;
+            }
+            
             // Player joined
             MultiplayerManager.on('playerJoined', (data) => {
                 engine.addRemotePlayer(data.playerId, data.playerName, data.playerColor, 0, 0);
