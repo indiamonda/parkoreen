@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- VERSION: 2026-01-30-v4 -->
+<!-- VERSION: 2026-01-30-v5 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -94,11 +94,17 @@
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=4"></script>
-    <script src="/parkoreen/assets/js/style.js?v=4"></script>
+    <script src="/parkoreen/runtime.js?v=5"></script>
+    <script src="/parkoreen/assets/js/style.js?v=5"></script>
     
     <script>
-        console.log('[Dashboard] Version: v4');
+        console.log('[Dashboard] Version: v5');
+        console.log('[Debug] Auth:', window.Auth);
+        console.log('[Debug] Auth.isLoggedIn:', window.Auth ? window.Auth.isLoggedIn() : 'N/A');
+        console.log('[Debug] MapManager:', window.MapManager);
+        console.log('[Debug] MapManager type:', typeof window.MapManager);
+        console.log('[Debug] MapManager.listMaps:', window.MapManager ? window.MapManager.listMaps : 'N/A');
+        console.log('[Debug] MapManager.listMaps type:', window.MapManager ? typeof window.MapManager.listMaps : 'N/A');
         
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/parkoreen/sw.js')
