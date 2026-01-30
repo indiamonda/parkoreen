@@ -132,49 +132,73 @@ class AuthManager {
     // ========== LOCAL MODE METHODS (for testing without backend) ==========
     
     localLogin(username, password) {
-        const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
-        const user = users[username.toLowerCase()];
-        
-        if (!user) {
-            throw new Error('Invalid username or password');
+        try {
+            const usersStr = localStorage.getItem('parkoreen_local_users');
+            console.log('[Auth] Local users storage:', usersStr);
+            const users = JSON.parse(usersStr || '{}');
+            const userKey = username.toLowerCase();
+            const user = users[userKey];
+            
+            console.log('[Auth] Looking for user:', userKey);
+            console.log('[Auth] Found user:', user ? 'yes' : 'no');
+            
+            if (!user) {
+                throw new Error('User not found');
+            }
+            
+            // Simple password check (not secure, just for local testing)
+            if (user.password !== password) {
+                console.log('[Auth] Password mismatch');
+                throw new Error('Invalid password');
+            }
+            
+            this.user = { id: user.id, name: user.name, username: user.username };
+            this.token = 'local_' + user.id;
+            this.saveToStorage();
+            
+            console.log('[Auth] Login successful:', this.user);
+            return { user: this.user, token: this.token };
+        } catch (e) {
+            console.error('[Auth] Login error:', e);
+            throw e;
         }
-        
-        // Simple password check (not secure, just for local testing)
-        if (user.password !== password) {
-            throw new Error('Invalid username or password');
-        }
-        
-        this.user = { id: user.id, name: user.name, username: user.username };
-        this.token = 'local_' + user.id;
-        this.saveToStorage();
-        
-        return { user: this.user, token: this.token };
     }
 
     localSignup(name, username, password) {
-        const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
-        
-        if (users[username.toLowerCase()]) {
-            throw new Error('Username already taken');
+        try {
+            const usersStr = localStorage.getItem('parkoreen_local_users');
+            const users = JSON.parse(usersStr || '{}');
+            const userKey = username.toLowerCase();
+            
+            console.log('[Auth] Checking if username exists:', userKey);
+            
+            if (users[userKey]) {
+                console.log('[Auth] Username already exists');
+                throw new Error('Username already exists. Please choose a different username.');
+            }
+            
+            const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            users[userKey] = {
+                id: userId,
+                name,
+                username,
+                password, // In local mode, we store password directly (not secure, just for testing)
+                createdAt: new Date().toISOString()
+            };
+            
+            localStorage.setItem('parkoreen_local_users', JSON.stringify(users));
+            console.log('[Auth] User created:', userId);
+            
+            this.user = { id: userId, name, username };
+            this.token = 'local_' + userId;
+            this.saveToStorage();
+            
+            return { user: this.user, token: this.token };
+        } catch (e) {
+            console.error('[Auth] Signup error:', e);
+            throw e;
         }
-        
-        const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        
-        users[username.toLowerCase()] = {
-            id: userId,
-            name,
-            username,
-            password, // In local mode, we store password directly (not secure, just for testing)
-            createdAt: new Date().toISOString()
-        };
-        
-        localStorage.setItem('parkoreen_local_users', JSON.stringify(users));
-        
-        this.user = { id: userId, name, username };
-        this.token = 'local_' + userId;
-        this.saveToStorage();
-        
-        return { user: this.user, token: this.token };
     }
 
     async updateProfile(updates) {

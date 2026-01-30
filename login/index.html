@@ -75,8 +75,8 @@
         }
     </script>
 
-    <script src="/parkoreen/runtime.js?v=5"></script>
-    <script src="/parkoreen/assets/js/style.js?v=5"></script>
+    <script src="/parkoreen/runtime.js?v=10"></script>
+    <script src="/parkoreen/assets/js/style.js?v=10"></script>
     
     <script>
         function getRedirectUrl() {
@@ -121,7 +121,8 @@
                     toastSuccess('Welcome back!');
                     window.location.href = getRedirectUrl();
                 } catch (err) {
-                    // Always show generic error for security
+                    console.error('[Login] Error:', err);
+                    // Show generic error for security, but log actual error for debugging
                     toastError('The username or password you entered is incorrect.');
                     btnLogin.disabled = false;
                     btnLogin.innerHTML = '<span class="material-symbols-outlined">login</span> Sign In';
