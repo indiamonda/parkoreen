@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- VERSION: 2026-01-30-v2 -->
+<!-- VERSION: 2026-01-30-v3 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -88,12 +88,12 @@
         window.AnimationUtils = { shake: function() {} };
     </script>
 
-    <!-- Scripts (v=2 for cache busting) -->
-    <script src="/parkoreen/runtime.js?v=2"></script>
-    <script src="/parkoreen/assets/js/style.js?v=2" onerror="console.error('style.js failed to load');"></script>
+    <!-- Scripts (v=3 for cache busting) -->
+    <script src="/parkoreen/runtime.js?v=3"></script>
+    <script src="/parkoreen/assets/js/style.js?v=3" onerror="console.error('style.js failed to load');"></script>
     <script>
         // Debug: Check page version
-        console.log('[Parkoreen Dashboard] Version: 2026-01-30-v2');
+        console.log('[Parkoreen Dashboard] Version: 2026-01-30-v3');
         
         // Ensure ToastManager has all required methods (fix partial load issues)
         (function() {
@@ -145,6 +145,9 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('[Debug] DOMContentLoaded - ToastManager:', window.ToastManager);
+            console.log('[Debug] DOMContentLoaded - ToastManager.error:', typeof window.ToastManager.error);
+            
             // Check auth
             if (!Auth.requireAuth()) return;
 
@@ -178,7 +181,15 @@
                 }
             } catch (error) {
                 loading.classList.add('hidden');
-                ToastManager.error('Failed to load maps: ' + error.message);
+                console.log('[Debug] In loadMaps catch - ToastManager:', window.ToastManager);
+                console.log('[Debug] ToastManager.error type:', typeof window.ToastManager.error);
+                console.log('[Debug] ToastManager keys:', Object.keys(window.ToastManager));
+                console.log('[Debug] ToastManager prototype:', Object.getPrototypeOf(window.ToastManager));
+                if (typeof window.ToastManager.error === 'function') {
+                    ToastManager.error('Failed to load maps: ' + error.message);
+                } else {
+                    alert('Error: ' + error.message);
+                }
             }
         }
 
