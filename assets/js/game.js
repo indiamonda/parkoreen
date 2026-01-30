@@ -982,17 +982,10 @@ class GameEngine {
         this.localPlayer.input.right = this.keys['KeyD'] || this.keys['ArrowRight'];
         this.localPlayer.input.up = this.keys['KeyW'] || this.keys['ArrowUp'];
         this.localPlayer.input.down = this.keys['KeyS'] || this.keys['ArrowDown'];
+        this.localPlayer.input.shift = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
         
-        // In fly mode: W/Up moves up, Space also moves up, Shift moves down
-        // In platformer mode: Space jumps, W/Up has no effect (only left/right movement)
-        if (this.localPlayer.isFlying) {
-            this.localPlayer.input.jump = this.keys['Space'];
-            this.localPlayer.input.shift = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
-        } else {
-            // In platformer mode, Space is jump
-            this.localPlayer.input.jump = this.keys['Space'];
-            this.localPlayer.input.shift = false;
-        }
+        // Jump: Space always, W/Up also triggers jump in both modes
+        this.localPlayer.input.jump = this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'];
     }
 
     onMouseMove(e) {
@@ -1329,7 +1322,8 @@ class GameEngine {
         
         this.localPlayer = new Player(spawnX, spawnY, 'Editor', '#45B7D1');
         this.localPlayer.isLocal = true;
-        this.localPlayer.isFlying = true; // Always fly in editor mode
+        this.localPlayer.isFlying = true; // Start with fly mode in editor
+        this.localPlayer.setMaxJumps(999, true); // Infinite jumps in editor mode
         
         this.state = GameState.EDITOR;
     }
