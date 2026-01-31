@@ -242,6 +242,14 @@ class Editor {
                 </div>
                 
                 <div class="config-section">
+                    <div class="config-section-title">Map Info</div>
+                    <div class="form-group">
+                        <label class="form-label">Map Name</label>
+                        <input type="text" class="form-input" id="config-map-name" placeholder="Enter map name">
+                    </div>
+                </div>
+                
+                <div class="config-section">
                     <div class="config-section-title">Theme</div>
                     <div class="form-group">
                         <label class="form-label">Background</label>
@@ -776,6 +784,12 @@ class Editor {
     }
 
     attachConfigListeners() {
+        // Map Name
+        document.getElementById('config-map-name').addEventListener('change', (e) => {
+            this.world.mapName = e.target.value.trim() || 'Untitled Map';
+            this.triggerMapChange();
+        });
+
         // Background
         document.getElementById('config-background').addEventListener('change', (e) => {
             this.world.background = e.target.value;
@@ -2049,6 +2063,10 @@ class Editor {
     }
     
     syncConfigPanel() {
+        // Map Name
+        const mapNameInput = document.getElementById('config-map-name');
+        if (mapNameInput) mapNameInput.value = this.world.mapName || 'Untitled Map';
+
         // Background
         const bgSelect = document.getElementById('config-background');
         if (bgSelect) bgSelect.value = this.world.background;

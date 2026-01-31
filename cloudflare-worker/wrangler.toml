@@ -5,17 +5,7 @@ name = "parkoreen"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
-# KV Namespace bindings - CREATE THESE FIRST!
-# 
-# Step 1: Run these commands to create namespaces:
-#   wrangler kv:namespace create "USERS"
-#   wrangler kv:namespace create "MAPS"
-#   wrangler kv:namespace create "SESSIONS"
-#   wrangler kv:namespace create "ROOMS"
-#
-# Step 2: Copy the IDs from the output and paste them below
-# Step 3: Run: wrangler deploy
-
+# KV Namespace bindings
 [[kv_namespaces]]
 binding = "USERS"
 id = "4c9e8e0bbf5e43de964a55e2d3433c15"
@@ -44,8 +34,3 @@ new_classes = ["GameRoom"]
 # Environment variables (set in Cloudflare dashboard for production)
 [vars]
 ENVIRONMENT = "development"
-
-# Custom domain routing (optional)
-# routes = [
-#   { pattern = "parkoreen.example.com/*", zone_name = "example.com" }
-# ]
