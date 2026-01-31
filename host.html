@@ -491,6 +491,7 @@
 
                 const usePassword = document.getElementById('config-use-password').checked;
                 const password = document.getElementById('config-password').value;
+                const maxPlayers = parseInt(document.getElementById('config-max-players')?.value) || 10;
 
                 if (usePassword && !password) {
                     this.showToast('Please enter a password or disable password protection.', 'error');
@@ -505,20 +506,41 @@
                         await saveMap();
                     }
 
-                    // Generate a local room code (6 digits)
-                    const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    const mapData = this.world.toJSON();
+                    const mp = window.MultiplayerManager;
                     
-                    // Store game data in session storage
-                    sessionStorage.setItem('parkoreen_game', JSON.stringify({
-                        roomCode: roomCode,
-                        mapData: this.world.toJSON(),
-                        isHost: true
-                    }));
-                    
-                    loadingHide();
-                    
-                    // Enter play mode locally
-                    await startHostedGame(roomCode, this.world.toJSON());
+                    if (!mp) {
+                        throw new Error('Multiplayer not available');
+                    }
+
+                    // Setup event handlers before hosting
+                    mp.on('roomCreated', (data) => {
+                        loadingHide();
+                        console.log('[Host] Room created:', data.roomCode);
+                        
+                        // Store game data in session storage
+                        sessionStorage.setItem('parkoreen_game', JSON.stringify({
+                            roomCode: data.roomCode,
+                            mapData: mapData,
+                            isHost: true
+                        }));
+                        
+                        // Enter play mode
+                        startHostedGame(data.roomCode, mapData);
+                    });
+
+                    mp.on('error', (data) => {
+                        loadingHide();
+                        toastError('Failed to create room: ' + data.message);
+                    });
+
+                    // Create room on server
+                    await mp.hostGame({
+                        mapData: mapData,
+                        maxPlayers: maxPlayers,
+                        usePassword: usePassword,
+                        password: usePassword ? password : null
+                    });
                     
                 } catch (error) {
                     loadingHide();
