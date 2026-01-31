@@ -477,6 +477,7 @@ class MultiplayerManager {
         this.ws = null;
         this.roomCode = null;
         this.isHost = false;
+        this.isAuthenticated = false;
         this.players = new Map();
         this.callbacks = {};
     }
@@ -554,6 +555,7 @@ class MultiplayerManager {
         }
         this.roomCode = null;
         this.isHost = false;
+        this.isAuthenticated = false;
         this.players.clear();
     }
 
@@ -626,6 +628,9 @@ class MultiplayerManager {
             await this.connect();
         }
 
+        // Wait for authentication before creating room
+        await this.waitForAuth();
+
         this.send({
             type: 'create_room',
             mapData: options.mapData,
@@ -640,10 +645,36 @@ class MultiplayerManager {
             await this.connect();
         }
 
+        // Wait for authentication before joining room
+        await this.waitForAuth();
+
         this.send({
             type: 'join_room',
             roomCode,
             password
+        });
+    }
+
+    waitForAuth() {
+        return new Promise((resolve, reject) => {
+            // If already authenticated, resolve immediately
+            if (this.isAuthenticated) {
+                resolve();
+                return;
+            }
+
+            // Wait for auth_success
+            const timeout = setTimeout(() => {
+                reject(new Error('Authentication timed out'));
+            }, 10000);
+
+            const originalCallback = this.callbacks['authenticated'];
+            this.on('authenticated', () => {
+                clearTimeout(timeout);
+                this.isAuthenticated = true;
+                if (originalCallback) originalCallback();
+                resolve();
+            });
         });
     }
 
