@@ -125,7 +125,7 @@
     </script>
     
     <!-- Scripts -->
-    <script src="/parkoreen/runtime.js?v=17"></script>
+    <script src="/parkoreen/runtime.js?v=18"></script>
     <script src="/parkoreen/assets/js/style.js?v=11"></script>
     <script src="/parkoreen/assets/js/game.js?v=12"></script>
     <script src="/parkoreen/assets/js/editor.js?v=14"></script>
@@ -352,7 +352,12 @@
             setInterval(() => {
                 const mp = window.MultiplayerManager;
                 if (engine.localPlayer && mp && mp.sendPosition && currentMode === 'play') {
-                    mp.sendPosition(engine.localPlayer.x, engine.localPlayer.y);
+                    mp.sendPosition(
+                        engine.localPlayer.x, 
+                        engine.localPlayer.y,
+                        engine.localPlayer.vx || 0,
+                        engine.localPlayer.vy || 0
+                    );
                 }
             }, 50); // 20 updates per second
         }
@@ -489,7 +494,7 @@
 
             // Player position update
             mp.on('playerPosition', (data) => {
-                engine.updateRemotePlayer(data.playerId, data.x, data.y);
+                engine.updateRemotePlayer(data.playerId, data.x, data.y, data.vx || 0, data.vy || 0);
             });
 
             // Chat message

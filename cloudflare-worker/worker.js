@@ -43,6 +43,79 @@ function generateRoomCode() {
     return code;
 }
 
+// Allowed characters for username: letters, numbers, and specific symbols
+const ALLOWED_USERNAME_CHARS = /^[a-zA-Z0-9,""''\.?/:;\-_=+{}\[\]\\|~`【】<> ]+$/;
+
+// Reserved display names (case-insensitive) - only specific usernames can use these
+const RESERVED_NAMES = {
+    'jimmyqrg': ['jimmyqrg', 'jimmyqrgschool']
+};
+
+// Invisible/problematic characters to block in display names
+const BLOCKED_DISPLAY_CHARS = ['ㅤ']; // Hangul Filler U+3164
+
+function validateUsername(username) {
+    if (!username || typeof username !== 'string') {
+        return { valid: false, error: 'Username is required' };
+    }
+    
+    const trimmed = username.trim();
+    
+    if (trimmed.length === 0 || trimmed === ' ') {
+        return { valid: false, error: 'Username cannot be empty or just a space' };
+    }
+    
+    if (trimmed.length < 3) {
+        return { valid: false, error: 'Username must be at least 3 characters' };
+    }
+    
+    if (trimmed.length > 30) {
+        return { valid: false, error: 'Username must be at most 30 characters' };
+    }
+    
+    if (!ALLOWED_USERNAME_CHARS.test(trimmed)) {
+        return { valid: false, error: 'Username contains invalid characters. Allowed: letters, numbers, and , " " \' \' . ? / : ; - _ = + { } [ ] \\ | ~ ` 【 】 < > space' };
+    }
+    
+    return { valid: true };
+}
+
+function validateDisplayName(name, username) {
+    if (!name || typeof name !== 'string') {
+        return { valid: false, error: 'Display name is required' };
+    }
+    
+    const trimmed = name.trim();
+    
+    if (trimmed.length === 0 || trimmed === ' ') {
+        return { valid: false, error: 'Display name cannot be empty or just a space' };
+    }
+    
+    if (trimmed.length > 50) {
+        return { valid: false, error: 'Display name must be at most 50 characters' };
+    }
+    
+    // Check for blocked characters
+    for (const char of BLOCKED_DISPLAY_CHARS) {
+        if (trimmed.includes(char)) {
+            return { valid: false, error: 'Display name contains invalid characters' };
+        }
+    }
+    
+    // Check reserved names
+    const nameLower = trimmed.toLowerCase();
+    for (const [reservedName, allowedUsernames] of Object.entries(RESERVED_NAMES)) {
+        if (nameLower === reservedName) {
+            const usernameLower = (username || '').toLowerCase();
+            if (!allowedUsernames.includes(usernameLower)) {
+                return { valid: false, error: `The name "${trimmed}" is reserved` };
+            }
+        }
+    }
+    
+    return { valid: true };
+}
+
 async function hashPassword(password) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password + JWT_SECRET);
@@ -102,12 +175,16 @@ async function handleSignup(request, env) {
         return errorResponse('Name, username, and password are required');
     }
 
-    if (username.length < 3) {
-        return errorResponse('Username must be at least 3 characters');
+    // Validate username
+    const usernameValidation = validateUsername(username);
+    if (!usernameValidation.valid) {
+        return errorResponse(usernameValidation.error);
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        return errorResponse('Username can only contain letters, numbers, and underscores');
+    // Validate display name
+    const nameValidation = validateDisplayName(name, username);
+    if (!nameValidation.valid) {
+        return errorResponse(nameValidation.error);
     }
 
     if (password.length < 6) {
@@ -194,6 +271,11 @@ async function handleUpdateProfile(request, env, userId) {
     const user = JSON.parse(userData);
 
     if (updates.name) {
+        // Validate display name
+        const nameValidation = validateDisplayName(updates.name, user.username);
+        if (!nameValidation.valid) {
+            return errorResponse(nameValidation.error);
+        }
         user.name = updates.name;
     }
 
@@ -676,7 +758,9 @@ class GameRoom {
             type: 'player_position',
             playerId: session.id,
             x: data.x,
-            y: data.y
+            y: data.y,
+            vx: data.vx || 0,
+            vy: data.vy || 0
         }, session.id);
     }
 

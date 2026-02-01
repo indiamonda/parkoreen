@@ -1130,9 +1130,20 @@ class GameEngine {
                 this.camera.follow(this.localPlayer);
             }
             
-            // Update remote players
+            // Update remote players with prediction
             for (const player of this.remotePlayers.values()) {
-                // Remote players just interpolate to their positions
+                // Predict position based on velocity since last update
+                if (player.lastUpdateTime && player.vx !== undefined) {
+                    const timeSinceUpdate = (performance.now() - player.lastUpdateTime) / 1000;
+                    // Only predict for short time (max 200ms) to prevent drift
+                    if (timeSinceUpdate < 0.2) {
+                        const predictedX = player.serverX + player.vx * timeSinceUpdate;
+                        const predictedY = player.serverY + player.vy * timeSinceUpdate;
+                        // Lerp towards predicted position for smoothness
+                        player.x += (predictedX - player.x) * 0.2;
+                        player.y += (predictedY - player.y) * 0.2;
+                    }
+                }
             }
         } else if (this.state === GameState.EDITOR) {
             // In editor mode, update player movement
@@ -1343,11 +1354,20 @@ class GameEngine {
         return player;
     }
 
-    updateRemotePlayer(id, x, y) {
+    updateRemotePlayer(id, x, y, vx = 0, vy = 0) {
         const player = this.remotePlayers.get(id);
         if (player) {
-            player.x = x;
-            player.y = y;
+            // Store actual server position
+            player.serverX = x;
+            player.serverY = y;
+            player.vx = vx;
+            player.vy = vy;
+            player.lastUpdateTime = performance.now();
+            
+            // Snap to actual position (with small lerp for smoothness)
+            const lerpFactor = 0.3;
+            player.x = player.x + (x - player.x) * lerpFactor;
+            player.y = player.y + (y - player.y) * lerpFactor;
         }
     }
 

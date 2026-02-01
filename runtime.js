@@ -697,11 +697,13 @@ class MultiplayerManager {
         this.players.clear();
     }
 
-    sendPosition(x, y) {
+    sendPosition(x, y, vx = 0, vy = 0) {
         this.send({
             type: 'position',
             x,
-            y
+            y,
+            vx,
+            vy
         });
     }
 
