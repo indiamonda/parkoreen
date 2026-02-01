@@ -583,6 +583,18 @@ class MultiplayerManager {
                 this.emit('roomJoined', data);
                 break;
                 
+            case 'room_rejoined':
+                this.roomCode = data.roomCode;
+                this.isHost = data.isHost || false;
+                // Add existing players
+                if (data.players) {
+                    data.players.forEach(p => {
+                        this.players.set(p.id, { id: p.id, name: p.name, color: p.color });
+                    });
+                }
+                this.emit('roomRejoined', data);
+                break;
+                
             case 'player_joined':
                 this.players.set(data.playerId, {
                     id: data.playerId,

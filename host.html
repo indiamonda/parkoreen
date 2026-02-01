@@ -125,7 +125,7 @@
     </script>
     
     <!-- Scripts -->
-    <script src="/parkoreen/runtime.js?v=16"></script>
+    <script src="/parkoreen/runtime.js?v=17"></script>
     <script src="/parkoreen/assets/js/style.js?v=11"></script>
     <script src="/parkoreen/assets/js/game.js?v=12"></script>
     <script src="/parkoreen/assets/js/editor.js?v=14"></script>
@@ -285,6 +285,8 @@
                 const data = JSON.parse(gameData);
                 if (data.mapData) {
                     engine.world.fromJSON(data.mapData);
+                    // Update background based on map theme
+                    editor.updateBackground();
                 }
                 isHost = data.isHost || false;
             }
@@ -311,6 +313,48 @@
             if (Settings.get('touchscreenMode')) {
                 editor.updateTouchControls();
             }
+
+            // Reconnect to multiplayer for this room
+            await reconnectToRoom(roomCode);
+            
+            // Start position update loop
+            startPositionUpdates();
+        }
+        
+        async function reconnectToRoom(roomCode) {
+            const mp = window.MultiplayerManager;
+            if (!mp) {
+                console.log('[Play] MultiplayerManager not available');
+                return;
+            }
+            
+            try {
+                // Connect to WebSocket
+                await mp.connect();
+                
+                // Wait for authentication
+                await mp.waitForAuth();
+                
+                console.log('[Play] Reconnected to multiplayer, rejoining room:', roomCode);
+                
+                // Rejoin the room (server should recognize this session)
+                mp.send({
+                    type: 'rejoin_room',
+                    roomCode: roomCode
+                });
+            } catch (error) {
+                console.error('[Play] Failed to reconnect:', error);
+                toastError('Failed to connect to multiplayer: ' + error.message);
+            }
+        }
+        
+        function startPositionUpdates() {
+            setInterval(() => {
+                const mp = window.MultiplayerManager;
+                if (engine.localPlayer && mp && mp.sendPosition && currentMode === 'play') {
+                    mp.sendPosition(engine.localPlayer.x, engine.localPlayer.y);
+                }
+            }, 50); // 20 updates per second
         }
 
         function setupGameHUD() {
@@ -469,15 +513,20 @@
             mp.on('gameEnd', (data) => {
                 ModalManager.alert('Game Over!', `${data.winnerName} has reached the finish line!`);
             });
-
-            // Send position updates
-            if (engine.state === GameState.PLAYING) {
-                setInterval(() => {
-                    if (engine.localPlayer && mp.sendPosition) {
-                        mp.sendPosition(engine.localPlayer.x, engine.localPlayer.y);
-                    }
-                }, 50); // 20 updates per second
-            }
+            
+            // Room rejoined (after page reload)
+            mp.on('roomRejoined', (data) => {
+                console.log('[Multiplayer] Rejoined room:', data.roomCode);
+                isHost = data.isHost;
+                // Add existing players to the game
+                if (data.players) {
+                    data.players.forEach(p => {
+                        engine.addRemotePlayer(p.id, p.name, p.color, 0, 0);
+                    });
+                }
+                updatePlayersList();
+                toastSuccess('Reconnected to room!');
+            });
         }
 
         // Override editor's host game function
@@ -577,6 +626,9 @@
             if (Settings.get('touchscreenMode')) {
                 editor.updateTouchControls();
             }
+            
+            // Start sending position updates
+            startPositionUpdates();
             
             toastSuccess('Room created! Share the code: ' + roomCode);
         }

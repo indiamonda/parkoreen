@@ -438,6 +438,9 @@ class GameRoom {
             case 'join_room':
                 await this.handleJoinRoom(session, data);
                 break;
+            case 'rejoin_room':
+                await this.handleRejoinRoom(session, data);
+                break;
             case 'leave_room':
                 await this.handleLeaveRoom(session);
                 break;
@@ -580,6 +583,49 @@ class GameRoom {
             type: 'room_joined',
             roomCode: data.roomCode,
             mapData: room.mapData,
+            players: playersInRoom.map(p => ({
+                id: p.id,
+                name: p.user.name,
+                color: p.playerColor
+            }))
+        });
+    }
+
+    async handleRejoinRoom(session, data) {
+        if (!session.userId) {
+            this.send(session, { type: 'error', message: 'Not authenticated' });
+            return;
+        }
+
+        const roomData = await this.state.storage.get(`room:${data.roomCode}`);
+        if (!roomData) {
+            this.send(session, { type: 'error', message: 'Room no longer exists.' });
+            return;
+        }
+
+        const room = JSON.parse(roomData);
+        
+        // Assign player color
+        session.roomCode = data.roomCode;
+        session.playerColor = this.generatePlayerColor();
+        session.isHost = room.hostUserId === session.userId;
+
+        // Get existing players in room
+        const playersInRoom = this.getPlayersInRoom(data.roomCode);
+
+        // Notify others
+        this.broadcastToRoom(data.roomCode, {
+            type: 'player_joined',
+            playerId: session.id,
+            playerName: session.user.name,
+            playerColor: session.playerColor
+        }, session.id);
+
+        // Send room data to rejoined player
+        this.send(session, {
+            type: 'room_rejoined',
+            roomCode: data.roomCode,
+            isHost: session.isHost,
             players: playersInRoom.map(p => ({
                 id: p.id,
                 name: p.user.name,
