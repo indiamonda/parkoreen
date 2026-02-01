@@ -3,7 +3,7 @@
  * Handles offline caching and PWA functionality
  */
 
-const CACHE_NAME = 'parkoreen-v19';
+const CACHE_NAME = 'parkoreen-v20';
 const ASSETS_TO_CACHE = [
     '/parkoreen/',
     '/parkoreen/index.html',
@@ -23,7 +23,24 @@ const ASSETS_TO_CACHE = [
     '/parkoreen/assets/js/style.js',
     '/parkoreen/assets/js/exportImport.js',
     '/parkoreen/runtime.js',
-    '/parkoreen/manifest.json'
+    '/parkoreen/manifest.json',
+    // Icons
+    '/parkoreen/assets/png/icons/icon-play-32.png',
+    '/parkoreen/assets/png/icons/icon-play-64.png',
+    '/parkoreen/assets/png/icons/icon-play-128.png',
+    '/parkoreen/assets/png/icons/icon-play-512.png',
+    '/parkoreen/assets/png/icons/icon-dashboard-32.png',
+    '/parkoreen/assets/png/icons/icon-dashboard-64.png',
+    '/parkoreen/assets/png/icons/icon-dashboard-128.png',
+    '/parkoreen/assets/png/icons/icon-editor-32.png',
+    '/parkoreen/assets/png/icons/icon-editor-64.png',
+    '/parkoreen/assets/png/icons/icon-editor-128.png',
+    '/parkoreen/assets/png/icons/icon-join-32.png',
+    '/parkoreen/assets/png/icons/icon-join-64.png',
+    '/parkoreen/assets/png/icons/icon-join-128.png',
+    '/parkoreen/assets/png/icons/icon-settings-32.png',
+    '/parkoreen/assets/png/icons/icon-settings-64.png',
+    '/parkoreen/assets/png/icons/icon-settings-128.png'
 ];
 
 // Install event - cache assets
