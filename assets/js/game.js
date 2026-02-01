@@ -227,7 +227,12 @@ class Player {
         const box = this.getGroundTouchbox();
         
         for (const obj of world.objects) {
+            // Skip objects without collision
             if (!obj.collision) continue;
+            
+            // IMPORTANT: Objects acting as spikes should NOT block player movement
+            // They only use the hurt touchbox for damage detection
+            if (obj.actingType === 'spike') continue;
             
             if (this.boxIntersects(box, obj)) {
                 collisions.push(obj);
@@ -240,19 +245,16 @@ class Player {
     checkHurtCollisions(world) {
         if (!world || !world.objects) return;
         
-        // Use the full player hitbox for spike detection, not the smaller hurt touchbox
-        // This ensures spikes hurt even when standing on them
-        const playerBox = {
-            x: this.x,
-            y: this.y,
-            width: this.width,
-            height: this.height
-        };
+        // Use the hurt touchbox (smaller, centered) for spike detection
+        // Now that spikes don't block player movement, the player can enter the spike area
+        // and the hurt touchbox can properly detect collision
+        const hurtBox = this.getHurtTouchbox();
         
         for (const obj of world.objects) {
             // Only check objects that act as spikes and have collision enabled
+            // For spikes, "collision" means "can hurt player" not "blocks movement"
             if (obj.actingType === 'spike' && obj.collision !== false) {
-                if (this.boxIntersects(playerBox, obj)) {
+                if (this.boxIntersects(hurtBox, obj)) {
                     this.die();
                     return;
                 }
