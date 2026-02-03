@@ -338,11 +338,11 @@ class Player {
         
         // Draw name
         ctx.fillStyle = 'white';
-        ctx.font = '10px sans-serif';
+        ctx.font = '14px "Parkoreen Game", monospace';
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
         ctx.shadowBlur = 2;
-        ctx.fillText(this.name, screenX + this.width / 2, screenY + this.height + 14);
+        ctx.fillText(this.name, screenX + this.width / 2, screenY + this.height + 16);
         ctx.shadowBlur = 0;
     }
 }

@@ -151,6 +151,48 @@ function verifyToken(token) {
     }
 }
 
+// Generate a unique, deterministic player color from user ID
+// Uses HSL to ensure vibrant, distinguishable colors
+function generatePlayerColorFromId(userId) {
+    // Simple hash function to get a number from the user ID
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+        const char = userId.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Use the hash to generate HSL values
+    // Hue: full spectrum (0-360)
+    // Saturation: 60-80% for vibrant colors
+    // Lightness: 55-70% for good visibility
+    const hue = Math.abs(hash % 360);
+    const saturation = 60 + Math.abs((hash >> 8) % 20); // 60-80%
+    const lightness = 55 + Math.abs((hash >> 16) % 15);  // 55-70%
+    
+    // Convert HSL to hex
+    const h = hue / 360;
+    const s = saturation / 100;
+    const l = lightness / 100;
+    
+    const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+    };
+    
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const r = Math.round(hue2rgb(p, q, h + 1/3) * 255);
+    const g = Math.round(hue2rgb(p, q, h) * 255);
+    const b = Math.round(hue2rgb(p, q, h - 1/3) * 255);
+    
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
 function jsonResponse(data, status = 200) {
     return new Response(JSON.stringify(data), {
         status,
@@ -200,12 +242,14 @@ async function handleSignup(request, env) {
     // Create user
     const userId = generateId();
     const passwordHash = await hashPassword(password);
+    const color = generatePlayerColorFromId(userId);
     
     const user = {
         id: userId,
         name,
         username,
         passwordHash,
+        color,
         createdAt: new Date().toISOString()
     };
 
@@ -218,7 +262,7 @@ async function handleSignup(request, env) {
     await env.SESSIONS.put(`token:${token}`, userId, { expirationTtl: TOKEN_EXPIRY / 1000 });
 
     return jsonResponse({
-        user: { id: userId, name, username },
+        user: { id: userId, name, username, color },
         token
     });
 }
@@ -250,12 +294,22 @@ async function handleLogin(request, env) {
         return errorResponse('Invalid username or password', 401);
     }
 
+    // For existing users without a color, generate one deterministically from their ID
+    // This ensures the same color every time
+    const color = user.color || generatePlayerColorFromId(user.id);
+    
+    // If user didn't have a color, save it
+    if (!user.color) {
+        user.color = color;
+        await env.USERS.put(`user:${userId}`, JSON.stringify(user));
+    }
+
     // Generate token
     const token = generateToken(userId);
     await env.SESSIONS.put(`token:${token}`, userId, { expirationTtl: TOKEN_EXPIRY / 1000 });
 
     return jsonResponse({
-        user: { id: user.id, name: user.name, username: user.username },
+        user: { id: user.id, name: user.name, username: user.username, color },
         token
     });
 }
@@ -481,7 +535,7 @@ class GameRoom {
             user: null,
             roomCode: null,
             isHost: false,
-            playerColor: this.generatePlayerColor()
+            playerColor: null // Will be set during auth from user's persistent color
         };
 
         this.sessions.set(sessionId, session);
@@ -498,15 +552,6 @@ class GameRoom {
         webSocket.addEventListener('close', () => {
             this.handleDisconnect(session);
         });
-    }
-
-    generatePlayerColor() {
-        const colors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-            '#F8B500', '#00CED1', '#FF69B4', '#32CD32', '#FFD700'
-        ];
-        return colors[Math.floor(Math.random() * colors.length)];
     }
 
     async handleMessage(session, data) {
@@ -554,7 +599,11 @@ class GameRoom {
 
         const user = JSON.parse(userData);
         session.userId = payload.userId;
-        session.user = { id: user.id, name: user.name, username: user.username };
+        
+        // Get or generate user color
+        const color = user.color || generatePlayerColorFromId(user.id);
+        session.user = { id: user.id, name: user.name, username: user.username, color };
+        session.playerColor = color; // Use user's persistent color
 
         this.send(session, { type: 'auth_success' });
     }
@@ -687,13 +736,12 @@ class GameRoom {
 
         const room = JSON.parse(roomData);
         
-        // Assign player color
+        // Use the user's persistent color (already set during auth)
         session.roomCode = data.roomCode;
-        session.playerColor = this.generatePlayerColor();
         session.isHost = room.hostUserId === session.userId;
 
-        // Get existing players in room
-        const playersInRoom = this.getPlayersInRoom(data.roomCode);
+        // Get existing players in room (excluding self)
+        const playersInRoom = this.getPlayersInRoom(data.roomCode).filter(p => p.id !== session.id);
 
         // Notify others
         this.broadcastToRoom(data.roomCode, {
