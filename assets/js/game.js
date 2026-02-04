@@ -95,9 +95,11 @@ class Player {
             shift: false
         };
         
-        // Touchboxes
-        this.groundTouchbox = { x: 0, y: 0, width: PLAYER_SIZE, height: PLAYER_SIZE };
-        this.hurtTouchbox = { x: 4, y: 4, width: PLAYER_SIZE - 8, height: PLAYER_SIZE - 8 };
+        // Touchboxes - positioned lower on the player sprite
+        // Ground touchbox: used for ground collision (slightly smaller, lower)
+        this.groundTouchbox = { x: 4, y: 8, width: PLAYER_SIZE - 8, height: PLAYER_SIZE - 8 };
+        // Hurt touchbox: used for spike damage detection (smaller, even lower)
+        this.hurtTouchbox = { x: 8, y: 12, width: PLAYER_SIZE - 16, height: PLAYER_SIZE - 14 };
         
         this.isLocal = false;
         this.isDead = false;
@@ -232,14 +234,34 @@ class Player {
     checkCollisions(world, direction) {
         const collisions = [];
         const box = this.getGroundTouchbox();
+        const spikeMode = world?.spikeTouchbox || 'normal';
         
         for (const obj of world.objects) {
             // Skip objects without collision
             if (!obj.collision) continue;
             
-            // IMPORTANT: Objects acting as spikes should NOT block player movement
-            // They only use the hurt touchbox for damage detection
-            if (obj.actingType === 'spike') continue;
+            // Handle spike ground collision based on mode
+            if (obj.actingType === 'spike') {
+                // In 'air' mode, spikes have no interaction
+                if (spikeMode === 'air') continue;
+                
+                // In 'full' mode, spikes don't act as ground
+                if (spikeMode === 'full') continue;
+                
+                // For normal, tip, ground, flag modes - check flat part collision
+                if (this.boxIntersects(box, obj)) {
+                    const flatBox = this.getSpikeFlat(obj);
+                    if (this.boxIntersects(box, flatBox)) {
+                        // Flat part acts as ground in normal, tip, ground, flag modes
+                        collisions.push({ ...obj, ...flatBox });
+                    }
+                    // In 'ground' mode, entire spike acts as ground
+                    else if (spikeMode === 'ground') {
+                        collisions.push(obj);
+                    }
+                }
+                continue;
+            }
             
             if (this.boxIntersects(box, obj)) {
                 collisions.push(obj);
@@ -252,20 +274,104 @@ class Player {
     checkHurtCollisions(world) {
         if (!world || !world.objects) return;
         
-        // Use the hurt touchbox (smaller, centered) for spike detection
-        // Now that spikes don't block player movement, the player can enter the spike area
-        // and the hurt touchbox can properly detect collision
         const hurtBox = this.getHurtTouchbox();
+        const spikeMode = world?.spikeTouchbox || 'normal';
         
         for (const obj of world.objects) {
             // Only check objects that act as spikes and have collision enabled
-            // For spikes, "collision" means "can hurt player" not "blocks movement"
             if (obj.actingType === 'spike' && obj.collision !== false) {
-                if (this.boxIntersects(hurtBox, obj)) {
-                    this.die();
-                    return;
+                // In 'air', 'ground', or 'flag' mode, spikes don't damage
+                if (spikeMode === 'air' || spikeMode === 'ground' || spikeMode === 'flag') continue;
+                
+                // In 'full' mode, any contact with spike = damage
+                if (spikeMode === 'full') {
+                    if (this.boxIntersects(hurtBox, obj)) {
+                        this.die();
+                        return;
+                    }
+                    continue;
+                }
+                
+                // In 'normal' mode, flat part is safe, rest damages
+                if (spikeMode === 'normal') {
+                    const flatBox = this.getSpikeFlat(obj);
+                    const dangerBox = this.getSpikeDanger(obj);
+                    
+                    // Check if touching danger zone (not in flat area)
+                    if (this.boxIntersects(hurtBox, dangerBox) && !this.boxIntersects(hurtBox, flatBox)) {
+                        this.die();
+                        return;
+                    }
+                    continue;
+                }
+                
+                // In 'tip' mode, only the very tip damages
+                if (spikeMode === 'tip') {
+                    const tipBox = this.getSpikeTip(obj);
+                    if (this.boxIntersects(hurtBox, tipBox)) {
+                        this.die();
+                        return;
+                    }
+                    continue;
                 }
             }
+        }
+    }
+    
+    // Get the flat (base) part of a spike based on rotation
+    getSpikeFlat(spike) {
+        const rotation = spike.rotation || 0;
+        const flatDepth = spike.height * 0.25; // 25% of spike is flat base
+        
+        switch (rotation) {
+            case 0: // Tip up, flat at bottom
+                return { x: spike.x, y: spike.y + spike.height - flatDepth, width: spike.width, height: flatDepth };
+            case 90: // Tip right, flat at left
+                return { x: spike.x, y: spike.y, width: flatDepth, height: spike.height };
+            case 180: // Tip down, flat at top
+                return { x: spike.x, y: spike.y, width: spike.width, height: flatDepth };
+            case 270: // Tip left, flat at right
+                return { x: spike.x + spike.width - flatDepth, y: spike.y, width: flatDepth, height: spike.height };
+            default:
+                return { x: spike.x, y: spike.y + spike.height - flatDepth, width: spike.width, height: flatDepth };
+        }
+    }
+    
+    // Get the danger zone of a spike (everything except flat)
+    getSpikeDanger(spike) {
+        const rotation = spike.rotation || 0;
+        const flatDepth = spike.height * 0.25;
+        
+        switch (rotation) {
+            case 0: // Tip up
+                return { x: spike.x, y: spike.y, width: spike.width, height: spike.height - flatDepth };
+            case 90: // Tip right
+                return { x: spike.x + flatDepth, y: spike.y, width: spike.width - flatDepth, height: spike.height };
+            case 180: // Tip down
+                return { x: spike.x, y: spike.y + flatDepth, width: spike.width, height: spike.height - flatDepth };
+            case 270: // Tip left
+                return { x: spike.x, y: spike.y, width: spike.width - flatDepth, height: spike.height };
+            default:
+                return { x: spike.x, y: spike.y, width: spike.width, height: spike.height - flatDepth };
+        }
+    }
+    
+    // Get only the tip of a spike (top 20%)
+    getSpikeTip(spike) {
+        const rotation = spike.rotation || 0;
+        const tipDepth = spike.height * 0.2; // Top 20% is the tip
+        
+        switch (rotation) {
+            case 0: // Tip up
+                return { x: spike.x + spike.width * 0.25, y: spike.y, width: spike.width * 0.5, height: tipDepth };
+            case 90: // Tip right
+                return { x: spike.x + spike.width - tipDepth, y: spike.y + spike.height * 0.25, width: tipDepth, height: spike.height * 0.5 };
+            case 180: // Tip down
+                return { x: spike.x + spike.width * 0.25, y: spike.y + spike.height - tipDepth, width: spike.width * 0.5, height: tipDepth };
+            case 270: // Tip left
+                return { x: spike.x, y: spike.y + spike.height * 0.25, width: tipDepth, height: spike.height * 0.5 };
+            default:
+                return { x: spike.x + spike.width * 0.25, y: spike.y, width: spike.width * 0.5, height: tipDepth };
         }
     }
 
@@ -740,6 +846,15 @@ class World {
         this.playerSpeed = DEFAULT_MOVE_SPEED; // Horizontal movement speed (default: 5)
         this.jumpForce = DEFAULT_JUMP_FORCE;   // Jump force/height (default: -14, negative = upward)
         this.gravity = DEFAULT_GRAVITY;         // Gravity strength (default: 0.8)
+        
+        // Spike touchbox mode
+        // 'full' - Entire spike damages player
+        // 'normal' - Flat part = ground, rest = damage (default)
+        // 'tip' - Only spike tip damages, flat = ground, middle = nothing
+        // 'ground' - Entire spike acts as ground (no damage)
+        // 'flag' - Only flat part acts as ground, rest = air
+        // 'air' - No interaction at all
+        this.spikeTouchbox = 'normal';
     }
 
     addObject(obj) {
@@ -847,7 +962,9 @@ class World {
             // Physics settings
             playerSpeed: this.playerSpeed,
             jumpForce: this.jumpForce,
-            gravity: this.gravity
+            gravity: this.gravity,
+            // Spike settings
+            spikeTouchbox: this.spikeTouchbox
         };
     }
 
@@ -868,6 +985,10 @@ class World {
         this.playerSpeed = (typeof data.playerSpeed === 'number' && data.playerSpeed > 0) ? data.playerSpeed : DEFAULT_MOVE_SPEED;
         this.jumpForce = (typeof data.jumpForce === 'number' && data.jumpForce < 0) ? data.jumpForce : DEFAULT_JUMP_FORCE;
         this.gravity = (typeof data.gravity === 'number' && data.gravity > 0) ? data.gravity : DEFAULT_GRAVITY;
+        
+        // Spike touchbox mode
+        const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
+        this.spikeTouchbox = validSpikeModes.includes(data.spikeTouchbox) ? data.spikeTouchbox : 'normal';
         
         if (data.objects) {
             for (const objData of data.objects) {

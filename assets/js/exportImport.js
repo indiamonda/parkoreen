@@ -21,7 +21,8 @@ const PKRN_DEFAULTS = {
     dieLineY: 2000,
     playerSpeed: 5,
     jumpForce: -14,
-    gravity: 0.8
+    gravity: 0.8,
+    spikeTouchbox: 'normal'
 };
 
 // ============================================
@@ -103,7 +104,9 @@ class ExportManager {
                 // Physics settings
                 playerSpeed: world.playerSpeed,
                 jumpForce: world.jumpForce,
-                gravity: world.gravity
+                gravity: world.gravity,
+                // Spike settings
+                spikeTouchbox: world.spikeTouchbox
             },
             objects: world.objects.map(obj => this.serializeObject(obj))
         };
@@ -279,6 +282,9 @@ class ImportManager {
             playerSpeed: getNumber(settings.playerSpeed, PKRN_DEFAULTS.playerSpeed, v => v > 0),
             jumpForce: getNumber(settings.jumpForce, PKRN_DEFAULTS.jumpForce, v => v < 0),
             gravity: getNumber(settings.gravity, PKRN_DEFAULTS.gravity, v => v > 0),
+            // Spike settings
+            spikeTouchbox: ['full', 'normal', 'tip', 'ground', 'flag', 'air'].includes(settings.spikeTouchbox) 
+                ? settings.spikeTouchbox : PKRN_DEFAULTS.spikeTouchbox,
             objects: (data.objects || []).map(obj => this.deserializeObject(obj))
         };
     }

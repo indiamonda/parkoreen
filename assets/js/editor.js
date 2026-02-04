@@ -241,149 +241,210 @@ class Editor {
                     </button>
                 </div>
                 
-                <div class="config-section">
-                    <div class="config-section-title">Map Info</div>
-                    <div class="form-group">
-                        <label class="form-label">Map Name</label>
-                        <input type="text" class="form-input" id="config-map-name" placeholder="Enter map name">
+                <div class="config-section collapsible expanded">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Map Info</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
-                </div>
-                
-                <div class="config-section">
-                    <div class="config-section-title">Theme</div>
-                    <div class="form-group">
-                        <label class="form-label">Background</label>
-                        <select class="form-select" id="config-background">
-                            <option value="sky">Sky</option>
-                            <option value="galaxy">Galaxy</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Default Block Color</label>
-                        <div class="color-picker-option">
-                            <div class="color-preview" id="config-block-color-preview" style="background: #787878"></div>
-                            <input type="text" class="form-input color-input" id="config-block-color" value="#787878">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Default Spike Color</label>
-                        <div class="color-picker-option">
-                            <div class="color-preview" id="config-spike-color-preview" style="background: #c45a3f"></div>
-                            <input type="text" class="form-input color-input" id="config-spike-color" value="#c45a3f">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Default Text Color</label>
-                        <div class="color-picker-option">
-                            <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
-                            <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Map Name</label>
+                            <input type="text" class="form-input" id="config-map-name" placeholder="Enter map name">
                         </div>
                     </div>
                 </div>
                 
-                <div class="config-section">
-                    <div class="config-section-title">Player</div>
-                    <div class="form-group">
-                        <label class="form-label">Jumps</label>
-                        <select class="form-select" id="config-jumps">
-                            <option value="set">Set Number</option>
-                            <option value="infinite">Infinite</option>
-                        </select>
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Theme</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
-                    <div class="form-group" id="config-jumps-number-group">
-                        <label class="form-label">Number of Jumps</label>
-                        <input type="number" class="form-input" id="config-jumps-number" min="0" value="1">
-                    </div>
-                    <div class="form-group" id="config-airjump-group">
-                        <label class="form-label">Additional Airjump</label>
-                        <label class="toggle">
-                            <input type="checkbox" id="config-airjump">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Collide with Each Other</label>
-                        <label class="toggle">
-                            <input type="checkbox" id="config-collide" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="config-section">
-                    <div class="config-section-title">Physics</div>
-                    <div class="form-group">
-                        <label class="form-label">Player Speed</label>
-                        <input type="number" class="form-input" id="config-player-speed" min="0.1" step="0.5" value="5" title="Horizontal movement speed (default: 5)">
-                        <small style="color: #888; font-size: 11px;">Default: 5 - Higher = faster movement</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Jump Height</label>
-                        <input type="number" class="form-input" id="config-jump-force" min="-50" max="-1" step="0.5" value="-14" title="Jump force (default: -14, negative = upward)">
-                        <small style="color: #888; font-size: 11px;">Default: -14 - Lower (more negative) = higher jump</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Gravity</label>
-                        <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.8" title="Gravity strength (default: 0.8)">
-                        <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall/jump speed</small>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Background</label>
+                            <select class="form-select" id="config-background">
+                                <option value="sky">Sky</option>
+                                <option value="galaxy">Galaxy</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Default Block Color</label>
+                            <div class="color-picker-option">
+                                <div class="color-preview" id="config-block-color-preview" style="background: #787878"></div>
+                                <input type="text" class="form-input color-input" id="config-block-color" value="#787878">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Default Spike Color</label>
+                            <div class="color-picker-option">
+                                <div class="color-preview" id="config-spike-color-preview" style="background: #c45a3f"></div>
+                                <input type="text" class="form-input color-input" id="config-spike-color" value="#c45a3f">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Default Text Color</label>
+                            <div class="color-picker-option">
+                                <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
+                                <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="config-section">
-                    <div class="config-section-title">World</div>
-                    <div class="form-group">
-                        <label class="form-label">Death Line Y Position</label>
-                        <input type="number" class="form-input" id="config-die-line-y" value="2000" title="Players die below this Y position (void death)">
-                        <small style="color: #888; font-size: 11px;">Players falling below this line will die</small>
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Player</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Jumps</label>
+                            <select class="form-select" id="config-jumps">
+                                <option value="set">Set Number</option>
+                                <option value="infinite">Infinite</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="config-jumps-number-group">
+                            <label class="form-label">Number of Jumps</label>
+                            <input type="number" class="form-input" id="config-jumps-number" min="0" value="1">
+                        </div>
+                        <div class="form-group" id="config-airjump-group">
+                            <label class="form-label">Additional Airjump</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-airjump">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Collide with Each Other</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-collide" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="config-section">
-                    <div class="config-section-title">Export & Import</div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary" id="btn-export" style="flex: 1;">
-                            <span class="material-symbols-outlined">download</span>
-                            Export
-                        </button>
-                        <button class="btn btn-secondary" id="btn-import" style="flex: 1;">
-                            <span class="material-symbols-outlined">upload</span>
-                            Import
-                        </button>
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Physics</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
-                    <input type="file" id="import-file" accept=".pkrn" style="display: none;">
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Player Speed</label>
+                            <input type="number" class="form-input" id="config-player-speed" min="0.1" step="0.5" value="5" title="Horizontal movement speed (default: 5)">
+                            <small style="color: #888; font-size: 11px;">Default: 5 - Higher = faster movement</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Jump Height</label>
+                            <input type="number" class="form-input" id="config-jump-force" min="-50" max="-1" step="0.5" value="-14" title="Jump force (default: -14, negative = upward)">
+                            <small style="color: #888; font-size: 11px;">Default: -14 - Lower (more negative) = higher jump</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gravity</label>
+                            <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.8" title="Gravity strength (default: 0.8)">
+                            <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall/jump speed</small>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="config-section">
-                    <div class="config-section-title">Host Game</div>
-                    <div class="form-group">
-                        <label class="form-label">Max Player Amount</label>
-                        <input type="number" class="form-input" id="config-max-players" min="1" max="999999" value="10">
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Spike Behavior</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Use Password</label>
-                        <label class="toggle">
-                            <input type="checkbox" id="config-use-password">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Spike Touchbox Mode</label>
+                            <select class="form-select" id="config-spike-touchbox">
+                                <option value="full">Full Spike</option>
+                                <option value="normal" selected>Normal Spike</option>
+                                <option value="tip">Tip Spike</option>
+                                <option value="ground">Ground</option>
+                                <option value="flag">Flag</option>
+                                <option value="air">Air</option>
+                            </select>
+                            <div id="spike-touchbox-description" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
+                                <strong style="color: #fff;">Normal Spike:</strong> The flat base of the spike acts as solid ground. All other parts will damage the player on contact.
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group hidden" id="config-password-group">
-                        <label class="form-label">Custom Password</label>
+                </div>
+                
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">World</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Death Line Y Position</label>
+                            <input type="number" class="form-input" id="config-die-line-y" value="2000" title="Players die below this Y position (void death)">
+                            <small style="color: #888; font-size: 11px;">Players falling below this line will die</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Export & Import</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" class="form-input" id="config-password" style="flex: 1;">
-                            <button class="btn btn-icon btn-secondary" id="btn-regenerate-password" title="Regenerate">
-                                <span class="material-symbols-outlined">replay</span>
+                            <button class="btn btn-secondary" id="btn-export" style="flex: 1;">
+                                <span class="material-symbols-outlined">download</span>
+                                Export
+                            </button>
+                            <button class="btn btn-secondary" id="btn-import" style="flex: 1;">
+                                <span class="material-symbols-outlined">upload</span>
+                                Import
                             </button>
                         </div>
+                        <input type="file" id="import-file" accept=".pkrn" style="display: none;">
                     </div>
-                    <button class="btn btn-accent" id="btn-host-game" style="width: 100%; margin-top: 8px;">
-                        <span class="material-symbols-outlined">videogame_asset</span>
-                        Host Game
-                    </button>
+                </div>
+                
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Host Game</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Max Player Amount</label>
+                            <input type="number" class="form-input" id="config-max-players" min="1" max="999999" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Use Password</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-use-password">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group hidden" id="config-password-group">
+                            <label class="form-label">Custom Password</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" class="form-input" id="config-password" style="flex: 1;">
+                                <button class="btn btn-icon btn-secondary" id="btn-regenerate-password" title="Regenerate">
+                                    <span class="material-symbols-outlined">replay</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-accent" id="btn-host-game" style="width: 100%; margin-top: 8px;">
+                            <span class="material-symbols-outlined">videogame_asset</span>
+                            Host Game
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
         document.body.appendChild(configPanel);
         this.ui.configPanel = configPanel;
+        
+        // Setup collapsible sections
+        this.setupCollapsibleSections();
 
         // Layers Panel
         const layersPanel = document.createElement('div');
@@ -886,6 +947,13 @@ class Editor {
             const value = parseFloat(e.target.value);
             this.world.gravity = (value > 0) ? value : 0.8;
             e.target.value = this.world.gravity;
+            this.triggerMapChange();
+        });
+
+        // Spike touchbox mode
+        document.getElementById('config-spike-touchbox').addEventListener('change', (e) => {
+            this.world.spikeTouchbox = e.target.value;
+            this.updateSpikeTouchboxDescription(e.target.value);
             this.triggerMapChange();
         });
 
@@ -2158,6 +2226,42 @@ class Editor {
         
         const gravity = document.getElementById('config-gravity');
         if (gravity) gravity.value = this.world.gravity || 0.8;
+        
+        // Spike touchbox
+        const spikeTouchbox = document.getElementById('config-spike-touchbox');
+        if (spikeTouchbox) {
+            spikeTouchbox.value = this.world.spikeTouchbox || 'normal';
+            this.updateSpikeTouchboxDescription(spikeTouchbox.value);
+        }
+    }
+    
+    updateSpikeTouchboxDescription(mode) {
+        const descEl = document.getElementById('spike-touchbox-description');
+        if (!descEl) return;
+        
+        const descriptions = {
+            'full': '<strong style="color: #ff6b6b;">Full Spike:</strong> The entire spike is dangerous. Any contact with the spike will damage the player. There is no safe zone.',
+            'normal': '<strong style="color: #ffd93d;">Normal Spike:</strong> The flat base of the spike acts as solid ground. All other parts will damage the player on contact. This is the default behavior.',
+            'tip': '<strong style="color: #6bcb77;">Tip Spike:</strong> Only the very peak of the spike is dangerous. The flat base acts as ground, and the middle section has no collision at all.',
+            'ground': '<strong style="color: #4d96ff;">Ground:</strong> The spike acts completely as solid ground. It will not damage the player at all - useful for decorative spikes.',
+            'flag': '<strong style="color: #9b59b6;">Flag:</strong> Only the flat base acts as solid ground. The rest of the spike has no collision - player can pass through but won\'t take damage.',
+            'air': '<strong style="color: #888;">Air:</strong> The spike has no collision at all. Players pass through completely without any interaction.'
+        };
+        
+        descEl.innerHTML = descriptions[mode] || descriptions['normal'];
+    }
+    
+    setupCollapsibleSections() {
+        const sections = document.querySelectorAll('.config-section.collapsible');
+        
+        sections.forEach(section => {
+            const header = section.querySelector('.config-section-header');
+            if (!header) return;
+            
+            header.addEventListener('click', () => {
+                section.classList.toggle('expanded');
+            });
+        });
     }
 
     // ========================================

@@ -837,6 +837,48 @@ a:hover {
     border-bottom: none;
 }
 
+/* Collapsible section styles */
+.config-section.collapsible {
+    padding: 0;
+}
+
+.config-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+}
+
+.config-section-header:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.config-section-arrow {
+    font-size: 20px;
+    color: var(--text-muted);
+    transition: transform 0.25s ease;
+}
+
+.config-section.collapsible.expanded .config-section-arrow {
+    transform: rotate(180deg);
+}
+
+.config-section-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    padding: 0 var(--spacing-md);
+}
+
+.config-section.collapsible.expanded .config-section-content {
+    max-height: 1000px;
+    padding: 0 var(--spacing-md) var(--spacing-md);
+    transition: max-height 0.4s ease-in, padding 0.3s ease-in;
+}
+
 .config-section-title {
     font-size: 0.75rem;
     font-weight: 600;
