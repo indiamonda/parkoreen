@@ -409,10 +409,19 @@
             // Leave button
             document.getElementById('hud-leave').addEventListener('click', async () => {
                 if (isHost) {
-                    const confirmed = await ModalManager.confirm(
-                        'Leave Room',
-                        'Are you sure you want to kick everybody in the room?'
-                    );
+                    let confirmed = false;
+                    try {
+                        if (window.ModalManager && typeof window.ModalManager.confirm === 'function') {
+                            confirmed = await window.ModalManager.confirm(
+                                'Leave Room',
+                                'Are you sure you want to kick everybody in the room?'
+                            );
+                        } else {
+                            confirmed = confirm('Are you sure you want to kick everybody in the room?');
+                        }
+                    } catch (e) {
+                        confirmed = confirm('Are you sure you want to kick everybody in the room?');
+                    }
                     
                     if (confirmed) {
                         if (window.MultiplayerManager?.leaveRoom) {
@@ -430,7 +439,7 @@
 
             // Settings button
             document.getElementById('hud-settings').addEventListener('click', () => {
-                document.getElementById('settings-panel')?.classList.toggle('hidden');
+                document.getElementById('settings-panel')?.classList.toggle('active');
             });
 
             // Chat button

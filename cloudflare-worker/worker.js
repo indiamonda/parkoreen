@@ -151,7 +151,7 @@ function verifyToken(token) {
     }
 }
 
-// Generate a unique, deterministic player color from user ID
+// Generate a unique, deterministic player color from user ID (used as fallback)
 // Uses HSL to ensure vibrant, distinguishable colors
 function generatePlayerColorFromId(userId) {
     // Simple hash function to get a number from the user ID
@@ -170,10 +170,14 @@ function generatePlayerColorFromId(userId) {
     const saturation = 60 + Math.abs((hash >> 8) % 20); // 60-80%
     const lightness = 55 + Math.abs((hash >> 16) % 15);  // 55-70%
     
-    // Convert HSL to hex
-    const h = hue / 360;
-    const s = saturation / 100;
-    const l = lightness / 100;
+    return hslToHex(hue, saturation, lightness);
+}
+
+// Convert HSL to hex color
+function hslToHex(h, s, l) {
+    const hNorm = h / 360;
+    const sNorm = s / 100;
+    const lNorm = l / 100;
     
     const hue2rgb = (p, q, t) => {
         if (t < 0) t += 1;
@@ -184,13 +188,121 @@ function generatePlayerColorFromId(userId) {
         return p;
     };
     
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    const r = Math.round(hue2rgb(p, q, h + 1/3) * 255);
-    const g = Math.round(hue2rgb(p, q, h) * 255);
-    const b = Math.round(hue2rgb(p, q, h - 1/3) * 255);
+    const q = lNorm < 0.5 ? lNorm * (1 + sNorm) : lNorm + sNorm - lNorm * sNorm;
+    const p = 2 * lNorm - q;
+    const r = Math.round(hue2rgb(p, q, hNorm + 1/3) * 255);
+    const g = Math.round(hue2rgb(p, q, hNorm) * 255);
+    const b = Math.round(hue2rgb(p, q, hNorm - 1/3) * 255);
     
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// Convert hex color to HSL
+function hexToHsl(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return { h: 0, s: 70, l: 60 };
+    
+    const r = parseInt(result[1], 16) / 255;
+    const g = parseInt(result[2], 16) / 255;
+    const b = parseInt(result[3], 16) / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    
+    if (max === min) {
+        h = s = 0;
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+    
+    return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+// Calculate the minimum hue distance between a hue and all existing hues
+function getMinHueDistance(hue, existingHues) {
+    if (existingHues.length === 0) return 360;
+    
+    let minDist = 360;
+    for (const existing of existingHues) {
+        // Hue is circular, so we need to consider wrap-around
+        let dist = Math.abs(hue - existing);
+        if (dist > 180) dist = 360 - dist;
+        if (dist < minDist) minDist = dist;
+    }
+    return minDist;
+}
+
+// Generate an optimal player color that's as different as possible from existing colors
+// Prioritizes hue differences, only adjusts saturation/lightness if hue difference < 25
+function generateOptimalPlayerColor(existingColors) {
+    // If no existing colors, return a nice default
+    if (!existingColors || existingColors.length === 0) {
+        return hslToHex(Math.random() * 360, 70, 60);
+    }
+    
+    // Convert existing colors to HSL
+    const existingHsl = existingColors.map(c => hexToHsl(c));
+    const existingHues = existingHsl.map(c => c.h);
+    
+    // Find the best hue by checking evenly spaced candidates
+    let bestHue = 0;
+    let bestHueDistance = 0;
+    
+    // Check 72 candidate hues (every 5 degrees)
+    for (let candidateHue = 0; candidateHue < 360; candidateHue += 5) {
+        const minDist = getMinHueDistance(candidateHue, existingHues);
+        if (minDist > bestHueDistance) {
+            bestHueDistance = minDist;
+            bestHue = candidateHue;
+        }
+    }
+    
+    // Default saturation and lightness
+    let saturation = 70;
+    let lightness = 60;
+    
+    // If the best hue distance is less than 25, we need to also vary saturation/lightness
+    if (bestHueDistance < 25) {
+        // Find the closest existing color in terms of hue
+        const closeColors = existingHsl.filter(c => {
+            let dist = Math.abs(bestHue - c.h);
+            if (dist > 180) dist = 360 - dist;
+            return dist < 30;
+        });
+        
+        if (closeColors.length > 0) {
+            // Get average saturation and lightness of close colors
+            const avgSat = closeColors.reduce((sum, c) => sum + c.s, 0) / closeColors.length;
+            const avgLight = closeColors.reduce((sum, c) => sum + c.l, 0) / closeColors.length;
+            
+            // Move saturation and lightness away from existing colors
+            // Try to be at least 15 units different in both
+            if (avgSat > 65) {
+                saturation = Math.max(45, avgSat - 20);
+            } else {
+                saturation = Math.min(90, avgSat + 20);
+            }
+            
+            if (avgLight > 58) {
+                lightness = Math.max(40, avgLight - 15);
+            } else {
+                lightness = Math.min(75, avgLight + 15);
+            }
+        }
+    }
+    
+    // Clamp values to ensure good visibility
+    saturation = Math.max(45, Math.min(90, saturation));
+    lightness = Math.max(40, Math.min(75, lightness));
+    
+    return hslToHex(bestHue, saturation, lightness);
 }
 
 function jsonResponse(data, status = 200) {
@@ -651,6 +763,9 @@ class GameRoom {
 
         session.roomCode = roomCode;
         session.isHost = true;
+        
+        // Host gets an optimal color (first player, so it'll be a random vibrant color)
+        session.playerColor = generateOptimalPlayerColor([]);
 
         this.send(session, {
             type: 'room_created',
@@ -700,6 +815,10 @@ class GameRoom {
 
         session.roomCode = data.roomCode;
         session.isHost = false;
+        
+        // Generate an optimal color that's different from existing players
+        const existingColors = playersInRoom.map(p => p.playerColor).filter(c => c);
+        session.playerColor = generateOptimalPlayerColor(existingColors);
 
         // Notify existing players
         this.broadcastToRoom(data.roomCode, {
@@ -736,12 +855,15 @@ class GameRoom {
 
         const room = JSON.parse(roomData);
         
-        // Use the user's persistent color (already set during auth)
         session.roomCode = data.roomCode;
         session.isHost = room.hostUserId === session.userId;
 
         // Get existing players in room (excluding self)
         const playersInRoom = this.getPlayersInRoom(data.roomCode).filter(p => p.id !== session.id);
+        
+        // Generate an optimal color that's different from existing players
+        const existingColors = playersInRoom.map(p => p.playerColor).filter(c => c);
+        session.playerColor = generateOptimalPlayerColor(existingColors);
 
         // Notify others
         this.broadcastToRoom(data.roomCode, {

@@ -265,8 +265,97 @@ class Editor {
                             <select class="form-select" id="config-background">
                                 <option value="sky">Sky</option>
                                 <option value="galaxy">Galaxy</option>
+                                <option value="custom">Custom</option>
                             </select>
                         </div>
+                        
+                        <!-- Custom Background Options -->
+                        <div id="custom-bg-options" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                            <div class="form-group">
+                                <label class="form-label">Upload Background</label>
+                                <div class="custom-bg-upload" id="custom-bg-dropzone" style="border: 2px dashed var(--surface-light); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: var(--text-muted);">upload_file</span>
+                                    <p style="margin: 8px 0 0; color: var(--text-muted); font-size: 12px;">Drop image, GIF, or video here<br>or click to browse</p>
+                                    <input type="file" id="custom-bg-file" accept="image/*,video/*" style="display: none;">
+                                </div>
+                                <div id="custom-bg-preview" class="hidden" style="margin-top: 8px; position: relative;">
+                                    <img id="custom-bg-preview-img" src="" style="width: 100%; border-radius: 6px; display: none;">
+                                    <video id="custom-bg-preview-video" src="" style="width: 100%; border-radius: 6px; display: none;" muted loop></video>
+                                    <button class="btn btn-icon btn-danger" id="custom-bg-remove" style="position: absolute; top: 4px; right: 4px; width: 24px; height: 24px;">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">close</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Video/GIF Options -->
+                            <div id="custom-bg-video-options" class="hidden">
+                                <div class="form-group">
+                                    <label class="form-label">Play Mode</label>
+                                    <select class="form-select" id="custom-bg-playmode">
+                                        <option value="once">Play Once</option>
+                                        <option value="loop" selected>Loop</option>
+                                        <option value="bounce">Bounce</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Loop/Bounce Amount (shown for loop and bounce) -->
+                                <div id="custom-bg-loop-options" class="form-group">
+                                    <label class="form-label">Loop Amount</label>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <select class="form-select" id="custom-bg-loop-type" style="flex: 1;">
+                                            <option value="infinite" selected>Infinite</option>
+                                            <option value="set">Set Number</option>
+                                        </select>
+                                        <input type="number" class="form-input" id="custom-bg-loop-count" min="1" value="1" style="width: 80px; display: none;">
+                                    </div>
+                                </div>
+                                
+                                <!-- End Type (shown for play once or limited loops) -->
+                                <div id="custom-bg-end-options" class="form-group hidden">
+                                    <label class="form-label">End Type</label>
+                                    <select class="form-select" id="custom-bg-endtype">
+                                        <option value="freeze" selected>Freeze at Last Frame</option>
+                                        <option value="replace">Replace with Another Background</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- End Background Upload (shown when replace is selected) -->
+                                <div id="custom-bg-end-upload" class="form-group hidden">
+                                    <label class="form-label">End Background</label>
+                                    <div class="custom-bg-upload" id="custom-bg-end-dropzone" style="border: 2px dashed var(--surface-light); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer;">
+                                        <span class="material-symbols-outlined" style="font-size: 24px; color: var(--text-muted);">upload_file</span>
+                                        <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 11px;">Upload end background</p>
+                                        <input type="file" id="custom-bg-end-file" accept="image/*,video/*" style="display: none;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Boolean Triggers -->
+                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface-light);">
+                                    <label class="form-label">Playback Options</label>
+                                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                        <div>
+                                            <span style="font-size: 13px;">Same Across Screens</span>
+                                            <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">All players see same frame</p>
+                                        </div>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="custom-bg-sync">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                        <div>
+                                            <span style="font-size: 13px;">Reverse</span>
+                                            <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Play backwards</p>
+                                        </div>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="custom-bg-reverse">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="form-group">
                             <label class="form-label">Default Block Color</label>
                             <div class="color-picker-option">
@@ -531,6 +620,7 @@ class Editor {
                 <div class="placement-option-btns">
                     <button class="placement-opt-btn active" data-fill="add">Add</button>
                     <button class="placement-opt-btn" data-fill="replace">Replace</button>
+                    <button class="placement-opt-btn" data-fill="overlap">Overlap</button>
                 </div>
             </div>
             
@@ -873,9 +963,23 @@ class Editor {
         // Background
         document.getElementById('config-background').addEventListener('change', (e) => {
             this.world.background = e.target.value;
+            
+            // Show/hide custom background options
+            const customOptions = document.getElementById('custom-bg-options');
+            if (e.target.value === 'custom') {
+                customOptions.classList.remove('hidden');
+            } else {
+                customOptions.classList.add('hidden');
+                // Disable custom background when switching away
+                this.world.customBackground.enabled = false;
+            }
+            
             this.updateBackground();
             this.triggerMapChange();
         });
+        
+        // Custom background file upload
+        this.setupCustomBackgroundListeners();
 
         // Default colors
         ['block', 'spike', 'text'].forEach(type => {
@@ -1254,25 +1358,30 @@ class Editor {
     // TOOL MANAGEMENT
     // ========================================
     setTool(tool) {
-        // Deactivate previous tool
-        if (this.currentTool === EditorTool.FLY) {
-            this.isFlying = false;
-            if (this.engine.localPlayer) {
-                this.engine.localPlayer.isFlying = false;
-                // Reset velocity when leaving fly mode
-                this.engine.localPlayer.vx = 0;
-                this.engine.localPlayer.vy = 0;
-                // Reset jumps so player can jump again
-                this.engine.localPlayer.resetJumps();
+        // Fly is a special mode that can be combined with other tools
+        if (tool === EditorTool.FLY) {
+            this.toggleFlyMode();
+            return;
+        }
+        
+        // If in placement mode, non-fly tools are disabled
+        if (this.placementMode !== PlacementMode.NONE) {
+            return;
+        }
+        
+        // Other tools are mutually exclusive
+        // Deactivate previous non-fly tool
+        if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
+            if (this.currentTool === EditorTool.ERASE) {
+                this.isErasing = false;
             }
         }
-        if (this.currentTool === EditorTool.ERASE) {
-            this.isErasing = false;
-        }
 
-        // Update button states
-        this.ui.toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
-            btn.classList.remove('active');
+        // Update non-fly button states
+        this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
+            if (btn.dataset.tool !== 'fly') {
+                btn.classList.remove('active');
+            }
         });
 
         if (tool === this.currentTool) {
@@ -1284,17 +1393,46 @@ class Editor {
             if (btn) btn.classList.add('active');
 
             // Activate tool
-            if (tool === EditorTool.FLY) {
-                this.isFlying = true;
-                if (this.engine.localPlayer) {
-                    this.engine.localPlayer.isFlying = true;
-                    // Reset velocity when entering fly mode
-                    this.engine.localPlayer.vx = 0;
-                    this.engine.localPlayer.vy = 0;
-                }
-            } else if (tool === EditorTool.ERASE) {
+            if (tool === EditorTool.ERASE) {
                 this.isErasing = true;
             }
+        }
+    }
+    
+    toggleFlyMode() {
+        this.isFlying = !this.isFlying;
+        
+        const flyBtn = this.ui.toolbar.querySelector('[data-tool="fly"]');
+        if (flyBtn) {
+            flyBtn.classList.toggle('active', this.isFlying);
+        }
+        
+        if (this.engine.localPlayer) {
+            this.engine.localPlayer.isFlying = this.isFlying;
+            // Reset velocity when toggling fly mode
+            this.engine.localPlayer.vx = 0;
+            this.engine.localPlayer.vy = 0;
+            
+            if (!this.isFlying) {
+                // Reset jumps so player can jump again when leaving fly mode
+                this.engine.localPlayer.resetJumps();
+            }
+        }
+    }
+    
+    // Disable non-fly tools (used when entering placement mode)
+    disableNonFlyTools() {
+        if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
+            if (this.currentTool === EditorTool.ERASE) {
+                this.isErasing = false;
+            }
+            this.currentTool = EditorTool.NONE;
+            
+            this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
+                if (btn.dataset.tool !== 'fly') {
+                    btn.classList.remove('active');
+                }
+            });
         }
     }
 
@@ -1357,6 +1495,9 @@ class Editor {
     startPlacement(mode) {
         this.closeAddMenu();
         this.placementMode = mode;
+        
+        // Disable non-fly tools when entering placement mode
+        this.disableNonFlyTools();
         
         // Update UI - change add button to close icon (click handler checks placementMode)
         this.ui.btnAdd.innerHTML = '<span class="material-symbols-outlined">close</span>';
@@ -1588,78 +1729,152 @@ class Editor {
     // ========================================
     // LAYERS
     // ========================================
+    
+    // Check if two objects overlap
+    objectsOverlap(a, b) {
+        return a.x < b.x + b.width &&
+               a.x + a.width > b.x &&
+               a.y < b.y + b.height &&
+               a.y + a.height > b.y;
+    }
+    
+    // Group overlapping objects together
+    getOverlapGroups() {
+        const objects = [...this.world.objects];
+        const groups = [];
+        const assigned = new Set();
+        
+        for (let i = 0; i < objects.length; i++) {
+            if (assigned.has(i)) continue;
+            
+            const group = [i];
+            assigned.add(i);
+            
+            // Find all objects that overlap with any object in the current group
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (let j = 0; j < objects.length; j++) {
+                    if (assigned.has(j)) continue;
+                    
+                    // Check if this object overlaps with any object in the group
+                    for (const idx of group) {
+                        if (this.objectsOverlap(objects[idx], objects[j])) {
+                            group.push(j);
+                            assigned.add(j);
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            groups.push(group);
+        }
+        
+        return groups;
+    }
+    
     updateLayersList() {
         const list = this.ui.layersList;
         list.innerHTML = '';
-
-        for (let i = this.world.objects.length - 1; i >= 0; i--) {
-            const obj = this.world.objects[i];
-            const item = document.createElement('div');
-            item.className = 'layer-item';
-            item.dataset.id = obj.id;
-            item.draggable = true;
+        
+        // Get overlap groups
+        const groups = this.getOverlapGroups();
+        
+        // Flatten groups in display order (reverse for top-to-bottom)
+        let colorIndex = 0;
+        
+        for (let g = groups.length - 1; g >= 0; g--) {
+            const group = groups[g];
+            const groupColor = colorIndex % 2 === 0 ? 'layer-color-light' : 'layer-color-dark';
+            colorIndex++;
             
-            item.innerHTML = `
-                <span class="material-symbols-outlined" style="cursor: grab; color: var(--text-muted);">drag_indicator</span>
-                <span class="layer-item-name">${obj.name}</span>
-                <div class="layer-item-actions">
-                    <button class="layer-btn layer-delete" data-delete="${obj.id}" title="Delete">
-                        <span class="material-symbols-outlined">delete</span>
-                    </button>
-                    <button class="layer-btn ${obj.layer === 2 ? 'active' : ''}" data-layer="2" data-obj="${obj.id}" title="On top of player">
-                        <span class="material-symbols-outlined">arrow_upward_alt</span>
-                    </button>
-                    <button class="layer-btn ${obj.layer === 1 ? 'active' : ''}" data-layer="1" data-obj="${obj.id}" title="Same layer">
-                        <span class="material-symbols-outlined">remove</span>
-                    </button>
-                    <button class="layer-btn ${obj.layer === 0 ? 'active' : ''}" data-layer="0" data-obj="${obj.id}" title="Behind player">
-                        <span class="material-symbols-outlined">arrow_downward_alt</span>
-                    </button>
-                </div>
-            `;
+            // Sort group by array index (reverse for display)
+            const sortedGroup = [...group].sort((a, b) => b - a);
+            
+            for (const idx of sortedGroup) {
+                const obj = this.world.objects[idx];
+                const item = document.createElement('div');
+                item.className = `layer-item ${groupColor}`;
+                item.dataset.id = obj.id;
+                item.dataset.groupIndex = g.toString();
+                item.draggable = true;
+                
+                // Show group indicator for multi-object groups
+                const groupIndicator = group.length > 1 ? 
+                    `<span class="layer-group-indicator" title="Overlapping with ${group.length - 1} other object(s)">●</span>` : '';
+                
+                item.innerHTML = `
+                    <span class="material-symbols-outlined" style="cursor: grab; color: var(--text-muted);">drag_indicator</span>
+                    ${groupIndicator}
+                    <span class="layer-item-name">${obj.name}</span>
+                    <div class="layer-item-actions">
+                        <button class="layer-btn layer-delete" data-delete="${obj.id}" title="Delete">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                        <button class="layer-btn ${obj.layer === 2 ? 'active' : ''}" data-layer="2" data-obj="${obj.id}" title="On top of player">
+                            <span class="material-symbols-outlined">arrow_upward_alt</span>
+                        </button>
+                        <button class="layer-btn ${obj.layer === 1 ? 'active' : ''}" data-layer="1" data-obj="${obj.id}" title="Same layer">
+                            <span class="material-symbols-outlined">remove</span>
+                        </button>
+                        <button class="layer-btn ${obj.layer === 0 ? 'active' : ''}" data-layer="0" data-obj="${obj.id}" title="Behind player">
+                            <span class="material-symbols-outlined">arrow_downward_alt</span>
+                        </button>
+                    </div>
+                `;
 
-            // Delete button
-            item.querySelector('.layer-delete').addEventListener('click', () => {
-                this.world.removeObject(obj.id);
-                this.updateLayersList();
-                this.triggerMapChange();
-            });
-
-            // Layer buttons
-            item.querySelectorAll('[data-layer]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    obj.layer = parseInt(btn.dataset.layer);
+                // Delete button
+                item.querySelector('.layer-delete').addEventListener('click', () => {
+                    this.world.removeObject(obj.id);
                     this.updateLayersList();
                     this.triggerMapChange();
                 });
-            });
 
-            // Drag and drop
-            item.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', i.toString());
-                item.classList.add('dragging');
-            });
+                // Layer buttons
+                item.querySelectorAll('[data-layer]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        obj.layer = parseInt(btn.dataset.layer);
+                        this.updateLayersList();
+                        this.triggerMapChange();
+                    });
+                });
 
-            item.addEventListener('dragend', () => {
-                item.classList.remove('dragging');
-            });
+                // Drag and drop
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', idx.toString());
+                    e.dataTransfer.setData('groupIndex', g.toString());
+                    item.classList.add('dragging');
+                });
 
-            item.addEventListener('dragover', (e) => {
-                e.preventDefault();
-            });
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                });
 
-            item.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                const toIndex = Array.from(list.children).indexOf(item);
-                const realFromIndex = this.world.objects.length - 1 - fromIndex;
-                const realToIndex = this.world.objects.length - 1 - toIndex;
-                this.world.reorderLayers(realFromIndex, realToIndex);
-                this.updateLayersList();
-                this.triggerMapChange();
-            });
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
 
-            list.appendChild(item);
+                item.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                    const fromGroup = parseInt(e.dataTransfer.getData('groupIndex'));
+                    const toGroup = parseInt(item.dataset.groupIndex);
+                    
+                    // Only allow reordering within the same group or to adjacent positions
+                    // For simplicity, allow any reorder but keep overlapping objects together
+                    const toIndex = idx;
+                    
+                    if (fromIndex !== toIndex) {
+                        this.world.reorderLayers(fromIndex, toIndex);
+                        this.updateLayersList();
+                        this.triggerMapChange();
+                    }
+                });
+
+                list.appendChild(item);
+            }
         }
     }
 
@@ -1962,6 +2177,9 @@ class Editor {
         }
 
         // Check fill mode
+        // 'add' - Only place if nothing exists
+        // 'replace' - Remove existing and place new
+        // 'overlap' - Place on top without removing existing
         const fillMode = settings.fillMode || 'add';
         const existingObj = this.world.getObjectAt(x + GRID_SIZE / 2, y + GRID_SIZE / 2);
 
@@ -1972,6 +2190,8 @@ class Editor {
         if (fillMode === 'replace' && existingObj) {
             this.world.removeObject(existingObj.id);
         }
+        
+        // 'overlap' mode - no checks, just place on top
 
         // Create object
         const obj = new WorldObject({
@@ -2165,7 +2385,41 @@ class Editor {
             gameContainer.insertBefore(bgElement, gameContainer.firstChild);
         }
 
-        bgElement.className = `game-bg ${this.world.background}`;
+        // Remove existing custom background elements
+        const existingCustomBg = bgElement.querySelector('.custom-bg-element');
+        if (existingCustomBg) existingCustomBg.remove();
+
+        if (this.world.background === 'custom' && this.world.customBackground.enabled) {
+            bgElement.className = 'game-bg custom';
+            
+            // Create custom background element
+            const cb = this.world.customBackground;
+            if (cb.data) {
+                if (cb.type === 'video') {
+                    const video = document.createElement('video');
+                    video.className = 'custom-bg-element';
+                    video.src = cb.data;
+                    video.autoplay = true;
+                    video.muted = true;
+                    video.loop = cb.playMode === 'loop' && cb.loopCount === -1;
+                    video.playsInline = true;
+                    video.style.cssText = 'position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); object-fit: cover;';
+                    bgElement.appendChild(video);
+                    
+                    if (cb.reverse) {
+                        video.playbackRate = -1; // Note: negative playback rate not widely supported
+                    }
+                } else {
+                    const img = document.createElement('img');
+                    img.className = 'custom-bg-element';
+                    img.src = cb.data;
+                    img.style.cssText = 'position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); object-fit: cover;';
+                    bgElement.appendChild(img);
+                }
+            }
+        } else {
+            bgElement.className = `game-bg ${this.world.background}`;
+        }
         
         // Also sync config panel values with world
         this.syncConfigPanel();
@@ -2233,6 +2487,96 @@ class Editor {
             spikeTouchbox.value = this.world.spikeTouchbox || 'normal';
             this.updateSpikeTouchboxDescription(spikeTouchbox.value);
         }
+        
+        // Custom background
+        this.syncCustomBackgroundUI();
+    }
+    
+    syncCustomBackgroundUI() {
+        const customOptions = document.getElementById('custom-bg-options');
+        const dropzone = document.getElementById('custom-bg-dropzone');
+        const preview = document.getElementById('custom-bg-preview');
+        const previewImg = document.getElementById('custom-bg-preview-img');
+        const previewVideo = document.getElementById('custom-bg-preview-video');
+        const videoOptions = document.getElementById('custom-bg-video-options');
+        const playMode = document.getElementById('custom-bg-playmode');
+        const loopType = document.getElementById('custom-bg-loop-type');
+        const loopCount = document.getElementById('custom-bg-loop-count');
+        const loopOptions = document.getElementById('custom-bg-loop-options');
+        const endOptions = document.getElementById('custom-bg-end-options');
+        const endType = document.getElementById('custom-bg-endtype');
+        const syncCheckbox = document.getElementById('custom-bg-sync');
+        const reverseCheckbox = document.getElementById('custom-bg-reverse');
+        
+        const cb = this.world.customBackground;
+        
+        // Show/hide custom options based on background type
+        if (this.world.background === 'custom') {
+            customOptions.classList.remove('hidden');
+        } else {
+            customOptions.classList.add('hidden');
+            return;
+        }
+        
+        if (cb.enabled && cb.data) {
+            // Show preview
+            preview.classList.remove('hidden');
+            dropzone.classList.add('hidden');
+            
+            if (cb.type === 'video') {
+                previewImg.style.display = 'none';
+                previewVideo.style.display = 'block';
+                previewVideo.src = cb.data;
+                previewVideo.play();
+                videoOptions.classList.remove('hidden');
+            } else if (cb.type === 'gif') {
+                previewImg.style.display = 'block';
+                previewVideo.style.display = 'none';
+                previewImg.src = cb.data;
+                videoOptions.classList.remove('hidden');
+            } else {
+                previewImg.style.display = 'block';
+                previewVideo.style.display = 'none';
+                previewImg.src = cb.data;
+                videoOptions.classList.add('hidden');
+            }
+            
+            // Sync video options
+            if (playMode) playMode.value = cb.playMode || 'loop';
+            if (loopType) loopType.value = cb.loopCount === -1 ? 'infinite' : 'set';
+            if (loopCount) {
+                loopCount.value = cb.loopCount > 0 ? cb.loopCount : 1;
+                loopCount.style.display = cb.loopCount === -1 ? 'none' : 'block';
+            }
+            
+            // Show/hide based on play mode
+            if (cb.playMode === 'once') {
+                loopOptions.classList.add('hidden');
+                endOptions.classList.remove('hidden');
+            } else {
+                loopOptions.classList.remove('hidden');
+                if (cb.loopCount === -1) {
+                    endOptions.classList.add('hidden');
+                } else {
+                    endOptions.classList.remove('hidden');
+                }
+            }
+            
+            // Update loop label
+            const loopLabel = loopOptions.querySelector('.form-label');
+            if (loopLabel) {
+                loopLabel.textContent = cb.playMode === 'bounce' ? 'Bounce Amount' : 'Loop Amount';
+            }
+            
+            if (endType) endType.value = cb.endType || 'freeze';
+            if (syncCheckbox) syncCheckbox.checked = cb.sameAcrossScreens || false;
+            if (reverseCheckbox) reverseCheckbox.checked = cb.reverse || false;
+        } else {
+            // No custom background - show upload
+            preview.classList.add('hidden');
+            dropzone.classList.remove('hidden');
+            videoOptions.classList.add('hidden');
+        }
     }
     
     updateSpikeTouchboxDescription(mode) {
@@ -2262,6 +2606,212 @@ class Editor {
                 section.classList.toggle('expanded');
             });
         });
+    }
+    
+    setupCustomBackgroundListeners() {
+        const dropzone = document.getElementById('custom-bg-dropzone');
+        const fileInput = document.getElementById('custom-bg-file');
+        const preview = document.getElementById('custom-bg-preview');
+        const previewImg = document.getElementById('custom-bg-preview-img');
+        const previewVideo = document.getElementById('custom-bg-preview-video');
+        const removeBtn = document.getElementById('custom-bg-remove');
+        const videoOptions = document.getElementById('custom-bg-video-options');
+        const playMode = document.getElementById('custom-bg-playmode');
+        const loopOptions = document.getElementById('custom-bg-loop-options');
+        const loopType = document.getElementById('custom-bg-loop-type');
+        const loopCount = document.getElementById('custom-bg-loop-count');
+        const endOptions = document.getElementById('custom-bg-end-options');
+        const endType = document.getElementById('custom-bg-endtype');
+        const endUpload = document.getElementById('custom-bg-end-upload');
+        const syncCheckbox = document.getElementById('custom-bg-sync');
+        const reverseCheckbox = document.getElementById('custom-bg-reverse');
+        
+        // Dropzone click
+        dropzone.addEventListener('click', () => fileInput.click());
+        
+        // Drag and drop
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'var(--primary)';
+            dropzone.style.background = 'rgba(45, 90, 39, 0.1)';
+        });
+        
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.style.borderColor = 'var(--surface-light)';
+            dropzone.style.background = 'transparent';
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'var(--surface-light)';
+            dropzone.style.background = 'transparent';
+            
+            const file = e.dataTransfer.files[0];
+            if (file) this.handleCustomBackgroundFile(file);
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) this.handleCustomBackgroundFile(file);
+        });
+        
+        // Remove button
+        removeBtn.addEventListener('click', () => {
+            this.world.customBackground.enabled = false;
+            this.world.customBackground.type = null;
+            this.world.customBackground.data = null;
+            
+            preview.classList.add('hidden');
+            previewImg.style.display = 'none';
+            previewVideo.style.display = 'none';
+            videoOptions.classList.add('hidden');
+            dropzone.classList.remove('hidden');
+            
+            this.updateBackground();
+            this.triggerMapChange();
+        });
+        
+        // Play mode change
+        playMode.addEventListener('change', (e) => {
+            const mode = e.target.value;
+            this.world.customBackground.playMode = mode;
+            
+            // Update loop options label
+            const loopLabel = loopOptions.querySelector('.form-label');
+            if (mode === 'bounce') {
+                loopLabel.textContent = 'Bounce Amount';
+            } else {
+                loopLabel.textContent = 'Loop Amount';
+            }
+            
+            // Show/hide options based on mode
+            if (mode === 'once') {
+                loopOptions.classList.add('hidden');
+                endOptions.classList.remove('hidden');
+            } else {
+                loopOptions.classList.remove('hidden');
+                this.updateEndOptionsVisibility();
+            }
+            
+            this.triggerMapChange();
+        });
+        
+        // Loop type change
+        loopType.addEventListener('change', (e) => {
+            if (e.target.value === 'set') {
+                loopCount.style.display = 'block';
+                this.world.customBackground.loopCount = parseInt(loopCount.value) || 1;
+            } else {
+                loopCount.style.display = 'none';
+                this.world.customBackground.loopCount = -1;
+            }
+            this.updateEndOptionsVisibility();
+            this.triggerMapChange();
+        });
+        
+        // Loop count change
+        loopCount.addEventListener('change', (e) => {
+            // Don't auto-correct while typing
+            if (e.target.value === '') return;
+            
+            const val = parseInt(e.target.value);
+            if (isNaN(val) || val < 1) {
+                e.target.value = 1;
+                this.world.customBackground.loopCount = 1;
+            } else {
+                this.world.customBackground.loopCount = val;
+            }
+            this.triggerMapChange();
+        });
+        
+        // Handle blur to auto-correct empty value
+        loopCount.addEventListener('blur', (e) => {
+            if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                e.target.value = 1;
+                this.world.customBackground.loopCount = 1;
+                this.triggerMapChange();
+            }
+        });
+        
+        // End type change
+        endType.addEventListener('change', (e) => {
+            this.world.customBackground.endType = e.target.value;
+            endUpload.classList.toggle('hidden', e.target.value !== 'replace');
+            this.triggerMapChange();
+        });
+        
+        // Sync checkbox
+        syncCheckbox.addEventListener('change', (e) => {
+            this.world.customBackground.sameAcrossScreens = e.target.checked;
+            this.triggerMapChange();
+        });
+        
+        // Reverse checkbox
+        reverseCheckbox.addEventListener('change', (e) => {
+            this.world.customBackground.reverse = e.target.checked;
+            this.triggerMapChange();
+        });
+    }
+    
+    updateEndOptionsVisibility() {
+        const loopType = document.getElementById('custom-bg-loop-type');
+        const endOptions = document.getElementById('custom-bg-end-options');
+        const playMode = document.getElementById('custom-bg-playmode');
+        
+        // Show end options if play once or limited loops/bounces
+        if (playMode.value === 'once' || loopType.value === 'set') {
+            endOptions.classList.remove('hidden');
+        } else {
+            endOptions.classList.add('hidden');
+        }
+    }
+    
+    handleCustomBackgroundFile(file) {
+        const preview = document.getElementById('custom-bg-preview');
+        const previewImg = document.getElementById('custom-bg-preview-img');
+        const previewVideo = document.getElementById('custom-bg-preview-video');
+        const videoOptions = document.getElementById('custom-bg-video-options');
+        const dropzone = document.getElementById('custom-bg-dropzone');
+        
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const data = e.target.result;
+            const isVideo = file.type.startsWith('video/');
+            const isGif = file.type === 'image/gif';
+            
+            this.world.customBackground.enabled = true;
+            this.world.customBackground.data = data;
+            this.world.customBackground.type = isVideo ? 'video' : (isGif ? 'gif' : 'image');
+            
+            // Show preview
+            preview.classList.remove('hidden');
+            dropzone.classList.add('hidden');
+            
+            if (isVideo) {
+                previewImg.style.display = 'none';
+                previewVideo.style.display = 'block';
+                previewVideo.src = data;
+                previewVideo.play();
+                videoOptions.classList.remove('hidden');
+            } else if (isGif) {
+                previewImg.style.display = 'block';
+                previewVideo.style.display = 'none';
+                previewImg.src = data;
+                videoOptions.classList.remove('hidden');
+            } else {
+                previewImg.style.display = 'block';
+                previewVideo.style.display = 'none';
+                previewImg.src = data;
+                videoOptions.classList.add('hidden');
+            }
+            
+            this.updateBackground();
+            this.triggerMapChange();
+        };
+        
+        reader.readAsDataURL(file);
     }
 
     // ========================================

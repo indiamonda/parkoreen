@@ -6,7 +6,7 @@
 // ============================================
 // FILE FORMAT VERSION
 // ============================================
-const PKRN_VERSION = '1.1';
+const PKRN_VERSION = '1.2';
 
 // Default values for backward compatibility
 const PKRN_DEFAULTS = {
@@ -22,7 +22,18 @@ const PKRN_DEFAULTS = {
     playerSpeed: 5,
     jumpForce: -14,
     gravity: 0.8,
-    spikeTouchbox: 'normal'
+    spikeTouchbox: 'normal',
+    customBackground: {
+        enabled: false,
+        type: null,
+        data: null,
+        playMode: 'loop',
+        loopCount: -1,
+        endType: 'freeze',
+        endBackground: null,
+        sameAcrossScreens: false,
+        reverse: false
+    }
 };
 
 // ============================================
@@ -106,7 +117,9 @@ class ExportManager {
                 jumpForce: world.jumpForce,
                 gravity: world.gravity,
                 // Spike settings
-                spikeTouchbox: world.spikeTouchbox
+                spikeTouchbox: world.spikeTouchbox,
+                // Custom background
+                customBackground: world.customBackground
             },
             objects: world.objects.map(obj => this.serializeObject(obj))
         };
@@ -155,7 +168,7 @@ class ExportManager {
 // ============================================
 class ImportManager {
     constructor() {
-        this.supportedVersions = ['1.0', '1.1'];
+        this.supportedVersions = ['1.0', '1.1', '1.2'];
     }
 
     /**
@@ -285,7 +298,33 @@ class ImportManager {
             // Spike settings
             spikeTouchbox: ['full', 'normal', 'tip', 'ground', 'flag', 'air'].includes(settings.spikeTouchbox) 
                 ? settings.spikeTouchbox : PKRN_DEFAULTS.spikeTouchbox,
+            // Custom background with validation
+            customBackground: this.deserializeCustomBackground(settings.customBackground),
             objects: (data.objects || []).map(obj => this.deserializeObject(obj))
+        };
+    }
+
+    /**
+     * Deserialize custom background with defaults
+     * @param {Object} cb - Custom background settings
+     * @returns {Object} Validated custom background data
+     */
+    deserializeCustomBackground(cb) {
+        if (!cb || typeof cb !== 'object' || !cb.enabled) {
+            return { ...PKRN_DEFAULTS.customBackground };
+        }
+
+        return {
+            enabled: true,
+            type: ['image', 'gif', 'video'].includes(cb.type) ? cb.type : null,
+            data: typeof cb.data === 'string' ? cb.data : null,
+            playMode: ['once', 'loop', 'bounce'].includes(cb.playMode) ? cb.playMode : 'loop',
+            loopCount: typeof cb.loopCount === 'number' ? cb.loopCount : -1,
+            endType: ['freeze', 'replace'].includes(cb.endType) ? cb.endType : 'freeze',
+            endBackground: cb.endBackground && typeof cb.endBackground === 'object' 
+                ? this.deserializeCustomBackground(cb.endBackground) : null,
+            sameAcrossScreens: !!cb.sameAcrossScreens,
+            reverse: !!cb.reverse
         };
     }
 

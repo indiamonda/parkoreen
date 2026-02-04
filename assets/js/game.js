@@ -103,6 +103,12 @@ class Player {
         
         this.isLocal = false;
         this.isDead = false;
+        
+        // Direction change tracking for checkpoint jump reset
+        this.lastDirection = 0; // -1 left, 0 none, 1 right
+        this.lastDirectionChangeTime = 0;
+        this.directionChangeCount = 0;
+        this.directionChangeWindowStart = 0;
     }
 
     generateRandomColor() {
@@ -150,12 +156,32 @@ class Player {
         const jumpForce = world?.jumpForce ?? DEFAULT_JUMP_FORCE;
         
         // Horizontal movement
+        let currentDirection = 0;
         if (this.input.left) {
             this.vx = -moveSpeed;
+            currentDirection = -1;
         } else if (this.input.right) {
             this.vx = moveSpeed;
+            currentDirection = 1;
         } else {
             this.vx = 0;
+        }
+        
+        // Track direction changes for checkpoint jump reset
+        const now = Date.now();
+        if (currentDirection !== 0 && currentDirection !== this.lastDirection && this.lastDirection !== 0) {
+            // Direction changed
+            if (now - this.directionChangeWindowStart > 500) {
+                // Start new window
+                this.directionChangeWindowStart = now;
+                this.directionChangeCount = 1;
+            } else {
+                this.directionChangeCount++;
+            }
+            this.lastDirectionChangeTime = now;
+        }
+        if (currentDirection !== 0) {
+            this.lastDirection = currentDirection;
         }
 
         // Apply gravity
@@ -828,7 +854,20 @@ class WorldObject {
 class World {
     constructor() {
         this.objects = [];
-        this.background = 'sky'; // sky, galaxy
+        this.background = 'sky'; // sky, galaxy, custom
+        
+        // Custom background settings
+        this.customBackground = {
+            enabled: false,
+            type: null, // 'image', 'gif', 'video'
+            data: null, // base64 or URL
+            playMode: 'loop', // 'once', 'loop', 'bounce'
+            loopCount: -1, // -1 = infinite, otherwise number of times
+            endType: 'freeze', // 'freeze', 'replace' (for play once)
+            endBackground: null, // Another customBackground object for replacement
+            sameAcrossScreens: false, // Sync playback across all players
+            reverse: false // Play backwards
+        };
         this.defaultBlockColor = '#787878';
         this.defaultSpikeColor = '#c45a3f';
         this.defaultTextColor = '#000000';
@@ -964,7 +1003,9 @@ class World {
             jumpForce: this.jumpForce,
             gravity: this.gravity,
             // Spike settings
-            spikeTouchbox: this.spikeTouchbox
+            spikeTouchbox: this.spikeTouchbox,
+            // Custom background
+            customBackground: this.customBackground
         };
     }
 
@@ -989,6 +1030,33 @@ class World {
         // Spike touchbox mode
         const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
         this.spikeTouchbox = validSpikeModes.includes(data.spikeTouchbox) ? data.spikeTouchbox : 'normal';
+        
+        // Custom background with defaults
+        if (data.customBackground && data.customBackground.enabled) {
+            this.customBackground = {
+                enabled: true,
+                type: data.customBackground.type || null,
+                data: data.customBackground.data || null,
+                playMode: ['once', 'loop', 'bounce'].includes(data.customBackground.playMode) ? data.customBackground.playMode : 'loop',
+                loopCount: typeof data.customBackground.loopCount === 'number' ? data.customBackground.loopCount : -1,
+                endType: ['freeze', 'replace'].includes(data.customBackground.endType) ? data.customBackground.endType : 'freeze',
+                endBackground: data.customBackground.endBackground || null,
+                sameAcrossScreens: !!data.customBackground.sameAcrossScreens,
+                reverse: !!data.customBackground.reverse
+            };
+        } else {
+            this.customBackground = {
+                enabled: false,
+                type: null,
+                data: null,
+                playMode: 'loop',
+                loopCount: -1,
+                endType: 'freeze',
+                endBackground: null,
+                sameAcrossScreens: false,
+                reverse: false
+            };
+        }
         
         if (data.objects) {
             for (const objData of data.objects) {
@@ -1312,11 +1380,14 @@ class GameEngine {
         if (!this.localPlayer || this.localPlayer.isDead) return;
         
         const playerBox = this.localPlayer.getGroundTouchbox();
+        let onCheckpoint = false;
         
         for (const obj of this.world.objects) {
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
             if (obj.actingType === 'checkpoint') {
+                onCheckpoint = true;
+                
                 // Mark previous checkpoint as touched (blue)
                 if (this.lastCheckpoint && this.lastCheckpoint !== obj) {
                     this.lastCheckpoint.checkpointState = 'touched';
@@ -1326,6 +1397,18 @@ class GameEngine {
                 this.lastCheckpoint = obj;
             } else if (obj.actingType === 'endpoint') {
                 this.onGameEnd();
+            }
+        }
+        
+        // Check for quick direction changes on checkpoint to reset jumps
+        // Works for both left→right AND right→left direction changes
+        if (onCheckpoint && this.localPlayer.directionChangeCount >= 1) {
+            const now = Date.now();
+            // If direction change within 500ms while on checkpoint, reset jumps
+            if (now - this.localPlayer.directionChangeWindowStart <= 500) {
+                this.localPlayer.resetJumps();
+                this.localPlayer.directionChangeCount = 0;
+                this.localPlayer.directionChangeWindowStart = now;
             }
         }
     }

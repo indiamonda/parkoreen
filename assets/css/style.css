@@ -691,6 +691,30 @@ a:hover {
     transition: background var(--transition);
 }
 
+/* Alternating layer colors for groups */
+.layer-item.layer-color-light {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.layer-item.layer-color-dark {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.layer-item.layer-color-light:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.layer-item.layer-color-dark:hover {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* Group indicator for overlapping objects */
+.layer-group-indicator {
+    color: #4CAF50;
+    font-size: 8px;
+    margin-right: -4px;
+}
+
 .layer-item:hover {
     background: var(--surface-light);
 }
