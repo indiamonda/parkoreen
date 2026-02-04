@@ -352,8 +352,8 @@ You'll receive a **6-character room code** to share with friends.
 | Move Left | `A` or `←` | Left D-pad |
 | Move Right | `D` or `→` | Right D-pad |
 | Jump | `W`, `↑`, or `Space` | Jump button |
-| Move Up (Fly mode) | `W` or `↑` | Up D-pad |
-| Move Down (Fly mode) | `S` or `↓` | Down D-pad |
+| Move Up (Fly mode) | `W`, `↑`, or `space` | Up D-pad |
+| Move Down (Fly mode) | `S`, `↓`, or `shift` | Down D-pad |
 
 ### Game HUD
 
