@@ -666,7 +666,7 @@ a:hover {
     right: var(--spacing-md);
     top: 80px;
     bottom: 80px;
-    width: 280px;
+    width: 360px;
     background: var(--bg-medium);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
@@ -817,8 +817,8 @@ a:hover {
     position: fixed;
     left: var(--spacing-md);
     top: 80px;
-    width: 320px;
-    max-height: calc(100vh - 160px);
+    width: 400px;
+    max-height: calc(100vh - 120px);
     background: var(--bg-medium);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
@@ -837,8 +837,8 @@ a:hover {
     position: fixed;
     right: var(--spacing-md);
     top: 80px;
-    width: 280px;
-    max-height: calc(100vh - 160px);
+    width: 360px;
+    max-height: calc(100vh - 120px);
     background: var(--bg-medium);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
@@ -1779,7 +1779,8 @@ a:hover {
     }
     
     .layers-panel,
-    .config-panel {
+    .config-panel,
+    .settings-panel {
         width: calc(100vw - var(--spacing-md) * 2);
         left: var(--spacing-md);
         right: var(--spacing-md);
