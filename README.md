@@ -74,7 +74,7 @@ When you open the editor, you'll see:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [⚙ Config]                              [⚙ Settings]   │
+│ [⚙ Config]                              [⚙ Settings]    │
 │                                                         │
 │                                                         │
 │                    GAME CANVAS                          │
@@ -83,7 +83,7 @@ When you open the editor, you'll see:
 │                                                         │
 │ [+ Add]                                    [≡ Layers]   │
 │                                                         │
-│        [  Fly  | Move | Dup | Rot | + | - | Erase ]    │
+│        [  Fly  | Move | Dup | Rot | + | - | Erase ]     │
 └─────────────────────────────────────────────────────────┘
 ```
 
