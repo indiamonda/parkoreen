@@ -44,7 +44,7 @@ Build creative parkour courses, test them yourself, then host games and race aga
 
 ### Creating an Account
 
-1. Visit the game at `https://yourusername.github.io/parkoreen/`
+1. Visit the game at `https://jimmyqrg.github.io/parkoreen/`
 2. Click **Sign Up** to create a new account
 3. Enter your **Display Name** (how others see you), **Username** (unique, cannot be changed), and **Password**
 4. Click **Create Account**
@@ -469,7 +469,7 @@ Parkoreen maps use the `.pkrn` file extension (JSON format):
 1. Push to your GitHub repository
 2. Go to **Settings** → **Pages**
 3. Select your branch and save
-4. Access at `https://yourusername.github.io/parkoreen/`
+4. Access at `https://jimmyqrg.github.io/parkoreen/`
 
 ### Backend (Cloudflare Workers)
 
