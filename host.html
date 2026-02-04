@@ -78,6 +78,31 @@
         </div>
     </div>
 
+    <!-- End Game Screen -->
+    <div class="end-game-overlay hidden" id="end-game-overlay">
+        <div class="end-game-modal">
+            <div class="end-game-trophy">
+                <span class="material-symbols-outlined">emoji_events</span>
+            </div>
+            <h1 class="end-game-title">Level Complete!</h1>
+            <div class="end-game-time">
+                <span class="end-game-time-label">Your Time</span>
+                <span class="end-game-time-value" id="end-game-time">0:00.000</span>
+            </div>
+            <div class="end-game-player" id="end-game-player">Player Name</div>
+            <div class="end-game-actions">
+                <button class="btn btn-primary" id="end-game-play-again">
+                    <span class="material-symbols-outlined">replay</span>
+                    Play Again
+                </button>
+                <button class="btn btn-secondary" id="end-game-back">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    Back to Editor
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Safe wrapper functions with inline fallback (no browser alerts) -->
     <script>
         function showInlineToast(msg, type) {
@@ -201,6 +226,7 @@
             // Setup event handlers
             setupGameHUD();
             setupMultiplayer();
+            setupEndGameScreen();
             
             // Setup auto-save for editor mode
             if (currentMapId) {
@@ -690,6 +716,84 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        let lastEndGameData = null;
+
+        function setupEndGameScreen() {
+            // Set up the game end callback
+            engine.onGameEndCallback = (data) => {
+                showEndGameScreen(data);
+                
+                // If in multiplayer, notify other players
+                if (window.MultiplayerManager && window.MultiplayerManager.send && currentMode === 'play') {
+                    window.MultiplayerManager.send({
+                        type: 'game_end',
+                        playerName: data.playerName,
+                        time: data.time
+                    });
+                }
+            };
+
+            // Play Again button
+            document.getElementById('end-game-play-again').addEventListener('click', () => {
+                hideEndGameScreen();
+                
+                // Restart the game
+                if (lastEndGameData && lastEndGameData.wasTestMode) {
+                    // Restart test mode
+                    engine.startTestGame();
+                } else {
+                    // Restart play mode
+                    const user = Auth.getUser();
+                    engine.startGame(user.name, user.color);
+                }
+            });
+
+            // Back to Editor button
+            document.getElementById('end-game-back').addEventListener('click', () => {
+                hideEndGameScreen();
+                
+                if (currentMode === 'play') {
+                    // Leave the multiplayer room
+                    if (window.MultiplayerManager?.leaveRoom) {
+                        window.MultiplayerManager.leaveRoom();
+                    }
+                    Navigation.toDashboard();
+                } else {
+                    // Stop testing and return to editor
+                    editor.stopTest();
+                }
+            });
+        }
+        
+        function showEndGameScreen(data) {
+            lastEndGameData = data;
+            const overlay = document.getElementById('end-game-overlay');
+            const timeValue = document.getElementById('end-game-time');
+            const playerName = document.getElementById('end-game-player');
+            const backBtn = document.getElementById('end-game-back');
+            
+            // Set the time
+            timeValue.textContent = data.time || '0:00.000';
+            
+            // Set player name
+            playerName.textContent = data.playerName || 'Player';
+            
+            // Update button text based on mode
+            if (data.wasTestMode) {
+                backBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> Back to Editor';
+            } else {
+                backBtn.innerHTML = '<span class="material-symbols-outlined">arrow_back</span> Leave Game';
+            }
+            
+            // Show the overlay
+            overlay.classList.remove('hidden');
+        }
+
+        function hideEndGameScreen() {
+            const overlay = document.getElementById('end-game-overlay');
+            overlay.classList.add('hidden');
         }
     </script>
 </body>

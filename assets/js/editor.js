@@ -311,6 +311,25 @@ class Editor {
                 </div>
                 
                 <div class="config-section">
+                    <div class="config-section-title">Physics</div>
+                    <div class="form-group">
+                        <label class="form-label">Player Speed</label>
+                        <input type="number" class="form-input" id="config-player-speed" min="0.1" step="0.5" value="5" title="Horizontal movement speed (default: 5)">
+                        <small style="color: #888; font-size: 11px;">Default: 5 - Higher = faster movement</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Jump Height</label>
+                        <input type="number" class="form-input" id="config-jump-force" min="-50" max="-1" step="0.5" value="-14" title="Jump force (default: -14, negative = upward)">
+                        <small style="color: #888; font-size: 11px;">Default: -14 - Lower (more negative) = higher jump</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Gravity</label>
+                        <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.8" title="Gravity strength (default: 0.8)">
+                        <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall/jump speed</small>
+                    </div>
+                </div>
+                
+                <div class="config-section">
                     <div class="config-section-title">World</div>
                     <div class="form-group">
                         <label class="form-label">Death Line Y Position</label>
@@ -845,6 +864,28 @@ class Editor {
         // Die line Y
         document.getElementById('config-die-line-y').addEventListener('change', (e) => {
             this.world.dieLineY = parseInt(e.target.value) || 2000;
+            this.triggerMapChange();
+        });
+
+        // Physics settings
+        document.getElementById('config-player-speed').addEventListener('change', (e) => {
+            const value = parseFloat(e.target.value);
+            this.world.playerSpeed = (value > 0) ? value : 5;
+            e.target.value = this.world.playerSpeed;
+            this.triggerMapChange();
+        });
+
+        document.getElementById('config-jump-force').addEventListener('change', (e) => {
+            const value = parseFloat(e.target.value);
+            this.world.jumpForce = (value < 0) ? value : -14;
+            e.target.value = this.world.jumpForce;
+            this.triggerMapChange();
+        });
+
+        document.getElementById('config-gravity').addEventListener('change', (e) => {
+            const value = parseFloat(e.target.value);
+            this.world.gravity = (value > 0) ? value : 0.8;
+            e.target.value = this.world.gravity;
             this.triggerMapChange();
         });
 
@@ -2107,6 +2148,16 @@ class Editor {
         // Die line Y
         const dieLineY = document.getElementById('config-die-line-y');
         if (dieLineY) dieLineY.value = this.world.dieLineY || 2000;
+        
+        // Physics settings
+        const playerSpeed = document.getElementById('config-player-speed');
+        if (playerSpeed) playerSpeed.value = this.world.playerSpeed || 5;
+        
+        const jumpForce = document.getElementById('config-jump-force');
+        if (jumpForce) jumpForce.value = this.world.jumpForce || -14;
+        
+        const gravity = document.getElementById('config-gravity');
+        if (gravity) gravity.value = this.world.gravity || 0.8;
     }
 
     // ========================================

@@ -7,9 +7,9 @@
 // CONSTANTS
 // ============================================
 const GRID_SIZE = 32;
-const GRAVITY = 0.8;
-const JUMP_FORCE = -14;
-const MOVE_SPEED = 5;
+const DEFAULT_GRAVITY = 0.8;
+const DEFAULT_JUMP_FORCE = -14;
+const DEFAULT_MOVE_SPEED = 5;
 const FLY_SPEED = 8;
 const CAMERA_LERP = 0.08;
 const PLAYER_SIZE = 32;
@@ -20,7 +20,8 @@ const PLAYER_SIZE = 32;
 const GameState = {
     EDITOR: 'editor',
     PLAYING: 'playing',
-    TESTING: 'testing'
+    TESTING: 'testing',
+    ENDED: 'ended'
 };
 
 // ============================================
@@ -141,25 +142,31 @@ class Player {
     }
 
     updatePhysics(world, audioManager, editorMode = false) {
+        // Get physics settings from world or use defaults
+        const moveSpeed = world?.playerSpeed ?? DEFAULT_MOVE_SPEED;
+        const gravity = world?.gravity ?? DEFAULT_GRAVITY;
+        const jumpForce = world?.jumpForce ?? DEFAULT_JUMP_FORCE;
+        
         // Horizontal movement
         if (this.input.left) {
-            this.vx = -MOVE_SPEED;
+            this.vx = -moveSpeed;
         } else if (this.input.right) {
-            this.vx = MOVE_SPEED;
+            this.vx = moveSpeed;
         } else {
             this.vx = 0;
         }
 
         // Apply gravity
-        this.vy += GRAVITY;
+        this.vy += gravity;
         
-        // Cap fall speed
-        if (this.vy > 20) this.vy = 20;
+        // Cap fall speed (scaled with gravity)
+        const maxFallSpeed = 20 * (gravity / DEFAULT_GRAVITY);
+        if (this.vy > maxFallSpeed) this.vy = maxFallSpeed;
 
         // Handle jump - infinite jumps in editor mode
         const canJumpNow = editorMode ? true : (this.jumpsRemaining > 0);
         if (this.input.jump && this.canJump && canJumpNow) {
-            this.vy = JUMP_FORCE;
+            this.vy = jumpForce;
             if (!editorMode) {
                 this.jumpsRemaining--;
             }
@@ -728,6 +735,11 @@ class World {
         this.endpoint = null;
         this.mapName = 'Untitled Map';
         this.dieLineY = 2000; // Y position below which players die (void death)
+        
+        // Physics settings
+        this.playerSpeed = DEFAULT_MOVE_SPEED; // Horizontal movement speed (default: 5)
+        this.jumpForce = DEFAULT_JUMP_FORCE;   // Jump force/height (default: -14, negative = upward)
+        this.gravity = DEFAULT_GRAVITY;         // Gravity strength (default: 0.8)
     }
 
     addObject(obj) {
@@ -831,7 +843,11 @@ class World {
             additionalAirjump: this.additionalAirjump,
             collideWithEachOther: this.collideWithEachOther,
             mapName: this.mapName,
-            dieLineY: this.dieLineY
+            dieLineY: this.dieLineY,
+            // Physics settings
+            playerSpeed: this.playerSpeed,
+            jumpForce: this.jumpForce,
+            gravity: this.gravity
         };
     }
 
@@ -847,6 +863,11 @@ class World {
         this.collideWithEachOther = data.collideWithEachOther !== false;
         this.mapName = data.mapName || 'Untitled Map';
         this.dieLineY = data.dieLineY ?? 2000;
+        
+        // Physics settings with defaults for backward compatibility
+        this.playerSpeed = (typeof data.playerSpeed === 'number' && data.playerSpeed > 0) ? data.playerSpeed : DEFAULT_MOVE_SPEED;
+        this.jumpForce = (typeof data.jumpForce === 'number' && data.jumpForce < 0) ? data.jumpForce : DEFAULT_JUMP_FORCE;
+        this.gravity = (typeof data.gravity === 'number' && data.gravity > 0) ? data.gravity : DEFAULT_GRAVITY;
         
         if (data.objects) {
             for (const objData of data.objects) {
@@ -1208,9 +1229,30 @@ class GameEngine {
     }
 
     onGameEnd() {
-        // Override this for multiplayer handling
+        // Set game state to ended
+        const previousState = this.state;
+        this.state = GameState.ENDED;
+        
+        // Calculate time elapsed
+        const endTime = Date.now();
+        const elapsedMs = endTime - this.gameStartTime;
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        const minutes = Math.floor(elapsedSeconds / 60);
+        const seconds = elapsedSeconds % 60;
+        const milliseconds = elapsedMs % 1000;
+        
+        const timeString = minutes > 0 
+            ? `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
+            : `${seconds}.${milliseconds.toString().padStart(3, '0')}s`;
+        
+        // Call callback with time info
         if (this.onGameEndCallback) {
-            this.onGameEndCallback();
+            this.onGameEndCallback({
+                time: timeString,
+                elapsedMs: elapsedMs,
+                wasTestMode: previousState === GameState.TESTING,
+                playerName: this.localPlayer?.name || 'Player'
+            });
         }
     }
 
@@ -1257,6 +1299,7 @@ class GameEngine {
     startGame(playerName, playerColor) {
         this.state = GameState.PLAYING;
         this.lastCheckpoint = null;
+        this.gameStartTime = Date.now();
         
         // Reset checkpoint states
         for (const obj of this.world.objects) {
@@ -1289,6 +1332,7 @@ class GameEngine {
     startTestGame() {
         this.state = GameState.TESTING;
         this.lastCheckpoint = null;
+        this.gameStartTime = Date.now();
         
         // Reset checkpoint states
         for (const obj of this.world.objects) {

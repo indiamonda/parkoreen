@@ -232,12 +232,14 @@
                         '<div class="map-card-actions">' +
                             '<button class="btn btn-secondary btn-host"><span class="material-symbols-outlined">home_and_garden</span>Host</button>' +
                             '<button class="btn btn-secondary btn-edit"><span class="material-symbols-outlined">edit_square</span>Edit</button>' +
+                            '<button class="btn btn-secondary btn-duplicate" title="Duplicate"><span class="material-symbols-outlined">content_copy</span></button>' +
                             '<button class="btn btn-danger btn-delete"><span class="material-symbols-outlined">delete_forever</span></button>' +
                         '</div>' +
                     '</div>';
                 card.querySelector('.map-card-title').onclick = function() { renameMap(map.id, map.name); };
                 card.querySelector('.btn-host').onclick = function() { hostMap(map.id); };
                 card.querySelector('.btn-edit').onclick = function() { editMap(map.id); };
+                card.querySelector('.btn-duplicate').onclick = function() { duplicateMap(map.id, map.name); };
                 card.querySelector('.btn-delete').onclick = function() { deleteMap(map.id, map.name); };
                 mapGrid.appendChild(card);
             });
@@ -366,6 +368,17 @@
 
         function editMap(id) {
             window.open('/parkoreen/host.html?map=' + id, '_blank');
+        }
+
+        async function duplicateMap(id, name) {
+            try {
+                var duplicateFn = window.MapManager.duplicateMap;
+                var result = await duplicateFn.call(window.MapManager, id);
+                toastSuccess('Map duplicated as "' + result.name + '"!');
+                await loadMaps();
+            } catch (e) {
+                toastError('Failed to duplicate: ' + e.message);
+            }
         }
 
         async function deleteMap(id, name) {

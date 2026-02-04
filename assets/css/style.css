@@ -149,6 +149,7 @@ a:hover {
     justify-content: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
     font-size: 1rem;
     font-weight: 500;
     border: none;
@@ -242,6 +243,7 @@ a:hover {
 .form-input {
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
     font-size: 1rem;
     color: var(--text-primary);
     background: var(--surface);
@@ -268,6 +270,7 @@ a:hover {
 /* Range slider */
 .form-range {
     -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     height: 8px;
     background: var(--bg-dark);
@@ -344,6 +347,7 @@ a:hover {
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md);
     padding-right: 40px;
+    font-family: inherit;
     font-size: 1rem;
     color: var(--text-primary);
     background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%23b8b8b8'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 8px center;
@@ -611,6 +615,7 @@ a:hover {
     align-items: center;
     gap: 2px;
     padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
     background: transparent;
     border: none;
     border-radius: var(--border-radius);
@@ -709,6 +714,7 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: inherit;
     background: transparent;
     border: none;
     border-radius: var(--border-radius);
@@ -755,6 +761,7 @@ a:hover {
     gap: var(--spacing-sm);
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
     background: transparent;
     border: none;
     border-radius: var(--border-radius);
@@ -881,6 +888,7 @@ a:hover {
 
 .placement-opt-btn {
     padding: var(--spacing-xs) var(--spacing-sm);
+    font-family: inherit;
     background: transparent;
     border: none;
     border-radius: var(--border-radius);
@@ -1016,6 +1024,7 @@ a:hover {
     justify-content: space-between;
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
     background: var(--surface);
     border: 2px solid var(--surface-light);
     border-radius: var(--border-radius);
@@ -1169,6 +1178,7 @@ a:hover {
 }
 
 .hud-btn {
+    font-family: inherit;
     background: rgba(0, 0, 0, 0.5);
     border: none;
     border-radius: var(--border-radius);
@@ -1267,6 +1277,7 @@ a:hover {
 .chat-input {
     flex: 1;
     padding: var(--spacing-sm);
+    font-family: inherit;
     background: rgba(255, 255, 255, 0.1);
     border: none;
     border-radius: var(--border-radius);
@@ -1276,6 +1287,7 @@ a:hover {
 
 .chat-send {
     padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
     background: var(--primary);
     border: none;
     border-radius: var(--border-radius);
@@ -1709,6 +1721,127 @@ a:hover {
         flex-direction: column;
         gap: var(--spacing-md);
     }
+}
+
+/* ====================================
+   END GAME SCREEN
+   ==================================== */
+.end-game-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.end-game-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 24px;
+    padding: 48px;
+    text-align: center;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.5),
+        0 0 100px rgba(255, 215, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.end-game-trophy {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 24px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+        0 8px 32px rgba(255, 215, 0, 0.4),
+        inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.end-game-trophy .material-symbols-outlined {
+    font-size: 56px;
+    color: #1a1a2e;
+}
+
+.end-game-title {
+    font-family: 'Parkoreen Game', 'Jersey 10', monospace;
+    font-size: 2.5rem;
+    color: #fff;
+    margin: 0 0 24px;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    letter-spacing: 2px;
+}
+
+.end-game-time {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    padding: 20px 32px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.end-game-time-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+.end-game-time-value {
+    font-family: 'Parkoreen Game', 'Jersey 10', monospace;
+    font-size: 3rem;
+    color: #4CAF50;
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+    letter-spacing: 4px;
+}
+
+.end-game-player {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+}
+
+.end-game-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.end-game-actions .btn {
+    min-width: 160px;
+    padding: 14px 24px;
+    font-size: 1rem;
 }
 
 /* ====================================

@@ -6,7 +6,23 @@
 // ============================================
 // FILE FORMAT VERSION
 // ============================================
-const PKRN_VERSION = '1.0';
+const PKRN_VERSION = '1.1';
+
+// Default values for backward compatibility
+const PKRN_DEFAULTS = {
+    background: 'sky',
+    defaultBlockColor: '#787878',
+    defaultSpikeColor: '#c45a3f',
+    defaultTextColor: '#000000',
+    maxJumps: 1,
+    infiniteJumps: false,
+    additionalAirjump: false,
+    collideWithEachOther: true,
+    dieLineY: 2000,
+    playerSpeed: 5,
+    jumpForce: -14,
+    gravity: 0.8
+};
 
 // ============================================
 // EXPORT MANAGER
@@ -82,7 +98,12 @@ class ExportManager {
                 maxJumps: world.maxJumps,
                 infiniteJumps: world.infiniteJumps,
                 additionalAirjump: world.additionalAirjump,
-                collideWithEachOther: world.collideWithEachOther
+                collideWithEachOther: world.collideWithEachOther,
+                dieLineY: world.dieLineY,
+                // Physics settings
+                playerSpeed: world.playerSpeed,
+                jumpForce: world.jumpForce,
+                gravity: world.gravity
             },
             objects: world.objects.map(obj => this.serializeObject(obj))
         };
@@ -131,7 +152,7 @@ class ExportManager {
 // ============================================
 class ImportManager {
     constructor() {
-        this.supportedVersions = ['1.0'];
+        this.supportedVersions = ['1.0', '1.1'];
     }
 
     /**
@@ -225,21 +246,40 @@ class ImportManager {
 
     /**
      * Deserialize data to world format
+     * Uses PKRN_DEFAULTS for any missing or invalid values (backward compatibility)
      * @param {Object} data - Serialized data
      * @returns {Object} World-compatible data
      */
     deserialize(data) {
+        const settings = data.settings || {};
+        
+        // Helper to get value with type validation and default fallback
+        const getNumber = (val, def, validator = () => true) => {
+            return (typeof val === 'number' && validator(val)) ? val : def;
+        };
+        const getBool = (val, def) => {
+            return typeof val === 'boolean' ? val : def;
+        };
+        const getString = (val, def) => {
+            return typeof val === 'string' && val.length > 0 ? val : def;
+        };
+        
         return {
             mapName: data.metadata?.name || 'Imported Map',
-            background: data.settings?.background || 'sky',
-            defaultBlockColor: data.settings?.defaultBlockColor || '#787878',
-            defaultSpikeColor: data.settings?.defaultSpikeColor || '#c45a3f',
-            defaultTextColor: data.settings?.defaultTextColor || '#000000',
-            maxJumps: data.settings?.maxJumps || 1,
-            infiniteJumps: data.settings?.infiniteJumps || false,
-            additionalAirjump: data.settings?.additionalAirjump || false,
-            collideWithEachOther: data.settings?.collideWithEachOther !== false,
-            objects: data.objects.map(obj => this.deserializeObject(obj))
+            background: getString(settings.background, PKRN_DEFAULTS.background),
+            defaultBlockColor: getString(settings.defaultBlockColor, PKRN_DEFAULTS.defaultBlockColor),
+            defaultSpikeColor: getString(settings.defaultSpikeColor, PKRN_DEFAULTS.defaultSpikeColor),
+            defaultTextColor: getString(settings.defaultTextColor, PKRN_DEFAULTS.defaultTextColor),
+            maxJumps: getNumber(settings.maxJumps, PKRN_DEFAULTS.maxJumps, v => v >= 0),
+            infiniteJumps: getBool(settings.infiniteJumps, PKRN_DEFAULTS.infiniteJumps),
+            additionalAirjump: getBool(settings.additionalAirjump, PKRN_DEFAULTS.additionalAirjump),
+            collideWithEachOther: settings.collideWithEachOther !== false,
+            dieLineY: getNumber(settings.dieLineY, PKRN_DEFAULTS.dieLineY),
+            // Physics settings with validation
+            playerSpeed: getNumber(settings.playerSpeed, PKRN_DEFAULTS.playerSpeed, v => v > 0),
+            jumpForce: getNumber(settings.jumpForce, PKRN_DEFAULTS.jumpForce, v => v < 0),
+            gravity: getNumber(settings.gravity, PKRN_DEFAULTS.gravity, v => v > 0),
+            objects: (data.objects || []).map(obj => this.deserializeObject(obj))
         };
     }
 

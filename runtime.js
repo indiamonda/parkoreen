@@ -370,23 +370,61 @@ class MapManager {
         return response.json();
     }
 
+    // Generate a unique name by appending a number if the name already exists
+    _getUniqueName(existingMaps, baseName) {
+        const existingNames = existingMaps.map(m => m.name.toLowerCase());
+        
+        // Check if the base name is already unique
+        if (!existingNames.includes(baseName.toLowerCase())) {
+            return baseName;
+        }
+        
+        // Find the highest number suffix for this base name
+        let maxNum = 1;
+        const baseNameLower = baseName.toLowerCase();
+        
+        for (const existingName of existingNames) {
+            // Check for exact match with number suffix (e.g., "Map 2", "Map 3")
+            const match = existingName.match(new RegExp(`^${this._escapeRegex(baseNameLower)}\\s*(\\d+)?$`));
+            if (match) {
+                const num = match[1] ? parseInt(match[1]) : 1;
+                if (num >= maxNum) {
+                    maxNum = num + 1;
+                }
+            }
+        }
+        
+        return `${baseName} ${maxNum}`;
+    }
+    
+    _escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     async createMap(name) {
         if (USE_LOCAL_MODE) {
+            const maps = this._getLocalMaps();
+            const existingMaps = Object.values(maps);
+            const uniqueName = this._getUniqueName(existingMaps, name);
+            
             const mapId = 'map_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             const map = {
                 id: mapId,
-                name,
+                name: uniqueName,
                 data: null,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
             
-            const maps = this._getLocalMaps();
             maps[mapId] = map;
             this._saveLocalMaps(maps);
             
-            return { id: mapId, name };
+            return { id: mapId, name: uniqueName };
         }
+
+        // For API mode, first get existing maps to check for duplicates
+        const existingMaps = await this.listMaps();
+        const uniqueName = this._getUniqueName(existingMaps, name);
 
         const response = await fetchWithTimeout(`${API_URL}/maps`, {
             method: 'POST',
@@ -394,7 +432,7 @@ class MapManager {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.auth.getToken()}`
             },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name: uniqueName })
         });
 
         if (!response.ok) {
@@ -465,6 +503,21 @@ class MapManager {
         }
 
         return response.json();
+    }
+
+    async duplicateMap(mapId) {
+        // Get the original map data
+        const originalMap = await this.getMap(mapId);
+        
+        // Create a new map with the same name (will be auto-numbered)
+        const newMap = await this.createMap(originalMap.name);
+        
+        // Copy the map data to the new map
+        if (originalMap.data) {
+            await this.saveMap(newMap.id, { data: originalMap.data });
+        }
+        
+        return newMap;
     }
 }
 
