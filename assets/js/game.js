@@ -921,6 +921,11 @@ class World {
         }
         return null;
     }
+    
+    getObjectsAt(x, y) {
+        // Return all objects at this point
+        return this.objects.filter(obj => obj.containsPoint(x, y));
+    }
 
     getObjectById(id) {
         return this.objects.find(o => o.id === id);

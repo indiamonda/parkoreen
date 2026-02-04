@@ -936,6 +936,27 @@ a:hover {
     display: flex;
 }
 
+/* Erase Toolbar */
+.erase-toolbar {
+    position: fixed;
+    bottom: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: var(--spacing-sm);
+    background: var(--surface);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-toolbar);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.erase-toolbar.active {
+    display: flex;
+}
+
 .placement-option {
     display: flex;
     flex-direction: column;

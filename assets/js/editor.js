@@ -101,6 +101,11 @@ class Editor {
             vSpacing: 0
         };
         
+        // Erase settings
+        this.eraseSettings = {
+            eraseType: 'all' // 'all', 'top', 'bottom'
+        };
+        
         // Recent fonts
         this.recentFonts = JSON.parse(localStorage.getItem('parkoreen_recent_fonts') || '[]');
         
@@ -701,6 +706,27 @@ class Editor {
         `;
         document.body.appendChild(placementToolbar);
         this.ui.placementToolbar = placementToolbar;
+        
+        // Erase Toolbar
+        this.createEraseToolbar();
+    }
+    
+    createEraseToolbar() {
+        const eraseToolbar = document.createElement('div');
+        eraseToolbar.className = 'erase-toolbar';
+        eraseToolbar.id = 'erase-toolbar';
+        eraseToolbar.innerHTML = `
+            <div class="placement-option">
+                <span class="placement-option-label">Erase Type</span>
+                <div class="placement-option-btns">
+                    <button class="placement-opt-btn active" data-erase-type="all">All</button>
+                    <button class="placement-opt-btn" data-erase-type="top">Top Layer</button>
+                    <button class="placement-opt-btn" data-erase-type="bottom">Bottom Layer</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(eraseToolbar);
+        this.ui.eraseToolbar = eraseToolbar;
     }
 
     createSettingsPanel() {
@@ -824,6 +850,9 @@ class Editor {
 
         // Placement toolbar
         this.attachPlacementListeners();
+        
+        // Erase toolbar
+        this.attachEraseListeners();
 
         // Config panel
         this.attachConfigListeners();
@@ -950,6 +979,17 @@ class Editor {
         
         document.getElementById('placement-vspacing-input').addEventListener('change', (e) => {
             this.textSettings.vSpacing = parseInt(e.target.value) || 0;
+        });
+    }
+    
+    attachEraseListeners() {
+        // Erase type
+        document.querySelectorAll('[data-erase-type]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-erase-type]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.eraseSettings.eraseType = btn.dataset.eraseType;
+            });
         });
     }
 
@@ -1387,6 +1427,8 @@ class Editor {
         if (tool === this.currentTool) {
             // Toggle off
             this.currentTool = EditorTool.NONE;
+            // Hide erase toolbar
+            this.ui.eraseToolbar?.classList.remove('active');
         } else {
             this.currentTool = tool;
             const btn = this.ui.toolbar.querySelector(`[data-tool="${tool}"]`);
@@ -1395,6 +1437,11 @@ class Editor {
             // Activate tool
             if (tool === EditorTool.ERASE) {
                 this.isErasing = true;
+                // Show erase toolbar
+                this.ui.eraseToolbar?.classList.add('active');
+            } else {
+                // Hide erase toolbar for other tools
+                this.ui.eraseToolbar?.classList.remove('active');
             }
         }
     }
@@ -1425,6 +1472,8 @@ class Editor {
         if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
             if (this.currentTool === EditorTool.ERASE) {
                 this.isErasing = false;
+                // Hide erase toolbar
+                this.ui.eraseToolbar?.classList.remove('active');
             }
             this.currentTool = EditorTool.NONE;
             
@@ -2061,7 +2110,7 @@ class Editor {
 
         // Quick eraser
         if (this.isErasing && this.engine.mouse.down && !this.isOverUI(e)) {
-            const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
+            const obj = this.getObjectToErase(worldPos.x, worldPos.y);
             if (obj) {
                 this.world.removeObject(obj.id);
                 this.triggerMapChange();
@@ -2114,7 +2163,7 @@ class Editor {
                 break;
             
             case EditorTool.ERASE:
-                const objToErase = this.world.getObjectAt(worldPos.x, worldPos.y);
+                const objToErase = this.getObjectToErase(worldPos.x, worldPos.y);
                 if (objToErase) {
                     this.world.removeObject(objToErase.id);
                     this.triggerMapChange();
@@ -2154,6 +2203,38 @@ class Editor {
         if (obj) {
             obj.rotation = (obj.rotation - 90 + 360) % 360;
             this.triggerMapChange();
+        }
+    }
+
+    // ========================================
+    // OBJECT ERASING
+    // ========================================
+    getObjectToErase(x, y) {
+        // Get all objects at this position
+        const objectsAtPos = this.world.getObjectsAt(x, y);
+        
+        if (objectsAtPos.length === 0) return null;
+        if (objectsAtPos.length === 1) return objectsAtPos[0];
+        
+        // Sort by array index (layer order in world.objects)
+        objectsAtPos.sort((a, b) => {
+            const indexA = this.world.objects.indexOf(a);
+            const indexB = this.world.objects.indexOf(b);
+            return indexA - indexB;
+        });
+        
+        switch (this.eraseSettings.eraseType) {
+            case 'all':
+                // Return the topmost (last in array = rendered on top)
+                return objectsAtPos[objectsAtPos.length - 1];
+            case 'top':
+                // Return the topmost object (highest index)
+                return objectsAtPos[objectsAtPos.length - 1];
+            case 'bottom':
+                // Return the bottommost object (lowest index)
+                return objectsAtPos[0];
+            default:
+                return objectsAtPos[objectsAtPos.length - 1];
         }
     }
 
