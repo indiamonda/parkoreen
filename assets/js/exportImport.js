@@ -33,6 +33,13 @@ const PKRN_DEFAULTS = {
         endBackground: null,
         sameAcrossScreens: false,
         reverse: false
+    },
+    music: {
+        type: 'none',
+        customData: null,
+        customName: null,
+        volume: 50,
+        loop: true
     }
 };
 
@@ -119,7 +126,9 @@ class ExportManager {
                 // Spike settings
                 spikeTouchbox: world.spikeTouchbox,
                 // Custom background
-                customBackground: world.customBackground
+                customBackground: world.customBackground,
+                // Music
+                music: world.music
             },
             objects: world.objects.map(obj => this.serializeObject(obj))
         };
@@ -157,6 +166,11 @@ class ExportManager {
             data.va = obj.vAlign;
             data.hs = obj.hSpacing;
             data.vs = obj.vSpacing;
+        }
+        
+        // Spike-specific properties
+        if (obj.spikeTouchbox) {
+            data.stb = obj.spikeTouchbox;
         }
 
         return data;
@@ -300,7 +314,36 @@ class ImportManager {
                 ? settings.spikeTouchbox : PKRN_DEFAULTS.spikeTouchbox,
             // Custom background with validation
             customBackground: this.deserializeCustomBackground(settings.customBackground),
+            // Music with validation
+            music: this.deserializeMusic(settings.music),
             objects: (data.objects || []).map(obj => this.deserializeObject(obj))
+        };
+    }
+    
+    /**
+     * Deserialize music settings with defaults
+     * @param {Object} music - Music settings
+     * @returns {Object} Validated music data
+     */
+    deserializeMusic(music) {
+        const validTypes = ['none', 'maccary-bay', 'reggae-party', 'custom'];
+        
+        if (!music) {
+            return {
+                type: 'none',
+                customData: null,
+                customName: null,
+                volume: 50,
+                loop: true
+            };
+        }
+        
+        return {
+            type: validTypes.includes(music.type) ? music.type : 'none',
+            customData: music.customData || null,
+            customName: music.customName || null,
+            volume: (typeof music.volume === 'number' && music.volume >= 0 && music.volume <= 100) ? music.volume : 50,
+            loop: music.loop !== false
         };
     }
 
@@ -360,6 +403,13 @@ class ImportManager {
             data.vAlign = obj.va || obj.vAlign || 'center';
             data.hSpacing = obj.hs || obj.hSpacing || 0;
             data.vSpacing = obj.vs || obj.vSpacing || 0;
+        }
+        
+        // Spike-specific properties
+        const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
+        const spikeTouchbox = obj.stb || obj.spikeTouchbox;
+        if (spikeTouchbox && validSpikeModes.includes(spikeTouchbox)) {
+            data.spikeTouchbox = spikeTouchbox;
         }
 
         return data;

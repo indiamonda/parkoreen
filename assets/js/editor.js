@@ -116,6 +116,10 @@ class Editor {
         // Callback for map changes (set by host.html for auto-save)
         this.onMapChange = null;
         
+        // Audio elements for music
+        this.previewAudio = null;
+        this.bgMusic = null;
+        
         // Bind engine callbacks
         this.setupEngineCallbacks();
     }
@@ -382,6 +386,62 @@ class Editor {
                                 <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
                                 <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Music</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Background Music</label>
+                            <select class="form-select" id="config-music">
+                                <option value="none">None</option>
+                                <option value="maccary-bay">Maccary Bay</option>
+                                <option value="reggae-party">Reggae Party</option>
+                                <option value="custom">Custom (Upload)</option>
+                            </select>
+                        </div>
+                        
+                        <div id="custom-music-options" class="hidden" style="margin-top: 12px;">
+                            <div class="form-group">
+                                <label class="form-label">Upload Music</label>
+                                <div class="custom-music-upload" id="custom-music-dropzone" style="border: 2px dashed var(--surface-light); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s;">
+                                    <span class="material-symbols-outlined" style="font-size: 28px; color: var(--text-muted);">music_note</span>
+                                    <p style="margin: 6px 0 0; color: var(--text-muted); font-size: 11px;">Drop audio file here or click to browse<br>(MP3, WAV, OGG)</p>
+                                    <input type="file" id="custom-music-file" accept="audio/*" style="display: none;">
+                                </div>
+                                <div id="custom-music-preview" class="hidden" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <button class="btn btn-icon btn-sm" id="custom-music-play" title="Play/Pause">
+                                            <span class="material-symbols-outlined">play_arrow</span>
+                                        </button>
+                                        <span id="custom-music-name" style="flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file selected</span>
+                                        <button class="btn btn-icon btn-sm btn-danger" id="custom-music-remove" title="Remove">
+                                            <span class="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" id="music-volume-group">
+                            <label class="form-label">Music Volume</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="range" class="form-range" id="config-music-volume" min="0" max="100" value="50" style="flex: 1;">
+                                <span id="config-music-volume-label" style="font-size: 12px; color: var(--text-muted); min-width: 35px;">50%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Loop Music</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-music-loop" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -760,6 +820,288 @@ class Editor {
         `;
         document.body.appendChild(settingsPanel);
         this.ui.settingsPanel = settingsPanel;
+        
+        // Object Edit Popup
+        this.createObjectEditPopup();
+    }
+    
+    createObjectEditPopup() {
+        const popup = document.createElement('div');
+        popup.className = 'object-edit-popup modal-overlay';
+        popup.id = 'object-edit-popup';
+        popup.innerHTML = `
+            <div class="object-edit-panel">
+                <div class="panel-header">
+                    <span class="panel-title" id="object-edit-title">Edit Object</span>
+                    <button class="btn btn-icon btn-ghost" id="close-object-edit">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" id="object-edit-name" placeholder="Object Name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" id="object-edit-color-preview" style="background: #787878"></div>
+                            <input type="text" class="form-input form-input-sm color-input" id="object-edit-color" value="#787878">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Opacity</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="object-edit-opacity-range" min="0" max="100" value="100" style="flex: 1;">
+                            <span id="object-edit-opacity-label" style="font-size: 12px; min-width: 35px;">100%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Rotation</label>
+                        <div class="placement-option-btns" style="justify-content: flex-start;">
+                            <button class="placement-opt-btn" id="object-edit-rotate-left" title="Rotate Left">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">rotate_left</span>
+                            </button>
+                            <button class="placement-opt-btn" id="object-edit-rotate-right" title="Rotate Right">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">rotate_right</span>
+                            </button>
+                            <span id="object-edit-rotation-label" style="font-size: 12px; margin-left: 8px;">0°</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Collision</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="object-edit-collision" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-group" id="object-edit-spike-group" style="display: none;">
+                        <label class="form-label">Spike Touchbox</label>
+                        <select class="form-select" id="object-edit-spike-touchbox">
+                            <option value="">Use World Default</option>
+                            <option value="full">Full Spike</option>
+                            <option value="normal">Normal Spike</option>
+                            <option value="tip">Tip Spike</option>
+                            <option value="ground">Ground</option>
+                            <option value="flag">Flag</option>
+                            <option value="air">Air</option>
+                        </select>
+                        <div id="object-edit-spike-desc" style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 11px; color: #aaa; line-height: 1.4;"></div>
+                        <div id="object-edit-spike-attached" style="margin-top: 8px; padding: 8px; background: rgba(255,193,7,0.15); border-radius: 6px; font-size: 11px; color: #ffc107; line-height: 1.4; display: none;">
+                            <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">info</span>
+                            This spike is attached to ground - its flat side will act as ground regardless of the touchbox setting.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="object-edit-text-group" style="display: none;">
+                        <label class="form-label">Text Content</label>
+                        <textarea class="form-input" id="object-edit-content" rows="3" style="resize: vertical; font-family: inherit;"></textarea>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                        <button class="btn btn-danger" id="object-edit-delete" style="width: 100%;">
+                            <span class="material-symbols-outlined">delete</span>
+                            Delete Object
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        this.ui.objectEditPopup = popup;
+        
+        // Track the currently editing object
+        this.editingObject = null;
+        
+        // Setup event listeners for object edit popup
+        this.setupObjectEditListeners();
+    }
+    
+    setupObjectEditListeners() {
+        const popup = this.ui.objectEditPopup;
+        
+        // Close button
+        document.getElementById('close-object-edit').addEventListener('click', () => {
+            this.closeObjectEditPopup();
+        });
+        
+        // Click outside to close
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                this.closeObjectEditPopup();
+            }
+        });
+        
+        // Name change
+        document.getElementById('object-edit-name').addEventListener('change', (e) => {
+            if (this.editingObject) {
+                this.editingObject.name = e.target.value || this.editingObject.getDefaultName();
+                this.updateLayersList();
+                this.triggerMapChange();
+            }
+        });
+        
+        // Color preview click
+        document.getElementById('object-edit-color-preview').addEventListener('click', () => {
+            this.showColorPicker('object-edit');
+        });
+        
+        // Color input change
+        document.getElementById('object-edit-color').addEventListener('change', (e) => {
+            if (this.editingObject) {
+                let color = this.autoCorrectHexInput(e.target.value);
+                e.target.value = color;
+                this.editingObject.color = color;
+                document.getElementById('object-edit-color-preview').style.background = color;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Opacity range
+        document.getElementById('object-edit-opacity-range').addEventListener('input', (e) => {
+            if (this.editingObject) {
+                const value = parseInt(e.target.value);
+                this.editingObject.opacity = value / 100;
+                document.getElementById('object-edit-opacity-label').textContent = value + '%';
+                this.updateLayersList();
+                this.triggerMapChange();
+            }
+        });
+        
+        // Rotation buttons
+        document.getElementById('object-edit-rotate-left').addEventListener('click', () => {
+            if (this.editingObject) {
+                this.editingObject.rotation = (this.editingObject.rotation - 90 + 360) % 360;
+                document.getElementById('object-edit-rotation-label').textContent = this.editingObject.rotation + '°';
+                this.updateSpikeAttachedWarning();
+                this.triggerMapChange();
+            }
+        });
+        
+        document.getElementById('object-edit-rotate-right').addEventListener('click', () => {
+            if (this.editingObject) {
+                this.editingObject.rotation = (this.editingObject.rotation + 90) % 360;
+                document.getElementById('object-edit-rotation-label').textContent = this.editingObject.rotation + '°';
+                this.updateSpikeAttachedWarning();
+                this.triggerMapChange();
+            }
+        });
+        
+        // Collision toggle
+        document.getElementById('object-edit-collision').addEventListener('change', (e) => {
+            if (this.editingObject) {
+                this.editingObject.collision = e.target.checked;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Spike touchbox
+        document.getElementById('object-edit-spike-touchbox').addEventListener('change', (e) => {
+            if (this.editingObject && this.editingObject.appearanceType === 'spike') {
+                this.editingObject.spikeTouchbox = e.target.value || null;
+                this.updateSpikeTouchboxEditDescription(e.target.value);
+                this.triggerMapChange();
+            }
+        });
+        
+        // Text content
+        document.getElementById('object-edit-content').addEventListener('input', (e) => {
+            if (this.editingObject && this.editingObject.type === 'text') {
+                this.editingObject.content = e.target.value;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Delete button
+        document.getElementById('object-edit-delete').addEventListener('click', () => {
+            if (this.editingObject) {
+                this.world.removeObject(this.editingObject.id);
+                this.closeObjectEditPopup();
+                this.updateLayersList();
+                this.triggerMapChange();
+            }
+        });
+    }
+    
+    openObjectEditPopup(obj) {
+        if (!obj) return;
+        
+        this.editingObject = obj;
+        const popup = this.ui.objectEditPopup;
+        
+        // Set title
+        document.getElementById('object-edit-title').textContent = 'Edit ' + obj.name;
+        
+        // Set values
+        document.getElementById('object-edit-name').value = obj.name;
+        document.getElementById('object-edit-color').value = obj.color;
+        document.getElementById('object-edit-color-preview').style.background = obj.color;
+        document.getElementById('object-edit-opacity-range').value = Math.round(obj.opacity * 100);
+        document.getElementById('object-edit-opacity-label').textContent = Math.round(obj.opacity * 100) + '%';
+        document.getElementById('object-edit-rotation-label').textContent = obj.rotation + '°';
+        document.getElementById('object-edit-collision').checked = obj.collision;
+        
+        // Show/hide spike options
+        const spikeGroup = document.getElementById('object-edit-spike-group');
+        if (obj.appearanceType === 'spike' || obj.actingType === 'spike') {
+            spikeGroup.style.display = 'block';
+            document.getElementById('object-edit-spike-touchbox').value = obj.spikeTouchbox || '';
+            this.updateSpikeTouchboxEditDescription(obj.spikeTouchbox || '');
+            this.updateSpikeAttachedWarning();
+        } else {
+            spikeGroup.style.display = 'none';
+        }
+        
+        // Show/hide text options
+        const textGroup = document.getElementById('object-edit-text-group');
+        if (obj.type === 'text') {
+            textGroup.style.display = 'block';
+            document.getElementById('object-edit-content').value = obj.content || '';
+        } else {
+            textGroup.style.display = 'none';
+        }
+        
+        // Show popup
+        popup.classList.add('active');
+    }
+    
+    closeObjectEditPopup() {
+        this.editingObject = null;
+        this.ui.objectEditPopup.classList.remove('active');
+    }
+    
+    updateSpikeTouchboxEditDescription(mode) {
+        const descEl = document.getElementById('object-edit-spike-desc');
+        if (!descEl) return;
+        
+        const descriptions = {
+            '': 'Uses the world\'s default spike touchbox setting.',
+            'full': 'The entire spike is dangerous. Any contact damages the player.',
+            'normal': 'The flat base acts as ground. Other parts damage the player.',
+            'tip': 'Only the peak is dangerous. Base is ground, middle has no collision.',
+            'ground': 'Acts completely as solid ground. No damage.',
+            'flag': 'Only the flat base acts as ground. Rest has no collision.',
+            'air': 'No collision at all. Players pass through.'
+        };
+        
+        descEl.textContent = descriptions[mode] || descriptions[''];
+    }
+    
+    updateSpikeAttachedWarning() {
+        const warningEl = document.getElementById('object-edit-spike-attached');
+        if (!warningEl || !this.editingObject) return;
+        
+        if (this.editingObject.appearanceType === 'spike' || this.editingObject.actingType === 'spike') {
+            const isAttached = this.world.isSpikeAttachedToGround(this.editingObject);
+            warningEl.style.display = isAttached ? 'block' : 'none';
+        } else {
+            warningEl.style.display = 'none';
+        }
     }
 
     createColorPicker() {
@@ -1103,6 +1445,103 @@ class Editor {
             this.world.spikeTouchbox = e.target.value;
             this.updateSpikeTouchboxDescription(e.target.value);
             this.triggerMapChange();
+        });
+        
+        // Music settings
+        const musicSelect = document.getElementById('config-music');
+        const customMusicOptions = document.getElementById('custom-music-options');
+        const customMusicDropzone = document.getElementById('custom-music-dropzone');
+        const customMusicFile = document.getElementById('custom-music-file');
+        const customMusicPreview = document.getElementById('custom-music-preview');
+        const customMusicName = document.getElementById('custom-music-name');
+        const customMusicPlay = document.getElementById('custom-music-play');
+        const customMusicRemove = document.getElementById('custom-music-remove');
+        const musicVolume = document.getElementById('config-music-volume');
+        const musicVolumeLabel = document.getElementById('config-music-volume-label');
+        const musicLoop = document.getElementById('config-music-loop');
+        
+        // Audio element for preview
+        this.previewAudio = new Audio();
+        
+        musicSelect.addEventListener('change', (e) => {
+            this.world.music.type = e.target.value;
+            if (e.target.value === 'custom') {
+                customMusicOptions.classList.remove('hidden');
+            } else {
+                customMusicOptions.classList.add('hidden');
+            }
+            this.triggerMapChange();
+            this.updateMusicPlayback();
+        });
+        
+        // Custom music dropzone
+        customMusicDropzone.addEventListener('click', () => {
+            customMusicFile.click();
+        });
+        
+        customMusicDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            customMusicDropzone.style.borderColor = 'var(--primary)';
+            customMusicDropzone.style.background = 'rgba(99, 102, 241, 0.1)';
+        });
+        
+        customMusicDropzone.addEventListener('dragleave', () => {
+            customMusicDropzone.style.borderColor = 'var(--surface-light)';
+            customMusicDropzone.style.background = '';
+        });
+        
+        customMusicDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            customMusicDropzone.style.borderColor = 'var(--surface-light)';
+            customMusicDropzone.style.background = '';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('audio/')) {
+                this.handleMusicUpload(file);
+            }
+        });
+        
+        customMusicFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.handleMusicUpload(file);
+            }
+        });
+        
+        customMusicPlay.addEventListener('click', () => {
+            if (this.previewAudio.paused) {
+                this.previewAudio.play();
+                customMusicPlay.querySelector('.material-symbols-outlined').textContent = 'pause';
+            } else {
+                this.previewAudio.pause();
+                customMusicPlay.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+            }
+        });
+        
+        customMusicRemove.addEventListener('click', () => {
+            this.world.music.customData = null;
+            this.world.music.customName = null;
+            this.previewAudio.pause();
+            this.previewAudio.src = '';
+            customMusicPreview.classList.add('hidden');
+            customMusicDropzone.classList.remove('hidden');
+            customMusicPlay.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+            this.triggerMapChange();
+            this.updateMusicPlayback();
+        });
+        
+        musicVolume.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.world.music.volume = value;
+            musicVolumeLabel.textContent = value + '%';
+            this.previewAudio.volume = value / 100;
+            this.triggerMapChange();
+            this.updateMusicPlayback();
+        });
+        
+        musicLoop.addEventListener('change', (e) => {
+            this.world.music.loop = e.target.checked;
+            this.triggerMapChange();
+            this.updateMusicPlayback();
         });
 
         // Test game
@@ -2020,6 +2459,16 @@ class Editor {
                         this.highlightedLayerObject = null;
                     }
                 });
+                
+                // Click on name to open edit popup
+                item.querySelector('.layer-item-name').addEventListener('click', () => {
+                    this.openObjectEditPopup(obj);
+                });
+                
+                // Double-click on preview to open edit popup
+                item.querySelector('.layer-item-preview').addEventListener('dblclick', () => {
+                    this.openObjectEditPopup(obj);
+                });
 
                 list.appendChild(item);
             }
@@ -2039,6 +2488,8 @@ class Editor {
             currentColor = this.placementMode === PlacementMode.TEXT 
                 ? this.textSettings.color 
                 : this.placementSettings.color;
+        } else if (target === 'object-edit') {
+            currentColor = this.editingObject ? this.editingObject.color : '#787878';
         } else if (target.startsWith('config-')) {
             const type = target.replace('config-', '');
             currentColor = document.getElementById(`config-${type}-color`).value;
@@ -2046,6 +2497,11 @@ class Editor {
         
         // Set initial state from color
         this.setColorPickerFromHex(currentColor);
+    }
+    
+    showColorPicker(target) {
+        // Alias for openColorPicker
+        this.openColorPicker(target);
     }
 
     closeColorPicker() {
@@ -2120,6 +2576,13 @@ class Editor {
             }
             document.getElementById('placement-color-preview').style.background = hex;
             document.getElementById('placement-color-input').value = hex;
+        } else if (target === 'object-edit') {
+            if (this.editingObject) {
+                this.editingObject.color = hex;
+                document.getElementById('object-edit-color').value = hex;
+                document.getElementById('object-edit-color-preview').style.background = hex;
+                this.triggerMapChange();
+            }
         } else if (target && target.startsWith('config-')) {
             const type = target.replace('config-', '');
             document.getElementById(`config-${type}-color`).value = hex;
@@ -2309,6 +2772,17 @@ class Editor {
                     this.triggerMapChange();
                 }
                 break;
+            
+            case EditorTool.NONE:
+                // If no tool is active, open edit popup on click
+                // (fly mode camera dragging is handled in handleMouseMove)
+                if (!this.isFlying) {
+                    const objToEdit = this.world.getObjectAt(worldPos.x, worldPos.y);
+                    if (objToEdit) {
+                        this.openObjectEditPopup(objToEdit);
+                    }
+                }
+                break;
         }
     }
 
@@ -2333,7 +2807,9 @@ class Editor {
             el.closest('.add-menu') ||
             el.closest('.placement-toolbar') ||
             el.closest('.color-picker-popup') ||
-            el.closest('.modal-overlay')
+            el.closest('.modal-overlay') ||
+            el.closest('.object-edit-popup') ||
+            el.closest('.object-edit-panel')
         );
     }
 
@@ -2709,6 +3185,49 @@ class Editor {
             this.updateSpikeTouchboxDescription(spikeTouchbox.value);
         }
         
+        // Music settings
+        const musicSelect = document.getElementById('config-music');
+        const customMusicOptions = document.getElementById('custom-music-options');
+        const musicVolume = document.getElementById('config-music-volume');
+        const musicVolumeLabel = document.getElementById('config-music-volume-label');
+        const musicLoop = document.getElementById('config-music-loop');
+        
+        if (musicSelect && this.world.music) {
+            musicSelect.value = this.world.music.type || 'none';
+            
+            if (this.world.music.type === 'custom') {
+                customMusicOptions.classList.remove('hidden');
+                
+                // If there's custom music data, show the preview
+                if (this.world.music.customData) {
+                    const preview = document.getElementById('custom-music-preview');
+                    const dropzone = document.getElementById('custom-music-dropzone');
+                    const nameEl = document.getElementById('custom-music-name');
+                    
+                    nameEl.textContent = this.world.music.customName || 'Custom Music';
+                    preview.classList.remove('hidden');
+                    dropzone.classList.add('hidden');
+                    
+                    if (this.previewAudio) {
+                        this.previewAudio.src = this.world.music.customData;
+                        this.previewAudio.volume = this.world.music.volume / 100;
+                    }
+                }
+            } else {
+                customMusicOptions.classList.add('hidden');
+            }
+        }
+        
+        if (musicVolume) {
+            musicVolume.value = this.world.music?.volume ?? 50;
+        }
+        if (musicVolumeLabel) {
+            musicVolumeLabel.textContent = (this.world.music?.volume ?? 50) + '%';
+        }
+        if (musicLoop) {
+            musicLoop.checked = this.world.music?.loop !== false;
+        }
+        
         // Custom background
         this.syncCustomBackgroundUI();
     }
@@ -2814,6 +3333,67 @@ class Editor {
         };
         
         descEl.innerHTML = descriptions[mode] || descriptions['normal'];
+    }
+    
+    handleMusicUpload(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.world.music.customData = e.target.result;
+            this.world.music.customName = file.name;
+            
+            // Update UI
+            const preview = document.getElementById('custom-music-preview');
+            const dropzone = document.getElementById('custom-music-dropzone');
+            const nameEl = document.getElementById('custom-music-name');
+            
+            nameEl.textContent = file.name;
+            preview.classList.remove('hidden');
+            dropzone.classList.add('hidden');
+            
+            // Set audio source for preview
+            this.previewAudio.src = e.target.result;
+            this.previewAudio.volume = this.world.music.volume / 100;
+            
+            this.triggerMapChange();
+            this.updateMusicPlayback();
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    updateMusicPlayback() {
+        // Stop any existing music
+        if (this.bgMusic) {
+            this.bgMusic.pause();
+            this.bgMusic.src = '';
+        }
+        
+        const music = this.world.music;
+        if (music.type === 'none') {
+            return;
+        }
+        
+        if (!this.bgMusic) {
+            this.bgMusic = new Audio();
+        }
+        
+        let src = null;
+        if (music.type === 'custom' && music.customData) {
+            src = music.customData;
+        } else if (music.type !== 'none') {
+            // Built-in music files
+            const musicFiles = {
+                'maccary-bay': 'assets/mp3/maccary-bay.mp3',
+                'reggae-party': 'assets/mp3/reggae-party.mp3'
+            };
+            src = musicFiles[music.type];
+        }
+        
+        if (src) {
+            this.bgMusic.src = src;
+            this.bgMusic.volume = music.volume / 100;
+            this.bgMusic.loop = music.loop;
+            // Don't auto-play in editor
+        }
     }
     
     setupCollapsibleSections() {

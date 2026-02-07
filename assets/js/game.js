@@ -260,7 +260,7 @@ class Player {
     checkCollisions(world, direction) {
         const collisions = [];
         const box = this.getGroundTouchbox();
-        const spikeMode = world?.spikeTouchbox || 'normal';
+        const worldSpikeMode = world?.spikeTouchbox || 'normal';
         
         for (const obj of world.objects) {
             // Skip objects without collision
@@ -268,6 +268,15 @@ class Player {
             
             // Handle spike ground collision based on mode
             if (obj.actingType === 'spike') {
+                // Use per-object spikeTouchbox if set, otherwise use world default
+                const spikeMode = obj.spikeTouchbox || worldSpikeMode;
+                
+                // If spike is attached to ground, skip ground collision for this spike
+                // (the attached ground block will handle it)
+                if (world.isSpikeAttachedToGround(obj)) {
+                    continue;
+                }
+                
                 // In 'air' mode, spikes have no interaction
                 if (spikeMode === 'air') continue;
                 
@@ -301,11 +310,14 @@ class Player {
         if (!world || !world.objects) return;
         
         const hurtBox = this.getHurtTouchbox();
-        const spikeMode = world?.spikeTouchbox || 'normal';
+        const worldSpikeMode = world?.spikeTouchbox || 'normal';
         
         for (const obj of world.objects) {
             // Only check objects that act as spikes and have collision enabled
             if (obj.actingType === 'spike' && obj.collision !== false) {
+                // Use per-object spikeTouchbox if set, otherwise use world default
+                const spikeMode = obj.spikeTouchbox || worldSpikeMode;
+                
                 // In 'air', 'ground', or 'flag' mode, spikes don't damage
                 if (spikeMode === 'air' || spikeMode === 'ground' || spikeMode === 'flag') continue;
                 
@@ -570,6 +582,9 @@ class WorldObject {
         
         // Checkpoint state (default, active, touched)
         this.checkpointState = config.checkpointState || 'default';
+        
+        // Per-spike touchbox mode (null = use world default, or 'full', 'normal', 'tip', 'ground', 'flag', 'air')
+        this.spikeTouchbox = config.spikeTouchbox || null;
         
         this.name = config.name || this.getDefaultName();
     }
@@ -843,6 +858,7 @@ class WorldObject {
             vAlign: this.vAlign,
             hSpacing: this.hSpacing,
             vSpacing: this.vSpacing,
+            spikeTouchbox: this.spikeTouchbox,
             name: this.name
         };
     }
@@ -855,6 +871,15 @@ class World {
     constructor() {
         this.objects = [];
         this.background = 'sky'; // sky, galaxy, custom
+        
+        // Music settings
+        this.music = {
+            type: 'none', // 'none', 'chill', 'adventure', 'retro', 'epic', 'peaceful', 'custom'
+            customData: null, // base64 audio data for custom music
+            customName: null, // filename of custom music
+            volume: 50, // 0-100
+            loop: true
+        };
         
         // Custom background settings
         this.customBackground = {
@@ -925,6 +950,53 @@ class World {
     getObjectsAt(x, y) {
         // Return all objects at this point
         return this.objects.filter(obj => obj.containsPoint(x, y));
+    }
+    
+    /**
+     * Check if a spike is attached to a ground block
+     * Returns true if the spike's flat side (determined by rotation) is touching a ground block
+     * @param {WorldObject} spike - The spike to check
+     * @returns {boolean}
+     */
+    isSpikeAttachedToGround(spike) {
+        if (spike.appearanceType !== 'spike') return false;
+        
+        // Determine which side is the flat side based on rotation
+        // rotation 0 = spike pointing up, flat side at bottom (y + height)
+        // rotation 90 = spike pointing right, flat side at left (x - 1)
+        // rotation 180 = spike pointing down, flat side at top (y - 1)
+        // rotation 270 = spike pointing left, flat side at right (x + width)
+        
+        let checkX, checkY;
+        const r = spike.rotation % 360;
+        
+        if (r === 0) {
+            // Flat side at bottom
+            checkX = spike.x + spike.width / 2;
+            checkY = spike.y + spike.height + 1;
+        } else if (r === 90) {
+            // Flat side at left
+            checkX = spike.x - 1;
+            checkY = spike.y + spike.height / 2;
+        } else if (r === 180) {
+            // Flat side at top
+            checkX = spike.x + spike.width / 2;
+            checkY = spike.y - 1;
+        } else if (r === 270) {
+            // Flat side at right
+            checkX = spike.x + spike.width + 1;
+            checkY = spike.y + spike.height / 2;
+        } else {
+            return false;
+        }
+        
+        // Check if there's a ground block at that position
+        const objectsAtPoint = this.getObjectsAt(checkX, checkY);
+        return objectsAtPoint.some(obj => 
+            obj.id !== spike.id && 
+            obj.actingType === 'ground' && 
+            obj.collision
+        );
     }
 
     getObjectById(id) {
@@ -1010,7 +1082,9 @@ class World {
             // Spike settings
             spikeTouchbox: this.spikeTouchbox,
             // Custom background
-            customBackground: this.customBackground
+            customBackground: this.customBackground,
+            // Music
+            music: this.music
         };
     }
 
@@ -1060,6 +1134,26 @@ class World {
                 endBackground: null,
                 sameAcrossScreens: false,
                 reverse: false
+            };
+        }
+        
+        // Music settings with defaults
+        const validMusicTypes = ['none', 'maccary-bay', 'reggae-party', 'custom'];
+        if (data.music) {
+            this.music = {
+                type: validMusicTypes.includes(data.music.type) ? data.music.type : 'none',
+                customData: data.music.customData || null,
+                customName: data.music.customName || null,
+                volume: (typeof data.music.volume === 'number' && data.music.volume >= 0 && data.music.volume <= 100) ? data.music.volume : 50,
+                loop: data.music.loop !== false
+            };
+        } else {
+            this.music = {
+                type: 'none',
+                customData: null,
+                customName: null,
+                volume: 50,
+                loop: true
             };
         }
         

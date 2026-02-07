@@ -225,6 +225,20 @@ a:hover {
     font-size: 24px;
 }
 
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+}
+
+.btn-icon.btn-sm {
+    width: 32px;
+    height: 32px;
+}
+
+.btn-icon.btn-sm .material-symbols-outlined {
+    font-size: 18px;
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -477,6 +491,53 @@ a:hover {
     display: flex;
     gap: var(--spacing-md);
     justify-content: center;
+}
+
+/* ====================================
+   OBJECT EDIT POPUP
+   ==================================== */
+.object-edit-popup {
+    z-index: var(--z-modal);
+}
+
+.object-edit-panel {
+    background: var(--bg-medium);
+    border-radius: var(--border-radius-lg);
+    max-width: 380px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: scale(0.9);
+    transition: transform var(--transition);
+    box-shadow: var(--shadow-lg);
+}
+
+.object-edit-popup.active .object-edit-panel {
+    transform: scale(1);
+}
+
+.object-edit-panel .panel-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.object-edit-panel .panel-body {
+    max-height: none;
+}
+
+.object-edit-panel .color-picker-option {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.object-edit-panel .color-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid var(--surface-light);
 }
 
 .modal-actions .btn {
@@ -783,6 +844,18 @@ a:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background var(--transition);
+}
+
+.layer-item-name:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.layer-item-preview {
+    cursor: pointer;
 }
 
 .layer-item-actions {
