@@ -109,6 +109,10 @@ class Player {
         this.lastDirectionChangeTime = 0;
         this.directionChangeCount = 0;
         this.directionChangeWindowStart = 0;
+        
+        // Coyote time - grace period after leaving ground where ground jump still counts
+        this.coyoteTimeStart = null;
+        this.COYOTE_TIME = 170; // 0.17 seconds in milliseconds
     }
 
     generateRandomColor() {
@@ -192,15 +196,32 @@ class Player {
         if (this.vy > maxFallSpeed) this.vy = maxFallSpeed;
 
         // Handle jump - infinite jumps in editor mode
-        const canJumpNow = editorMode ? true : (this.jumpsRemaining > 0);
+        // Check coyote time - if within grace period, the jump counts as a ground jump
+        const now = Date.now();
+        const inCoyoteTime = this.coyoteTimeStart !== null && (now - this.coyoteTimeStart) <= this.COYOTE_TIME;
+        const canJumpNow = editorMode ? true : (this.jumpsRemaining > 0 || inCoyoteTime);
+        
         if (this.input.jump && this.canJump && canJumpNow) {
             this.vy = jumpForce;
             if (!editorMode) {
+                // If jumping during coyote time, it counts as ground jump (use full jumps minus 1)
+                if (inCoyoteTime && this.jumpsRemaining === 0) {
+                    // Restore to max jumps minus 1 (the ground jump we're using now)
+                    this.jumpsRemaining = Math.max(0, this.maxJumps - 1);
+                } else {
                 this.jumpsRemaining--;
+                }
+                // Clear coyote time after jumping
+                this.coyoteTimeStart = null;
             }
             this.canJump = false;
             this.isOnGround = false;
             if (audioManager) audioManager.play('jump');
+        }
+        
+        // Expire coyote time if not used
+        if (this.coyoteTimeStart !== null && (now - this.coyoteTimeStart) > this.COYOTE_TIME) {
+            this.coyoteTimeStart = null;
         }
 
         if (!this.input.jump) {
@@ -252,9 +273,11 @@ class Player {
         }
         
         // Check if player walked off a ledge (was on ground, now falling, didn't jump)
-        // If additionalAirjump is disabled, lose the ground jump
+        // If additionalAirjump is disabled, start coyote time instead of immediately losing the ground jump
         if (wasOnGround && !this.isOnGround && !this.additionalAirjump && this.jumpsRemaining === this.maxJumps) {
-            // Player walked off ledge - they lose their ground jump
+            // Player walked off ledge - start coyote time grace period
+            this.coyoteTimeStart = Date.now();
+            // Reduce jumps now, but coyote time allows recovery if jump happens within the window
             this.jumpsRemaining = Math.max(0, this.maxJumps - 1);
         }
 
@@ -341,10 +364,10 @@ class Player {
                 
                 // In 'full' mode, any contact with spike = damage
                 if (spikeMode === 'full') {
-                    if (this.boxIntersects(hurtBox, obj)) {
-                        this.die();
-                        return;
-                    }
+                if (this.boxIntersects(hurtBox, obj)) {
+                    this.die();
+                    return;
+                }
                     continue;
                 }
                 
@@ -512,6 +535,8 @@ class Player {
         // When landing on ground, reset to full jumps
         // (The walk-off-ledge penalty is handled in moveWithCollision)
             this.jumpsRemaining = this.maxJumps;
+        // Clear coyote time when landing
+        this.coyoteTimeStart = null;
     }
 
     die() {
@@ -658,7 +683,7 @@ const SpikeImage = {
         if (this.image) return;
         this.image = new Image();
         this.image.onload = () => { this.loaded = true; };
-        this.image.src = '/parkoreen/assets/mp3/Spike 64x.svg';
+        this.image.src = '/parkoreen/assets/png/spike-64x.svg';
     }
 };
 // Load spike image immediately
@@ -746,7 +771,7 @@ class WorldObject {
         if (this.rotation !== 0 || this.flipHorizontal) {
             ctx.translate(screenX + width / 2, screenY + height / 2);
             if (this.rotation !== 0) {
-                ctx.rotate(this.rotation * Math.PI / 180);
+            ctx.rotate(this.rotation * Math.PI / 180);
             }
             if (this.flipHorizontal) {
                 ctx.scale(-1, 1);
@@ -820,12 +845,12 @@ class WorldObject {
             
             for (let t = 0; t < numTeeth; t++) {
                 const toothX = x + t * toothWidth;
-                ctx.beginPath();
+        ctx.beginPath();
                 ctx.moveTo(toothX, y + h - baseHeight);
                 ctx.lineTo(toothX + toothWidth / 2, y);
                 ctx.lineTo(toothX + toothWidth, y + h - baseHeight);
-                ctx.closePath();
-                ctx.fill();
+        ctx.closePath();
+        ctx.fill();
             }
         }
     }

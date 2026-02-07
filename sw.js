@@ -25,8 +25,8 @@ const ASSETS_TO_CACHE = [
     '/parkoreen/runtime.js',
     '/parkoreen/manifest.json',
     // Spike images
-    '/parkoreen/assets/mp3/Spike 64x.svg',
-    '/parkoreen/assets/mp3/Spike 512x.svg',
+    '/parkoreen/assets/png/spike-64x.svg',
+    '/parkoreen/assets/png/spike-512x.svg',
     // Icons
     '/parkoreen/assets/png/icons/icon-play-32.png',
     '/parkoreen/assets/png/icons/icon-play-64.png',
