@@ -6,6 +6,8 @@ Build creative parkour courses, test them yourself, then host games and race aga
 
 ![Parkoreen](https://img.shields.io/badge/version-2.0.0-green) ![License](https://img.shields.io/badge/license-Proprietary-red)
 
+![Parkoreen Cover](assets/png/cover.png)
+
 ---
 
 ## 📋 Table of Contents
