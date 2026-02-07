@@ -250,6 +250,13 @@ class Player {
                 this.vy = 0;
             }
         }
+        
+        // Check if player walked off a ledge (was on ground, now falling, didn't jump)
+        // If additionalAirjump is disabled, lose the ground jump
+        if (wasOnGround && !this.isOnGround && !this.additionalAirjump && this.jumpsRemaining === this.maxJumps) {
+            // Player walked off ledge - they lose their ground jump
+            this.jumpsRemaining = Math.max(0, this.maxJumps - 1);
+        }
 
         // Check hurt collisions (skip in editor mode)
         if (!editorMode) {
@@ -265,6 +272,9 @@ class Player {
         for (const obj of world.objects) {
             // Skip objects without collision
             if (!obj.collision) continue;
+            
+            // Skip text objects (actingType 'text' means no touchbox)
+            if (obj.actingType === 'text') continue;
             
             // Handle spike ground collision based on mode
             if (obj.actingType === 'spike') {
@@ -439,12 +449,9 @@ class Player {
     }
 
     resetJumps() {
-        if (this.additionalAirjump) {
-            this.jumpsRemaining = this.maxJumps;
-        } else {
-            // On ground: 1 jump, then maxJumps - 1 in air
-            this.jumpsRemaining = this.maxJumps;
-        }
+        // When landing on ground, reset to full jumps
+        // (The walk-off-ledge penalty is handled in moveWithCollision)
+        this.jumpsRemaining = this.maxJumps;
     }
 
     die() {
@@ -589,6 +596,9 @@ class WorldObject {
         // Zone-specific property
         this.zoneName = config.zoneName || null;
         
+        // Teleportal-specific property
+        this.teleportalName = config.teleportalName || null;
+        
         this.name = config.name || this.getDefaultName();
     }
 
@@ -597,12 +607,16 @@ class WorldObject {
     }
 
     getDefaultName() {
+        if (this.type === 'teleportal') {
+            return 'Teleportal';
+        }
         const typeNames = {
             ground: 'Block',
             spike: 'Spike',
             checkpoint: 'Checkpoint',
             spawnpoint: 'Spawn Point',
-            endpoint: 'End Point'
+            endpoint: 'End Point',
+            teleportal: 'Teleportal'
         };
         return typeNames[this.appearanceType] || 'Object';
     }
@@ -636,6 +650,8 @@ class WorldObject {
             this.renderEndpoint(ctx, screenX, screenY, width, height);
         } else if (this.appearanceType === 'zone') {
             this.renderZone(ctx, screenX, screenY, width, height);
+        } else if (this.type === 'teleportal' || this.appearanceType === 'teleportal') {
+            this.renderTeleportal(ctx, screenX, screenY, width, height);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
@@ -788,6 +804,65 @@ class WorldObject {
             ctx.fillText(this.zoneName, x + 4 + padding, y + 6);
         }
     }
+    
+    renderTeleportal(ctx, x, y, w, h) {
+        // Main body - circular portal appearance
+        const centerX = x + w / 2;
+        const centerY = y + h / 2;
+        const radius = Math.min(w, h) * 0.4;
+        
+        // Outer glow
+        const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.3, centerX, centerY, radius);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(0.7, this.color + '80');
+        gradient.addColorStop(1, this.color + '00');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Inner swirl effect
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+            const startAngle = (i * Math.PI * 2 / 3);
+            ctx.arc(centerX, centerY, radius * 0.6, startAngle, startAngle + Math.PI * 0.6);
+        }
+        ctx.stroke();
+        
+        // Center dot
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Portal border
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Teleportal name label
+        if (this.teleportalName) {
+            ctx.font = '10px "Parkoreen Game", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            
+            const textWidth = ctx.measureText(this.teleportalName).width;
+            const padding = 3;
+            
+            // Background for label
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(centerX - textWidth / 2 - padding, y + h - 14, textWidth + padding * 2, 14);
+            
+            // Text
+            ctx.fillStyle = this.color;
+            ctx.fillText(this.teleportalName, centerX, y + h - 12);
+        }
+    }
 
     renderText(ctx, x, y, w, h) {
         ctx.fillStyle = this.color;
@@ -901,6 +976,7 @@ class WorldObject {
             vSpacing: this.vSpacing,
             spikeTouchbox: this.spikeTouchbox,
             zoneName: this.zoneName,
+            teleportalName: this.teleportalName,
             name: this.name
         };
     }
@@ -1276,9 +1352,65 @@ class GameEngine {
         
         this.touchscreenMode = false;
         
+        // Particle system
+        this.particles = [];
+        
         this.setupCanvas();
         this.setupInput();
         this.audioManager.loadVolumeFromStorage();
+    }
+    
+    // Spawn circular particles (for checkpoint touch effect)
+    spawnCheckpointParticles(x, y, color = '#4CAF50') {
+        const particleCount = 12;
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 / particleCount) * i + (Math.random() - 0.5) * 0.5;
+            const speed = 80 + Math.random() * 60;
+            const size = 4 + Math.random() * 4;
+            
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: size,
+                color: color,
+                alpha: 1,
+                life: 1,
+                decay: 0.02 + Math.random() * 0.01
+            });
+        }
+    }
+    
+    updateParticles(dt) {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy += 200 * dt; // gravity
+            p.life -= p.decay;
+            p.alpha = p.life;
+            
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+    
+    renderParticles() {
+        for (const p of this.particles) {
+            const screenX = (p.x - this.camera.x) * this.camera.zoom;
+            const screenY = (p.y - this.camera.y) * this.camera.zoom;
+            const size = p.size * this.camera.zoom;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = p.alpha;
+            this.ctx.fillStyle = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
     }
 
     setupCanvas() {
@@ -1297,16 +1429,17 @@ class GameEngine {
             window.visualViewport.addEventListener('resize', () => this.resizeCanvas());
         }
         
-        // Prevent zoom via Ctrl+wheel
+        // Prevent browser zoom via Ctrl+wheel (only in editor/test mode)
         document.addEventListener('wheel', (e) => {
-            if (e.ctrlKey || e.metaKey) {
+            if ((e.ctrlKey || e.metaKey) && (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
                 e.preventDefault();
             }
         }, { passive: false });
         
-        // Prevent zoom via Ctrl+/- keys
+        // Prevent browser zoom via Ctrl+/- keys (only in editor/test mode)
         document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_')) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_') && 
+                (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
                 e.preventDefault();
             }
         });
@@ -1440,12 +1573,18 @@ class GameEngine {
     }
 
     onWheel(e) {
-        if (e.ctrlKey || e.metaKey) {
+        // Ctrl+Scroll zoom only available in editor and test mode
+        if ((e.ctrlKey || e.metaKey) && (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
             e.preventDefault();
-            if (e.deltaY < 0) {
-                this.camera.zoomIn();
+            
+            // Ctrl+Shift+Scroll: Reset zoom to default (1.0)
+            if (e.shiftKey) {
+                this.camera.setZoom(1.0);
             } else {
-                this.camera.zoomOut();
+                // Scale zoom amount based on deltaY for smoother trackpad zoom
+                // Limit to small increments for smooth zooming
+                const zoomAmount = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY) * 0.002, 0.1);
+                this.camera.setZoom(this.camera.zoom - zoomAmount);
             }
         }
         
@@ -1577,6 +1716,9 @@ class GameEngine {
             }
         }
         
+        // Update particles
+        this.updateParticles(deltaTime);
+        
         this.camera.update();
     }
 
@@ -1592,6 +1734,9 @@ class GameEngine {
             if (obj.actingType === 'checkpoint') {
                 onCheckpoint = true;
                 
+                // Spawn particles when checkpoint is first touched
+                const wasUntouched = obj.checkpointState === 'default';
+                
                 // Mark previous checkpoint as touched (blue)
                 if (this.lastCheckpoint && this.lastCheckpoint !== obj) {
                     this.lastCheckpoint.checkpointState = 'touched';
@@ -1599,6 +1744,13 @@ class GameEngine {
                 // Mark new checkpoint as active (green)
                 obj.checkpointState = 'active';
                 this.lastCheckpoint = obj;
+                
+                // Spawn green particles on first touch
+                if (wasUntouched) {
+                    const centerX = obj.x + obj.width / 2;
+                    const centerY = obj.y + obj.height / 2;
+                    this.spawnCheckpointParticles(centerX, centerY, this.world.checkpointActiveColor);
+                }
             } else if (obj.actingType === 'endpoint') {
                 this.onGameEnd();
             }
@@ -1705,6 +1857,9 @@ class GameEngine {
         }
         
         this.ctx.restore();
+        
+        // Render particles (after restore to use screen coordinates)
+        this.renderParticles();
     }
 
     startGame(playerName, playerColor) {

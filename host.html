@@ -164,6 +164,81 @@
         let currentMapId = null;
         let currentMode = 'edit'; // 'edit', 'host', 'play'
         let isHost = false;
+        let mapLoadedSuccessfully = false; // Track if map loaded properly to prevent saving corrupted/blank data
+        
+        // Show save corrupted popup
+        function showSaveCorruptedPopup() {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'save-corrupted-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 99999;
+            `;
+            
+            const popup = document.createElement('div');
+            popup.style.cssText = `
+                background: #1a1a2e;
+                border: 2px solid #ff4444;
+                border-radius: 12px;
+                padding: 32px;
+                max-width: 400px;
+                text-align: center;
+                font-family: 'Parkoreen UI', sans-serif;
+            `;
+            
+            popup.innerHTML = `
+                <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                <h2 style="color: #ff4444; margin: 0 0 16px 0; font-size: 24px;">Save Corrupted</h2>
+                <p style="color: #aaa; margin: 0 0 24px 0; line-height: 1.5;">
+                    The map data could not be loaded. The save file may be corrupted or incompatible.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="corrupted-return" style="
+                        padding: 12px 24px;
+                        background: #333;
+                        border: 1px solid #555;
+                        color: #fff;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-family: inherit;
+                        font-size: 14px;
+                    ">Return to Menu</button>
+                    <button id="corrupted-force" style="
+                        padding: 12px 24px;
+                        background: #ff4444;
+                        border: none;
+                        color: #fff;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-family: inherit;
+                        font-size: 14px;
+                    ">Force Enter</button>
+                </div>
+            `;
+            
+            overlay.appendChild(popup);
+            document.body.appendChild(overlay);
+            
+            // Event listeners
+            document.getElementById('corrupted-return').addEventListener('click', () => {
+                window.location.href = '/parkoreen/dashboard/';
+            });
+            
+            document.getElementById('corrupted-force').addEventListener('click', () => {
+                overlay.remove();
+                mapLoadedSuccessfully = true; // Allow saving now
+                toastSuccess('Entered with empty map. Changes will be saved.');
+            });
+        }
 
         // Helper to change favicon based on mode
         function setFavicon(type) {
@@ -220,8 +295,9 @@
                     }, 500);
                 }
             } else {
-                // New map
+                // New map - no existing data to corrupt
                 engine.world.mapName = 'New Map';
+                mapLoadedSuccessfully = true;
             }
 
             // Setup event handlers
@@ -260,6 +336,10 @@
         // Silent save (no toast) for auto-save on change
         async function saveMapSilent() {
             if (!currentMapId) return;
+            if (!mapLoadedSuccessfully) {
+                console.warn('[AutoSave] Skipping save - map was not loaded successfully');
+                return;
+            }
             try {
                 const data = engine.world.toJSON();
                 var saveFn = window.MapManager.saveMap;
@@ -284,15 +364,28 @@
         }
 
         async function loadMap(mapId) {
+            let mapData = null;
+            
+            // Step 1: Try to fetch the map from storage
             try {
                 loadingShow('Loading map...');
                 var getMapFn = window.MapManager.getMap;
-                const mapData = await getMapFn.call(window.MapManager, mapId);
-                
-                if (mapData.data) {
+                mapData = await getMapFn.call(window.MapManager, mapId);
+            } catch (networkError) {
+                // Network error - don't allow saving to prevent data loss
+                loadingHide();
+                mapLoadedSuccessfully = false;
+                toastError('Failed to load map (network error): ' + networkError.message);
+                console.error('[LoadMap] Network error, saving disabled:', networkError);
+                return;
+            }
+            
+            // Step 2: Try to parse/deserialize the map data
+            try {
+                if (mapData && mapData.data) {
                     engine.world.fromJSON(mapData.data);
                 }
-                engine.world.mapName = mapData.name || 'Untitled Map';
+                engine.world.mapName = mapData?.name || 'Untitled Map';
                 
                 // Recreate editor player at spawn point
                 engine.createEditorPlayer();
@@ -300,16 +393,27 @@
                 editor.updateBackground();
                 loadingHide();
                 
+                // Map loaded successfully - allow saving
+                mapLoadedSuccessfully = true;
                 toastSuccess('Map loaded!');
-            } catch (error) {
+            } catch (parseError) {
+                // Parse/corruption error - show popup
                 loadingHide();
-                toastError('Failed to load map: ' + error.message);
+                mapLoadedSuccessfully = false;
+                console.error('[LoadMap] Save corrupted:', parseError);
+                showSaveCorruptedPopup();
             }
         }
 
         async function saveMap() {
             if (!currentMapId) {
                 toastError('No map to save');
+                return;
+            }
+            
+            if (!mapLoadedSuccessfully) {
+                console.warn('[SaveMap] Skipping save - map was not loaded successfully');
+                toastError('Cannot save: map failed to load properly');
                 return;
             }
 
@@ -704,7 +808,7 @@
 
         // Save on page unload (user closes tab or navigates away)
         window.addEventListener('beforeunload', (e) => {
-            if (currentMapId && engine && engine.state === GameState.EDITOR) {
+            if (currentMapId && engine && engine.state === GameState.EDITOR && mapLoadedSuccessfully) {
                 // Use synchronous save for local mode
                 try {
                     const data = engine.world.toJSON();
@@ -719,6 +823,8 @@
                 } catch (err) {
                     console.error('[AutoSave] Failed to save on unload:', err);
                 }
+            } else if (currentMapId && !mapLoadedSuccessfully) {
+                console.warn('[AutoSave] Skipping unload save - map was not loaded successfully');
             }
         });
 

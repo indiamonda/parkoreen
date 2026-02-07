@@ -1339,6 +1339,11 @@ a:hover {
     background: var(--surface);
 }
 
+.font-dropdown-item.font-selected {
+    background: var(--primary);
+    color: white;
+}
+
 .font-dropdown-item-remove {
     opacity: 0;
     transition: opacity var(--transition);
@@ -1355,65 +1360,77 @@ a:hover {
     position: fixed;
     z-index: var(--z-editor-ui);
     display: none;
+    pointer-events: none;
 }
 
 .touch-controls.active {
     display: block;
 }
 
-.touch-dpad {
+/* Joystick Container */
+.touch-joystick-container {
     position: fixed;
-    left: var(--spacing-lg);
-    bottom: var(--spacing-xl);
+    left: 24px;
+    bottom: 24px;
+    pointer-events: auto;
+}
+
+.touch-joystick-base {
     width: 140px;
     height: 140px;
-}
-
-.touch-btn {
-    position: absolute;
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+    border: 3px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-size: 24px;
-    backdrop-filter: blur(4px);
-    touch-action: manipulation;
+    backdrop-filter: blur(6px);
+    touch-action: none;
+    position: relative;
 }
 
-.touch-btn:active {
+.touch-joystick-stick {
+    width: 60px;
+    height: 60px;
     background: rgba(255, 255, 255, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    position: absolute;
+    transition: transform 0.05s ease-out;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.touch-btn.up { top: 0; left: 50%; transform: translateX(-50%); }
-.touch-btn.down { bottom: 0; left: 50%; transform: translateX(-50%); }
-.touch-btn.left { left: 0; top: 50%; transform: translateY(-50%); }
-.touch-btn.right { right: 0; top: 50%; transform: translateY(-50%); }
+.touch-joystick-base:active .touch-joystick-stick {
+    background: rgba(255, 255, 255, 0.6);
+}
 
+/* Jump Button - Larger and repositioned */
 .touch-jump {
     position: fixed;
-    right: var(--spacing-xl);
-    bottom: calc(var(--spacing-xl) + 30px);
-    width: 80px;
-    height: 80px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 3px solid rgba(255, 255, 255, 0.5);
+    right: 24px;
+    bottom: 24px;
+    width: 100px;
+    height: 100px;
+    background: rgba(76, 175, 80, 0.3);
+    border: 4px solid rgba(76, 175, 80, 0.6);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 32px;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
     touch-action: manipulation;
+    pointer-events: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.touch-jump .material-symbols-outlined {
+    font-size: 48px;
 }
 
 .touch-jump:active {
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(76, 175, 80, 0.6);
+    transform: scale(0.95);
 }
 
 /* ====================================

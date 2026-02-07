@@ -19,7 +19,8 @@ const PlacementMode = {
     NONE: 'none',
     BLOCK: 'block',
     KOREEN: 'koreen',
-    TEXT: 'text'
+    TEXT: 'text',
+    TELEPORTAL: 'teleportal'
 };
 
 // ============================================
@@ -122,6 +123,19 @@ class Editor {
         this.eraseSettings = {
             eraseType: 'all' // 'all', 'top', 'bottom'
         };
+        
+        // Teleportal settings
+        this.teleportalSettings = {
+            actingType: 'portal',
+            color: '#9C27B0', // Purple default for teleportals
+            opacity: 1
+        };
+        
+        // Teleportal names registry (must be unique)
+        this.teleportalNames = new Set();
+        
+        // Pending teleportal (waiting for naming)
+        this.pendingTeleportal = null;
         
         // Recent fonts
         this.recentFonts = JSON.parse(localStorage.getItem('parkoreen_recent_fonts') || '[]');
@@ -705,6 +719,10 @@ class Editor {
                 <span class="material-symbols-outlined">text_fields</span>
                 Text Box
             </button>
+            <button class="add-menu-btn" data-add="teleportal">
+                <span class="material-symbols-outlined">move</span>
+                Teleportal
+            </button>
         `;
         document.body.appendChild(addMenu);
         this.ui.addMenu = addMenu;
@@ -775,19 +793,26 @@ class Editor {
             <!-- Text-specific options (hidden by default) -->
             <div class="placement-option hidden" id="placement-content" style="flex-direction: column; align-items: flex-start;">
                 <span class="placement-option-label">Content</span>
-                <textarea class="form-input form-input-sm" id="placement-content-input" rows="3" style="width: 180px; resize: vertical; font-family: inherit;">Text</textarea>
+                <textarea class="form-input form-input-sm" id="placement-content-input" rows="3" style="width: 180px; resize: vertical; font-family: 'Parkoreen Game';">Text</textarea>
             </div>
             
             <div class="placement-option hidden" id="placement-font">
                 <span class="placement-option-label">Font</span>
                 <div class="font-dropdown" id="font-dropdown">
                     <button class="font-dropdown-trigger" id="font-dropdown-trigger">
-                        <span id="font-dropdown-value">Parkoreen Game</span>
+                        <span id="font-dropdown-value" style="font-family: 'Parkoreen Game';">Parkoreen Game</span>
                         <span class="material-symbols-outlined">expand_more</span>
                     </button>
                     <div class="font-dropdown-menu" id="font-dropdown-menu">
                         <!-- Will be populated dynamically -->
                     </div>
+                </div>
+            </div>
+            
+            <div class="placement-option hidden" id="placement-font-preview" style="flex-direction: column; align-items: flex-start; width: 100%;">
+                <span class="placement-option-label">Preview</span>
+                <div id="font-preview-box" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; min-height: 36px; display: flex; align-items: center; justify-content: center;">
+                    <span id="font-preview-text" style="font-family: 'Parkoreen Game'; font-size: 16px; color: #fff;">Text</span>
                 </div>
             </div>
             
@@ -967,8 +992,23 @@ class Editor {
                     </div>
                     
                     <div class="form-group" id="object-edit-text-group" style="display: none;">
+                        <label class="form-label">Font</label>
+                        <div class="font-dropdown" id="object-edit-font-dropdown" style="margin-bottom: 12px;">
+                            <button type="button" class="font-dropdown-trigger" id="object-edit-font-trigger">
+                                <span id="object-edit-font-value">Parkoreen Game</span>
+                                <span class="material-symbols-outlined">expand_more</span>
+                            </button>
+                            <div class="font-dropdown-menu" id="object-edit-font-menu">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                        
                         <label class="form-label">Text Content</label>
-                        <textarea class="form-input" id="object-edit-content" rows="3" style="resize: vertical; font-family: inherit;"></textarea>
+                        <textarea class="form-input" id="object-edit-content" rows="3" style="resize: vertical;"></textarea>
+                        
+                        <div id="object-edit-font-preview" style="margin-top: 8px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; min-height: 40px; display: flex; align-items: center; justify-content: center;">
+                            <span id="object-edit-font-preview-text" style="font-size: 18px;">Preview Text</span>
+                        </div>
                     </div>
                     
                     <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
@@ -1081,7 +1121,23 @@ class Editor {
         document.getElementById('object-edit-content').addEventListener('input', (e) => {
             if (this.editingObject && this.editingObject.type === 'text') {
                 this.editingObject.content = e.target.value;
+                this.updateObjectEditFontPreview();
                 this.triggerMapChange();
+            }
+        });
+        
+        // Object edit font dropdown
+        document.getElementById('object-edit-font-trigger').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdown = document.getElementById('object-edit-font-dropdown');
+            dropdown.classList.toggle('active');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('object-edit-font-dropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
             }
         });
         
@@ -1264,6 +1320,125 @@ class Editor {
         this.closeZoneNamePopup();
     }
     
+    // Teleportal placement
+    placeTeleportal(x, y) {
+        // Create the teleportal object
+        const teleportal = new WorldObject({
+            x: x,
+            y: y,
+            type: 'teleportal',
+            appearanceType: 'teleportal',
+            actingType: this.teleportalSettings.actingType || 'portal',
+            collision: true,
+            color: this.teleportalSettings.color || '#9C27B0',
+            opacity: this.teleportalSettings.opacity || 1,
+            name: 'New Teleportal',
+            teleportalName: '' // Will be set by naming popup
+        });
+        
+        // Show naming popup
+        this.pendingTeleportal = teleportal;
+        this.showTeleportalNamePopup();
+    }
+    
+    showTeleportalNamePopup() {
+        // Create popup if it doesn't exist
+        let popup = document.getElementById('teleportal-name-popup');
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.id = 'teleportal-name-popup';
+            popup.className = 'modal-overlay';
+            popup.innerHTML = `
+                <div class="zone-name-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Name Teleportal</span>
+                        <button class="btn btn-icon btn-ghost" id="close-teleportal-name-popup">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label class="form-label">Teleportal Name</label>
+                            <input type="text" class="form-input" id="teleportal-name-input" placeholder="Enter unique teleportal name">
+                            <div id="teleportal-name-error" style="color: #ff6b6b; font-size: 12px; margin-top: 4px; display: none;"></div>
+                        </div>
+                        <p style="font-size: 11px; color: #888; margin-top: 8px;">
+                            Note: Teleportal names must be unique among other teleportals, but can share names with zones.
+                        </p>
+                        <div class="form-group" style="margin-top: 16px;">
+                            <button class="btn btn-primary" id="teleportal-name-confirm" style="width: 100%;">Create Teleportal</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            
+            // Event listeners
+            document.getElementById('close-teleportal-name-popup').addEventListener('click', () => {
+                this.closeTeleportalNamePopup();
+            });
+            
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup) this.closeTeleportalNamePopup();
+            });
+            
+            document.getElementById('teleportal-name-confirm').addEventListener('click', () => {
+                this.confirmTeleportalName();
+            });
+            
+            document.getElementById('teleportal-name-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.confirmTeleportalName();
+                }
+            });
+        }
+        
+        // Reset and show
+        document.getElementById('teleportal-name-input').value = '';
+        document.getElementById('teleportal-name-error').style.display = 'none';
+        popup.classList.add('active');
+        document.getElementById('teleportal-name-input').focus();
+    }
+    
+    closeTeleportalNamePopup() {
+        const popup = document.getElementById('teleportal-name-popup');
+        if (popup) popup.classList.remove('active');
+        this.pendingTeleportal = null;
+    }
+    
+    confirmTeleportalName() {
+        const input = document.getElementById('teleportal-name-input');
+        const errorEl = document.getElementById('teleportal-name-error');
+        const name = input.value.trim();
+        
+        if (!name) {
+            errorEl.textContent = 'Please enter a teleportal name.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        // Check for duplicate names among teleportals only
+        const existingTeleportal = this.world.objects.find(obj => 
+            obj.type === 'teleportal' && obj.teleportalName === name
+        );
+        
+        if (existingTeleportal) {
+            errorEl.textContent = 'A teleportal with this name already exists.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        // Set the teleportal name and add to world
+        this.pendingTeleportal.teleportalName = name;
+        this.pendingTeleportal.name = 'Teleportal: ' + name;
+        this.world.addObject(this.pendingTeleportal);
+        this.updateLayersList();
+        this.triggerMapChange();
+        
+        this.closeTeleportalNamePopup();
+    }
+    
     // Override object edit popup for zones
     openObjectEditPopup(obj) {
         if (!obj) return;
@@ -1305,6 +1480,20 @@ class Editor {
         if (obj.type === 'text') {
             textGroup.style.display = 'block';
             document.getElementById('object-edit-content').value = obj.content || '';
+            
+            // Set font and populate font dropdown
+            const fontValue = document.getElementById('object-edit-font-value');
+            fontValue.textContent = obj.font || 'Parkoreen Game';
+            fontValue.style.fontFamily = `"${obj.font || 'Parkoreen Game'}"`;
+            
+            // Set content textarea font
+            document.getElementById('object-edit-content').style.fontFamily = `"${obj.font || 'Parkoreen Game'}"`;
+            
+            // Populate font dropdown
+            this.populateObjectEditFontDropdown(obj.font || 'Parkoreen Game');
+            
+            // Update font preview
+            this.updateObjectEditFontPreview();
         } else {
             textGroup.style.display = 'none';
         }
@@ -1766,6 +1955,8 @@ class Editor {
                     this.koreenSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.TEXT) {
                     this.textSettings.actingType = btn.dataset.acting;
+                } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+                    this.teleportalSettings.actingType = btn.dataset.acting;
                 }
             });
         });
@@ -1823,6 +2014,7 @@ class Editor {
         // Text content
         document.getElementById('placement-content-input').addEventListener('input', (e) => {
             this.textSettings.content = e.target.value;
+            this.updatePlacementFontPreview();
         });
 
         // Horizontal align
@@ -2418,10 +2610,141 @@ class Editor {
     selectFont(font) {
         this.textSettings.font = font;
         document.getElementById('font-dropdown-value').textContent = font;
+        document.getElementById('font-dropdown-value').style.fontFamily = `"${font}"`;
         document.getElementById('font-dropdown').classList.remove('active');
+        
+        // Update placement content textarea font
+        const contentInput = document.getElementById('placement-content-input');
+        if (contentInput) {
+            contentInput.style.fontFamily = `"${font}"`;
+        }
+        
+        // Update placement font preview
+        this.updatePlacementFontPreview();
         
         // Add to recent fonts
         this.addRecentFont(font);
+    }
+    
+    populateObjectEditFontDropdown(currentFont) {
+        const menu = document.getElementById('object-edit-font-menu');
+        if (!menu) return;
+        
+        let html = `
+            <div class="font-dropdown-search">
+                <input type="text" class="form-input form-input-sm" id="object-edit-font-search" placeholder="Search fonts...">
+            </div>
+        `;
+
+        // Recent fonts section
+        if (this.recentFonts.length > 0) {
+            html += `
+                <div class="font-dropdown-section">
+                    <div class="font-dropdown-section-title">Recently Used</div>
+            `;
+            for (const font of this.recentFonts) {
+                const isSelected = font === currentFont ? 'font-selected' : '';
+                html += `
+                    <div class="font-dropdown-item ${isSelected}" data-font="${font}">
+                        <span style="font-family: '${font}'">${font}</span>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+        }
+
+        // Custom fonts section
+        html += `
+            <div class="font-dropdown-section">
+                <div class="font-dropdown-section-title">Parkoreen Fonts</div>
+        `;
+        for (const font of CUSTOM_FONTS) {
+            const isSelected = font === currentFont ? 'font-selected' : '';
+            html += `
+                <div class="font-dropdown-item ${isSelected}" data-font="${font}">
+                    <span style="font-family: '${font}'">${font}</span>
+                </div>
+            `;
+        }
+        html += `</div>`;
+
+        // Google fonts section
+        const googleOnlyFonts = GOOGLE_FONTS.filter(f => !CUSTOM_FONTS.includes(f));
+        html += `
+            <div class="font-dropdown-section">
+                <div class="font-dropdown-section-title">Google Fonts</div>
+        `;
+        for (const font of googleOnlyFonts) {
+            const isSelected = font === currentFont ? 'font-selected' : '';
+            html += `
+                <div class="font-dropdown-item ${isSelected}" data-font="${font}">
+                    <span style="font-family: '${font}'">${font}</span>
+                </div>
+            `;
+        }
+        html += `</div>`;
+
+        menu.innerHTML = html;
+
+        // Attach event listeners
+        menu.querySelectorAll('.font-dropdown-item[data-font]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                this.selectObjectEditFont(item.dataset.font);
+            });
+        });
+
+        // Search functionality
+        const searchInput = document.getElementById('object-edit-font-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                menu.querySelectorAll('.font-dropdown-item').forEach(item => {
+                    const font = item.dataset.font.toLowerCase();
+                    item.style.display = font.includes(query) ? '' : 'none';
+                });
+            });
+        }
+    }
+    
+    selectObjectEditFont(font) {
+        if (!this.editingObject || this.editingObject.type !== 'text') return;
+        
+        this.editingObject.font = font;
+        
+        // Update UI
+        const fontValue = document.getElementById('object-edit-font-value');
+        fontValue.textContent = font;
+        fontValue.style.fontFamily = `"${font}"`;
+        
+        document.getElementById('object-edit-content').style.fontFamily = `"${font}"`;
+        document.getElementById('object-edit-font-dropdown').classList.remove('active');
+        
+        // Update preview
+        this.updateObjectEditFontPreview();
+        
+        // Mark all items
+        document.querySelectorAll('#object-edit-font-menu .font-dropdown-item').forEach(item => {
+            item.classList.toggle('font-selected', item.dataset.font === font);
+        });
+        
+        // Add to recent fonts
+        this.addRecentFont(font);
+        this.triggerMapChange();
+    }
+    
+    updateObjectEditFontPreview() {
+        if (!this.editingObject || this.editingObject.type !== 'text') return;
+        
+        const previewText = document.getElementById('object-edit-font-preview-text');
+        if (!previewText) return;
+        
+        const content = document.getElementById('object-edit-content').value || 'Preview Text';
+        const font = this.editingObject.font || 'Parkoreen Game';
+        const color = this.editingObject.color || '#FFFFFF';
+        
+        previewText.textContent = content.split('\n')[0].substring(0, 30) || 'Preview Text';
+        previewText.style.fontFamily = `"${font}"`;
+        previewText.style.color = color;
     }
 
     addRecentFont(font) {
@@ -2641,6 +2964,7 @@ class Editor {
             opacity: document.getElementById('placement-opacity'),
             content: document.getElementById('placement-content'),
             font: document.getElementById('placement-font'),
+            fontPreview: document.getElementById('placement-font-preview'),
             halign: document.getElementById('placement-halign'),
             valign: document.getElementById('placement-valign'),
             hspacing: document.getElementById('placement-hspacing'),
@@ -2717,6 +3041,7 @@ class Editor {
             options.content.classList.remove('hidden');
             options.acting.classList.remove('hidden');
             options.font.classList.remove('hidden');
+            options.fontPreview.classList.remove('hidden');
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
             options.halign.classList.remove('hidden');
@@ -2736,18 +3061,60 @@ class Editor {
             `;
             this.reattachActingListeners();
             
-            // Update content input (textarea)
+            // Update content input (textarea) with font
             const contentInput = document.getElementById('placement-content-input');
             if (contentInput) {
                 contentInput.value = this.textSettings.content || '';
+                contentInput.style.fontFamily = `"${this.textSettings.font || 'Parkoreen Game'}"`;
             }
+            
+            // Update font dropdown value
+            const fontValue = document.getElementById('font-dropdown-value');
+            if (fontValue) {
+                fontValue.textContent = this.textSettings.font || 'Parkoreen Game';
+                fontValue.style.fontFamily = `"${this.textSettings.font || 'Parkoreen Game'}"`;
+            }
+            
+            // Update font preview
+            this.updatePlacementFontPreview();
             
             // Update color picker
             const colorInput = document.querySelector('#placement-color input[type="color"]');
             if (colorInput) {
                 colorInput.value = this.textSettings.color || '#000000';
             }
+        } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+            // Teleportal has minimal options - just acting type
+            options.acting.classList.remove('hidden');
+            options.color.classList.remove('hidden');
+            options.opacity.classList.remove('hidden');
+            
+            // Update acting type buttons for teleportal
+            const actingBtns = options.acting.querySelector('.placement-option-btns');
+            actingBtns.innerHTML = `
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'portal' ? 'active' : ''}" data-acting="portal">Portal</button>
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
+                <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
+            `;
+            this.reattachActingListeners();
         }
+    }
+    
+    updatePlacementFontPreview() {
+        const previewText = document.getElementById('font-preview-text');
+        if (!previewText) return;
+        
+        const content = this.textSettings.content || 'Text';
+        const font = this.textSettings.font || 'Parkoreen Game';
+        const color = this.textSettings.color || '#FFFFFF';
+        
+        previewText.textContent = content.split('\n')[0].substring(0, 30) || 'Text';
+        previewText.style.fontFamily = `"${font}"`;
+        previewText.style.color = color;
     }
 
     reattachAppearanceListeners() {
@@ -2961,7 +3328,7 @@ class Editor {
                 // Opacity label overlay
                 const opacityLabel = obj.opacity < 1 ? 
                     `<span class="layer-opacity-label">${opacityText}</span>` : '';
-                
+            
             item.innerHTML = `
                 <span class="material-symbols-outlined" style="cursor: grab; color: var(--text-muted);">drag_indicator</span>
                     ${groupIndicator}
@@ -3240,13 +3607,16 @@ class Editor {
         // Fly mode toggle works in both editor and test mode
         if (e.code === 'KeyG') {
             e.preventDefault();
-            this.setTool(EditorTool.FLY);
+                this.setTool(EditorTool.FLY);
             return;
         }
         
         // Other shortcuts only work in editor mode
         if (!isEditorMode) return;
 
+        // Don't intercept browser shortcuts with Ctrl/Cmd
+        if (e.ctrlKey || e.metaKey) return;
+        
         switch (e.code) {
             case 'KeyM':
                 e.preventDefault();
@@ -3318,8 +3688,8 @@ class Editor {
             this.camera.targetY -= e.movementY / this.camera.zoom;
         }
 
-        // Brush-like placement - continue placing while mouse is held
-        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && !this.isOverUI(e)) {
+        // Brush-like placement - continue placing while mouse is held (except for teleportal)
+        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && !this.isOverUI(e)) {
             this.placeObject(gridPos.x, gridPos.y);
         }
 
@@ -3525,6 +3895,10 @@ class Editor {
         } else if (this.placementMode === PlacementMode.TEXT) {
             settings = this.textSettings;
             type = 'text';
+        } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+            // Teleportal placement - single click only, opens naming popup
+            this.placeTeleportal(x, y);
+            return;
         } else {
             return;
         }
@@ -3661,7 +4035,7 @@ class Editor {
         try {
             const exportManager = new ExportManager();
             await exportManager.exportToFile(this.world, this.world.mapName, this.world.storedDataType);
-            this.showToast('Map exported successfully!', 'success');
+        this.showToast('Map exported successfully!', 'success');
         } catch (err) {
             console.error('Export failed:', err);
             this.showToast('Export failed: ' + err.message, 'error');
@@ -3672,18 +4046,18 @@ class Editor {
         const file = e.target.files[0];
         if (!file) return;
 
-        try {
+            try {
             const importManager = new ImportManager();
             const data = await importManager.importFromFile(file);
-            this.world.fromJSON(data);
-            this.updateBackground();
+                this.world.fromJSON(data);
+                this.updateBackground();
             this.syncConfigPanel();
-            this.triggerMapChange();
-            this.showToast('Map imported successfully!', 'success');
-        } catch (err) {
+                this.triggerMapChange();
+                this.showToast('Map imported successfully!', 'success');
+            } catch (err) {
             console.error('Import failed:', err);
             this.showToast('Import failed: ' + err.message, 'error');
-        }
+            }
         
         // Reset input
         e.target.value = '';
@@ -4323,26 +4697,110 @@ class Editor {
                 touchControls.id = 'touch-controls';
                 touchControls.className = 'touch-controls active';
                 touchControls.innerHTML = `
-                    <div class="touch-dpad">
-                        <button class="touch-btn up" data-dir="up">▲</button>
-                        <button class="touch-btn down" data-dir="down">▼</button>
-                        <button class="touch-btn left" data-dir="left">◀</button>
-                        <button class="touch-btn right" data-dir="right">▶</button>
+                    <div class="touch-joystick-container">
+                        <div class="touch-joystick-base">
+                            <div class="touch-joystick-stick"></div>
                     </div>
-                    <button class="touch-jump" data-dir="jump">↑</button>
+                    </div>
+                    <button class="touch-jump" data-dir="jump">
+                        <span class="material-symbols-outlined">keyboard_double_arrow_up</span>
+                    </button>
                 `;
                 document.body.appendChild(touchControls);
 
-                // Attach touch events
-                touchControls.querySelectorAll('[data-dir]').forEach(btn => {
-                    btn.addEventListener('touchstart', (e) => {
+                // Joystick state
+                this.joystickState = { active: false, x: 0, y: 0 };
+                
+                // Joystick setup
+                const joystickBase = touchControls.querySelector('.touch-joystick-base');
+                const joystickStick = touchControls.querySelector('.touch-joystick-stick');
+                const baseRect = { width: 120, height: 120, centerX: 60, centerY: 60 };
+                const maxDistance = 45;
+                
+                const handleJoystickMove = (clientX, clientY) => {
+                    const rect = joystickBase.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    
+                    let dx = clientX - centerX;
+                    let dy = clientY - centerY;
+                    
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > maxDistance) {
+                        dx = (dx / distance) * maxDistance;
+                        dy = (dy / distance) * maxDistance;
+                    }
+                    
+                    joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
+                    
+                    // Normalize to -1 to 1
+                    this.joystickState.x = dx / maxDistance;
+                    this.joystickState.y = dy / maxDistance;
+                    
+                    // Update engine input based on joystick position
+                    const threshold = 0.3;
+                    const isFlying = this.isFlying || (this.engine.localPlayer && this.engine.localPlayer.isFlying);
+                    
+                    // Horizontal movement (always available)
+                    this.engine.setTouchInput('left', this.joystickState.x < -threshold);
+                    this.engine.setTouchInput('right', this.joystickState.x > threshold);
+                    
+                    // Vertical movement (only in fly mode)
+                    if (isFlying) {
+                        this.engine.setTouchInput('up', this.joystickState.y < -threshold);
+                        this.engine.setTouchInput('down', this.joystickState.y > threshold);
+                    } else {
+                        this.engine.setTouchInput('up', false);
+                        this.engine.setTouchInput('down', false);
+                    }
+                };
+                
+                const resetJoystick = () => {
+                    joystickStick.style.transform = 'translate(0, 0)';
+                    this.joystickState.x = 0;
+                    this.joystickState.y = 0;
+                    this.joystickState.active = false;
+                    
+                    this.engine.setTouchInput('left', false);
+                    this.engine.setTouchInput('right', false);
+                    this.engine.setTouchInput('up', false);
+                    this.engine.setTouchInput('down', false);
+                };
+                
+                joystickBase.addEventListener('touchstart', (e) => {
                         e.preventDefault();
-                        this.engine.setTouchInput(btn.dataset.dir, true);
+                    this.joystickState.active = true;
+                    const touch = e.touches[0];
+                    handleJoystickMove(touch.clientX, touch.clientY);
                     });
-                    btn.addEventListener('touchend', (e) => {
+                
+                joystickBase.addEventListener('touchmove', (e) => {
                         e.preventDefault();
-                        this.engine.setTouchInput(btn.dataset.dir, false);
-                    });
+                    if (this.joystickState.active) {
+                        const touch = e.touches[0];
+                        handleJoystickMove(touch.clientX, touch.clientY);
+                    }
+                });
+                
+                joystickBase.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    resetJoystick();
+                });
+                
+                joystickBase.addEventListener('touchcancel', (e) => {
+                    e.preventDefault();
+                    resetJoystick();
+                });
+                
+                // Jump button
+                const jumpBtn = touchControls.querySelector('.touch-jump');
+                jumpBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.engine.setTouchInput('jump', true);
+                });
+                jumpBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.engine.setTouchInput('jump', false);
                 });
             }
             touchControls.classList.add('active');
@@ -4423,17 +4881,17 @@ class Editor {
                 ctx.setLineDash([]);
             } else {
                 // Normal placement preview
-                const worldPos = this.engine.getMouseWorldPos();
-                const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+            const worldPos = this.engine.getMouseWorldPos();
+            const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
                 const screenX = gridPos.x - camera.x;
                 const screenY = gridPos.y - camera.y;
                 const size = GRID_SIZE;
 
-                ctx.fillStyle = 'rgba(45, 90, 39, 0.5)';
-                ctx.fillRect(screenX, screenY, size, size);
-                ctx.strokeStyle = '#4a8c3f';
+            ctx.fillStyle = 'rgba(45, 90, 39, 0.5)';
+            ctx.fillRect(screenX, screenY, size, size);
+            ctx.strokeStyle = '#4a8c3f';
                 ctx.lineWidth = 2 / camera.zoom;
-                ctx.strokeRect(screenX, screenY, size, size);
+            ctx.strokeRect(screenX, screenY, size, size);
             }
         }
         
