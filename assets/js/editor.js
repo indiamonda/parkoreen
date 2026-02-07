@@ -2049,22 +2049,40 @@ class Editor {
     // ========================================
     handleKeyPress(e) {
         if (this.engine.state !== GameState.EDITOR) return;
+        
+        // Don't handle shortcuts if user is typing in an input field
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (
+            activeEl.tagName === 'INPUT' || 
+            activeEl.tagName === 'TEXTAREA' || 
+            activeEl.contentEditable === 'true'
+        );
+        
+        // Allow Escape even while typing
+        if (e.code === 'Escape') {
+            this.handleEscape();
+            return;
+        }
+        
+        // Skip other shortcuts if typing
+        if (isTyping) return;
 
         switch (e.code) {
             case 'KeyG':
+                e.preventDefault();
                 this.setTool(EditorTool.FLY);
                 break;
             case 'KeyM':
+                e.preventDefault();
                 this.setTool(EditorTool.MOVE);
                 break;
             case 'KeyC':
+                e.preventDefault();
                 this.setTool(EditorTool.DUPLICATE);
                 break;
             case 'KeyR':
+                e.preventDefault();
                 this.rotateSelected();
-                break;
-            case 'Escape':
-                this.handleEscape();
                 break;
         }
     }
