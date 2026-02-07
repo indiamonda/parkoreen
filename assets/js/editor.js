@@ -89,6 +89,22 @@ class Editor {
             opacity: 1
         };
         
+        // Zone placement state
+        this.zonePlacement = {
+            isPlacing: false,
+            startX: 0,
+            startY: 0,
+            endX: 0,
+            endY: 0
+        };
+        
+        // Zone adjustment mode
+        this.zoneAdjustment = {
+            active: false,
+            zone: null,
+            draggerHeld: null
+        };
+        
         // Text settings
         this.textSettings = {
             content: 'Text',
@@ -257,9 +273,9 @@ class Editor {
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Map Name</label>
-                            <input type="text" class="form-input" id="config-map-name" placeholder="Enter map name">
+                    <div class="form-group">
+                        <label class="form-label">Map Name</label>
+                        <input type="text" class="form-input" id="config-map-name" placeholder="Enter map name">
                         </div>
                     </div>
                 </div>
@@ -270,14 +286,14 @@ class Editor {
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Background</label>
-                            <select class="form-select" id="config-background">
-                                <option value="sky">Sky</option>
-                                <option value="galaxy">Galaxy</option>
+                    <div class="form-group">
+                        <label class="form-label">Background</label>
+                        <select class="form-select" id="config-background">
+                            <option value="sky">Sky</option>
+                            <option value="galaxy">Galaxy</option>
                                 <option value="custom">Custom</option>
-                            </select>
-                        </div>
+                        </select>
+                    </div>
                         
                         <!-- Custom Background Options -->
                         <div id="custom-bg-options" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
@@ -366,26 +382,59 @@ class Editor {
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label">Default Block Color</label>
-                            <div class="color-picker-option">
-                                <div class="color-preview" id="config-block-color-preview" style="background: #787878"></div>
-                                <input type="text" class="form-input color-input" id="config-block-color" value="#787878">
+                    <div class="form-group">
+                        <label class="form-label">Default Block Color</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" id="config-block-color-preview" style="background: #787878"></div>
+                            <input type="text" class="form-input color-input" id="config-block-color" value="#787878">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Spike Color</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" id="config-spike-color-preview" style="background: #c45a3f"></div>
+                            <input type="text" class="form-input color-input" id="config-spike-color" value="#c45a3f">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Text Color</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
+                            <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
                             </div>
                         </div>
+                    </div>
+                </div>
+                
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Checkpoint Colors</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
                         <div class="form-group">
-                            <label class="form-label">Default Spike Color</label>
+                            <label class="form-label">Default Color</label>
                             <div class="color-picker-option">
-                                <div class="color-preview" id="config-spike-color-preview" style="background: #c45a3f"></div>
-                                <input type="text" class="form-input color-input" id="config-spike-color" value="#c45a3f">
+                                <div class="color-preview" id="config-checkpoint-default-preview" style="background: #808080"></div>
+                                <input type="text" class="form-input color-input" id="config-checkpoint-default" value="#808080">
                             </div>
+                            <small style="color: #888; font-size: 11px;">Color when checkpoint hasn't been touched</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Default Text Color</label>
+                            <label class="form-label">Active Color</label>
                             <div class="color-picker-option">
-                                <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
-                                <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
+                                <div class="color-preview" id="config-checkpoint-active-preview" style="background: #4CAF50"></div>
+                                <input type="text" class="form-input color-input" id="config-checkpoint-active" value="#4CAF50">
                             </div>
+                            <small style="color: #888; font-size: 11px;">Color for the current/latest checkpoint</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Already Checked Color</label>
+                            <div class="color-picker-option">
+                                <div class="color-preview" id="config-checkpoint-touched-preview" style="background: #2196F3"></div>
+                                <input type="text" class="form-input color-input" id="config-checkpoint-touched" value="#2196F3">
+                            </div>
+                            <small style="color: #888; font-size: 11px;">Color for previously touched checkpoints</small>
                         </div>
                     </div>
                 </div>
@@ -452,30 +501,30 @@ class Editor {
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Jumps</label>
-                            <select class="form-select" id="config-jumps">
-                                <option value="set">Set Number</option>
-                                <option value="infinite">Infinite</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="config-jumps-number-group">
-                            <label class="form-label">Number of Jumps</label>
-                            <input type="number" class="form-input" id="config-jumps-number" min="0" value="1">
-                        </div>
-                        <div class="form-group" id="config-airjump-group">
-                            <label class="form-label">Additional Airjump</label>
-                            <label class="toggle">
-                                <input type="checkbox" id="config-airjump">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Collide with Each Other</label>
-                            <label class="toggle">
-                                <input type="checkbox" id="config-collide" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
+                    <div class="form-group">
+                        <label class="form-label">Jumps</label>
+                        <select class="form-select" id="config-jumps">
+                            <option value="set">Set Number</option>
+                            <option value="infinite">Infinite</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="config-jumps-number-group">
+                        <label class="form-label">Number of Jumps</label>
+                        <input type="number" class="form-input" id="config-jumps-number" min="0" value="1">
+                    </div>
+                    <div class="form-group" id="config-airjump-group">
+                        <label class="form-label">Additional Airjump</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="config-airjump">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Collide with Each Other</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="config-collide" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
                         </div>
                     </div>
                 </div>
@@ -533,10 +582,29 @@ class Editor {
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
+                    <div class="form-group">
+                        <label class="form-label">Death Line Y Position</label>
+                        <input type="number" class="form-input" id="config-die-line-y" value="2000" title="Players die below this Y position (void death)">
+                        <small style="color: #888; font-size: 11px;">Players falling below this line will die</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Export/Import</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
                         <div class="form-group">
-                            <label class="form-label">Death Line Y Position</label>
-                            <input type="number" class="form-input" id="config-die-line-y" value="2000" title="Players die below this Y position (void death)">
-                            <small style="color: #888; font-size: 11px;">Players falling below this line will die</small>
+                            <label class="form-label">Stored Data Type <span style="color: #888; font-size: 11px;">(Advanced)</span></label>
+                            <select class="form-select" id="config-stored-data-type">
+                                <option value="json" selected>.json</option>
+                                <option value="dat">.dat</option>
+                            </select>
+                            <div id="stored-data-type-description" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
+                                <strong style="color: #fff;">.json:</strong> Human-readable format. Easier to debug and edit manually. Recommended for smaller maps or during development.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -547,17 +615,17 @@ class Editor {
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary" id="btn-export" style="flex: 1;">
-                                <span class="material-symbols-outlined">download</span>
-                                Export
-                            </button>
-                            <button class="btn btn-secondary" id="btn-import" style="flex: 1;">
-                                <span class="material-symbols-outlined">upload</span>
-                                Import
-                            </button>
-                        </div>
-                        <input type="file" id="import-file" accept=".pkrn" style="display: none;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" id="btn-export" style="flex: 1;">
+                            <span class="material-symbols-outlined">download</span>
+                            Export
+                        </button>
+                        <button class="btn btn-secondary" id="btn-import" style="flex: 1;">
+                            <span class="material-symbols-outlined">upload</span>
+                            Import
+                        </button>
+                    </div>
+                    <input type="file" id="import-file" accept=".pkrn" style="display: none;">
                     </div>
                 </div>
                 
@@ -567,30 +635,30 @@ class Editor {
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Max Player Amount</label>
-                            <input type="number" class="form-input" id="config-max-players" min="1" max="999999" value="10">
+                    <div class="form-group">
+                        <label class="form-label">Max Player Amount</label>
+                        <input type="number" class="form-input" id="config-max-players" min="1" max="999999" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Use Password</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="config-use-password">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group hidden" id="config-password-group">
+                        <label class="form-label">Custom Password</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" class="form-input" id="config-password" style="flex: 1;">
+                            <button class="btn btn-icon btn-secondary" id="btn-regenerate-password" title="Regenerate">
+                                <span class="material-symbols-outlined">replay</span>
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Use Password</label>
-                            <label class="toggle">
-                                <input type="checkbox" id="config-use-password">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="form-group hidden" id="config-password-group">
-                            <label class="form-label">Custom Password</label>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" class="form-input" id="config-password" style="flex: 1;">
-                                <button class="btn btn-icon btn-secondary" id="btn-regenerate-password" title="Regenerate">
-                                    <span class="material-symbols-outlined">replay</span>
-                                </button>
-                            </div>
-                        </div>
-                        <button class="btn btn-accent" id="btn-host-game" style="width: 100%; margin-top: 8px;">
-                            <span class="material-symbols-outlined">videogame_asset</span>
-                            Host Game
-                        </button>
+                    </div>
+                    <button class="btn btn-accent" id="btn-host-game" style="width: 100%; margin-top: 8px;">
+                        <span class="material-symbols-outlined">videogame_asset</span>
+                        Host Game
+                    </button>
                     </div>
                 </div>
             </div>
@@ -1028,8 +1096,183 @@ class Editor {
         });
     }
     
+    closeObjectEditPopup() {
+        this.editingObject = null;
+        this.ui.objectEditPopup.classList.remove('active');
+    }
+    
+    updateSpikeTouchboxEditDescription(mode) {
+        const descEl = document.getElementById('object-edit-spike-desc');
+        if (!descEl) return;
+        
+        const descriptions = {
+            '': 'Uses the world\'s default spike touchbox setting.',
+            'full': 'The entire spike is dangerous. Any contact damages the player.',
+            'normal': 'The flat base acts as ground. Other parts damage the player.',
+            'tip': 'Only the peak is dangerous. Base is ground, middle has no collision.',
+            'ground': 'Acts completely as solid ground. No damage.',
+            'flag': 'Only the flat base acts as ground. Rest has no collision.',
+            'air': 'No collision at all. Players pass through.'
+        };
+        
+        descEl.textContent = descriptions[mode] || descriptions[''];
+    }
+    
+    updateSpikeAttachedWarning() {
+        const warningEl = document.getElementById('object-edit-spike-attached');
+        if (!warningEl || !this.editingObject) return;
+        
+        if (this.editingObject.appearanceType === 'spike' || this.editingObject.actingType === 'spike') {
+            const isAttached = this.world.isSpikeAttachedToGround(this.editingObject);
+            warningEl.style.display = isAttached ? 'block' : 'none';
+        } else {
+            warningEl.style.display = 'none';
+        }
+    }
+    
+    // ========================================
+    // ZONE METHODS
+    // ========================================
+    
+    completeZonePlacement() {
+        const { startX, startY, endX, endY } = this.zonePlacement;
+        
+        // Calculate rectangle bounds
+        const x = Math.min(startX, endX);
+        const y = Math.min(startY, endY);
+        const width = Math.abs(endX - startX) + GRID_SIZE;
+        const height = Math.abs(endY - startY) + GRID_SIZE;
+        
+        // Minimum zone size
+        if (width < GRID_SIZE || height < GRID_SIZE) {
+            return; // Too small, cancel
+        }
+        
+        // Create the zone object
+        const zone = new WorldObject({
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+            type: 'koreen',
+            appearanceType: 'zone',
+            actingType: 'zone',
+            collision: false,
+            color: 'rgba(255, 255, 255, 0.3)',
+            opacity: this.koreenSettings.opacity,
+            name: 'New Zone',
+            zoneName: '' // Will be set by naming popup
+        });
+        
+        // Show naming popup
+        this.pendingZone = zone;
+        this.showZoneNamePopup();
+    }
+    
+    showZoneNamePopup() {
+        // Create popup if it doesn't exist
+        let popup = document.getElementById('zone-name-popup');
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.id = 'zone-name-popup';
+            popup.className = 'modal-overlay';
+            popup.innerHTML = `
+                <div class="zone-name-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Name Zone</span>
+                        <button class="btn btn-icon btn-ghost" id="close-zone-name-popup">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label class="form-label">Zone Name</label>
+                            <input type="text" class="form-input" id="zone-name-input" placeholder="Enter unique zone name">
+                            <div id="zone-name-error" style="color: #ff6b6b; font-size: 12px; margin-top: 4px; display: none;"></div>
+                        </div>
+                        <div class="form-group" style="margin-top: 16px;">
+                            <button class="btn btn-primary" id="zone-name-confirm" style="width: 100%;">Create Zone</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            
+            // Event listeners
+            document.getElementById('close-zone-name-popup').addEventListener('click', () => {
+                this.closeZoneNamePopup();
+            });
+            
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup) this.closeZoneNamePopup();
+            });
+            
+            document.getElementById('zone-name-confirm').addEventListener('click', () => {
+                this.confirmZoneName();
+            });
+            
+            document.getElementById('zone-name-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.confirmZoneName();
+                }
+            });
+        }
+        
+        // Reset and show
+        document.getElementById('zone-name-input').value = '';
+        document.getElementById('zone-name-error').style.display = 'none';
+        popup.classList.add('active');
+        document.getElementById('zone-name-input').focus();
+    }
+    
+    closeZoneNamePopup() {
+        const popup = document.getElementById('zone-name-popup');
+        if (popup) popup.classList.remove('active');
+        this.pendingZone = null;
+    }
+    
+    confirmZoneName() {
+        const input = document.getElementById('zone-name-input');
+        const errorEl = document.getElementById('zone-name-error');
+        const name = input.value.trim();
+        
+        if (!name) {
+            errorEl.textContent = 'Please enter a zone name.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        // Check for duplicate names
+        const existingZone = this.world.objects.find(obj => 
+            obj.appearanceType === 'zone' && obj.zoneName === name
+        );
+        
+        if (existingZone) {
+            errorEl.textContent = 'A zone with this name already exists.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        // Set the zone name and add to world
+        this.pendingZone.zoneName = name;
+        this.pendingZone.name = 'Zone: ' + name;
+        this.world.addObject(this.pendingZone);
+        this.updateLayersList();
+        this.triggerMapChange();
+        
+        this.closeZoneNamePopup();
+    }
+    
+    // Override object edit popup for zones
     openObjectEditPopup(obj) {
         if (!obj) return;
+        
+        // Special handling for zones
+        if (obj.appearanceType === 'zone') {
+            this.openZoneEditPopup(obj);
+            return;
+        }
         
         this.editingObject = obj;
         const popup = this.ui.objectEditPopup;
@@ -1070,38 +1313,320 @@ class Editor {
         popup.classList.add('active');
     }
     
-    closeObjectEditPopup() {
-        this.editingObject = null;
-        this.ui.objectEditPopup.classList.remove('active');
-    }
-    
-    updateSpikeTouchboxEditDescription(mode) {
-        const descEl = document.getElementById('object-edit-spike-desc');
-        if (!descEl) return;
-        
-        const descriptions = {
-            '': 'Uses the world\'s default spike touchbox setting.',
-            'full': 'The entire spike is dangerous. Any contact damages the player.',
-            'normal': 'The flat base acts as ground. Other parts damage the player.',
-            'tip': 'Only the peak is dangerous. Base is ground, middle has no collision.',
-            'ground': 'Acts completely as solid ground. No damage.',
-            'flag': 'Only the flat base acts as ground. Rest has no collision.',
-            'air': 'No collision at all. Players pass through.'
-        };
-        
-        descEl.textContent = descriptions[mode] || descriptions[''];
-    }
-    
-    updateSpikeAttachedWarning() {
-        const warningEl = document.getElementById('object-edit-spike-attached');
-        if (!warningEl || !this.editingObject) return;
-        
-        if (this.editingObject.appearanceType === 'spike' || this.editingObject.actingType === 'spike') {
-            const isAttached = this.world.isSpikeAttachedToGround(this.editingObject);
-            warningEl.style.display = isAttached ? 'block' : 'none';
-        } else {
-            warningEl.style.display = 'none';
+    openZoneEditPopup(zone) {
+        // Create popup if it doesn't exist
+        let popup = document.getElementById('zone-edit-popup');
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.id = 'zone-edit-popup';
+            popup.className = 'modal-overlay';
+            popup.innerHTML = `
+                <div class="zone-edit-panel">
+                    <div class="panel-header">
+                        <span class="panel-title" id="zone-edit-title">Edit Zone</span>
+                        <button class="btn btn-icon btn-ghost" id="close-zone-edit">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label class="form-label">Zone Name</label>
+                            <input type="text" class="form-input" id="zone-edit-name" placeholder="Zone name">
+                            <div id="zone-edit-name-error" style="color: #ff6b6b; font-size: 12px; margin-top: 4px; display: none;"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Opacity</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="range" class="form-range" id="zone-edit-opacity" min="0" max="100" value="30" style="flex: 1;">
+                                <span id="zone-edit-opacity-label" style="font-size: 12px; min-width: 35px;">30%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button class="btn btn-secondary" id="zone-edit-adjust" style="width: 100%;">
+                                <span class="material-symbols-outlined">open_with</span>
+                                Adjust Region
+                            </button>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                            <button class="btn btn-danger" id="zone-edit-delete" style="width: 100%;">
+                                <span class="material-symbols-outlined">delete</span>
+                                Delete Zone
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            
+            // Event listeners
+            document.getElementById('close-zone-edit').addEventListener('click', () => {
+                this.closeZoneEditPopup();
+            });
+            
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup) this.closeZoneEditPopup();
+            });
+            
+            document.getElementById('zone-edit-name').addEventListener('change', (e) => {
+                this.updateZoneName(e.target.value);
+            });
+            
+            document.getElementById('zone-edit-opacity').addEventListener('input', (e) => {
+                if (this.editingZone) {
+                    const value = parseInt(e.target.value);
+                    this.editingZone.opacity = value / 100;
+                    document.getElementById('zone-edit-opacity-label').textContent = value + '%';
+                    this.triggerMapChange();
+                }
+            });
+            
+            document.getElementById('zone-edit-adjust').addEventListener('click', () => {
+                this.startZoneAdjustmentMode();
+            });
+            
+            document.getElementById('zone-edit-delete').addEventListener('click', () => {
+                if (this.editingZone) {
+                    this.world.removeObject(this.editingZone.id);
+                    this.closeZoneEditPopup();
+                    this.updateLayersList();
+                    this.triggerMapChange();
+                }
+            });
         }
+        
+        this.editingZone = zone;
+        
+        // Set values
+        document.getElementById('zone-edit-title').textContent = 'Edit Zone: ' + (zone.zoneName || 'Unnamed');
+        document.getElementById('zone-edit-name').value = zone.zoneName || '';
+        document.getElementById('zone-edit-opacity').value = Math.round(zone.opacity * 100);
+        document.getElementById('zone-edit-opacity-label').textContent = Math.round(zone.opacity * 100) + '%';
+        document.getElementById('zone-edit-name-error').style.display = 'none';
+        
+        popup.classList.add('active');
+    }
+    
+    closeZoneEditPopup() {
+        const popup = document.getElementById('zone-edit-popup');
+        if (popup) popup.classList.remove('active');
+        this.editingZone = null;
+    }
+    
+    updateZoneName(newName) {
+        const errorEl = document.getElementById('zone-edit-name-error');
+        const name = newName.trim();
+        
+        if (!name) {
+            errorEl.textContent = 'Zone name cannot be empty.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        // Check for duplicate names (excluding current zone)
+        const existingZone = this.world.objects.find(obj => 
+            obj.appearanceType === 'zone' && 
+            obj.zoneName === name && 
+            obj.id !== this.editingZone.id
+        );
+        
+        if (existingZone) {
+            errorEl.textContent = 'A zone with this name already exists.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        errorEl.style.display = 'none';
+        this.editingZone.zoneName = name;
+        this.editingZone.name = 'Zone: ' + name;
+        document.getElementById('zone-edit-title').textContent = 'Edit Zone: ' + name;
+        this.updateLayersList();
+        this.triggerMapChange();
+    }
+    
+    startZoneAdjustmentMode() {
+        if (!this.editingZone) return;
+        
+        this.zoneAdjustment.active = true;
+        this.zoneAdjustment.zone = this.editingZone;
+        
+        // Close the edit popup
+        this.closeZoneEditPopup();
+        
+        // Hide all UI except the stop button
+        document.querySelectorAll('.toolbar, .panel, .add-menu, .placement-toolbar, .erase-toolbar, .editor-btn-corner').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Create stop button
+        let stopBtn = document.getElementById('zone-adjust-stop');
+        if (!stopBtn) {
+            stopBtn = document.createElement('button');
+            stopBtn.id = 'zone-adjust-stop';
+            stopBtn.className = 'btn btn-danger zone-adjust-stop';
+            stopBtn.innerHTML = '<span class="material-symbols-outlined">close</span> Stop Adjusting';
+            stopBtn.addEventListener('click', () => this.exitZoneAdjustmentMode());
+            document.body.appendChild(stopBtn);
+        }
+        stopBtn.style.display = 'flex';
+        
+        // Enable fly mode for navigation
+        this.isFlying = true;
+    }
+    
+    exitZoneAdjustmentMode() {
+        this.zoneAdjustment.active = false;
+        this.zoneAdjustment.zone = null;
+        this.zoneAdjustment.draggerHeld = null;
+        
+        // Hide stop button
+        const stopBtn = document.getElementById('zone-adjust-stop');
+        if (stopBtn) stopBtn.style.display = 'none';
+        
+        // Restore all UI
+        document.querySelectorAll('.toolbar, .editor-btn-corner').forEach(el => {
+            el.style.display = '';
+        });
+        
+        // Re-show panels that were open (they'll handle their own visibility)
+        this.updateLayersList();
+        this.triggerMapChange();
+    }
+    
+    handleZoneDraggerMove(gridX, gridY) {
+        const zone = this.zoneAdjustment.zone;
+        const dragger = this.zoneAdjustment.draggerHeld;
+        if (!zone || !dragger) return;
+        
+        const minSize = GRID_SIZE;
+        
+        switch (dragger) {
+            case 'top':
+                const newTop = gridY;
+                const maxTop = zone.y + zone.height - minSize;
+                if (newTop <= maxTop) {
+                    const diff = zone.y - newTop;
+                    zone.y = newTop;
+                    zone.height += diff;
+                }
+                break;
+            case 'bottom':
+                const newBottom = gridY + GRID_SIZE;
+                const minBottom = zone.y + minSize;
+                if (newBottom >= minBottom) {
+                    zone.height = newBottom - zone.y;
+                }
+                break;
+            case 'left':
+                const newLeft = gridX;
+                const maxLeft = zone.x + zone.width - minSize;
+                if (newLeft <= maxLeft) {
+                    const diff = zone.x - newLeft;
+                    zone.x = newLeft;
+                    zone.width += diff;
+                }
+                break;
+            case 'right':
+                const newRight = gridX + GRID_SIZE;
+                const minRight = zone.x + minSize;
+                if (newRight >= minRight) {
+                    zone.width = newRight - zone.x;
+                }
+                break;
+            case 'top-left':
+                this.handleZoneDraggerMove(gridX, gridY); // This won't recurse properly, handle manually
+                {
+                    const newT = gridY;
+                    const maxT = zone.y + zone.height - minSize;
+                    if (newT <= maxT) {
+                        const diffY = zone.y - newT;
+                        zone.y = newT;
+                        zone.height += diffY;
+                    }
+                    const newL = gridX;
+                    const maxL = zone.x + zone.width - minSize;
+                    if (newL <= maxL) {
+                        const diffX = zone.x - newL;
+                        zone.x = newL;
+                        zone.width += diffX;
+                    }
+                }
+                break;
+            case 'top-right':
+                {
+                    const newT = gridY;
+                    const maxT = zone.y + zone.height - minSize;
+                    if (newT <= maxT) {
+                        const diffY = zone.y - newT;
+                        zone.y = newT;
+                        zone.height += diffY;
+                    }
+                    const newR = gridX + GRID_SIZE;
+                    const minR = zone.x + minSize;
+                    if (newR >= minR) {
+                        zone.width = newR - zone.x;
+                    }
+                }
+                break;
+            case 'bottom-left':
+                {
+                    const newB = gridY + GRID_SIZE;
+                    const minB = zone.y + minSize;
+                    if (newB >= minB) {
+                        zone.height = newB - zone.y;
+                    }
+                    const newL = gridX;
+                    const maxL = zone.x + zone.width - minSize;
+                    if (newL <= maxL) {
+                        const diffX = zone.x - newL;
+                        zone.x = newL;
+                        zone.width += diffX;
+                    }
+                }
+                break;
+            case 'bottom-right':
+                {
+                    const newB = gridY + GRID_SIZE;
+                    const minB = zone.y + minSize;
+                    if (newB >= minB) {
+                        zone.height = newB - zone.y;
+                    }
+                    const newR = gridX + GRID_SIZE;
+                    const minR = zone.x + minSize;
+                    if (newR >= minR) {
+                        zone.width = newR - zone.x;
+                    }
+                }
+                break;
+        }
+    }
+    
+    getZoneDraggerAtPoint(worldX, worldY) {
+        if (!this.zoneAdjustment.active || !this.zoneAdjustment.zone) return null;
+        
+        const zone = this.zoneAdjustment.zone;
+        const handleSize = 12 / this.camera.zoom; // Size in world units
+        
+        const draggers = [
+            { name: 'top-left', x: zone.x, y: zone.y },
+            { name: 'top', x: zone.x + zone.width / 2, y: zone.y },
+            { name: 'top-right', x: zone.x + zone.width, y: zone.y },
+            { name: 'left', x: zone.x, y: zone.y + zone.height / 2 },
+            { name: 'right', x: zone.x + zone.width, y: zone.y + zone.height / 2 },
+            { name: 'bottom-left', x: zone.x, y: zone.y + zone.height },
+            { name: 'bottom', x: zone.x + zone.width / 2, y: zone.y + zone.height },
+            { name: 'bottom-right', x: zone.x + zone.width, y: zone.y + zone.height }
+        ];
+        
+        for (const d of draggers) {
+            if (Math.abs(worldX - d.x) < handleSize && Math.abs(worldY - d.y) < handleSize) {
+                return d.name;
+            }
+        }
+        
+        return null;
     }
 
     createColorPicker() {
@@ -1387,6 +1912,29 @@ class Editor {
                 }
             });
         });
+        
+        // Checkpoint colors
+        ['default', 'active', 'touched'].forEach(type => {
+            const preview = document.getElementById(`config-checkpoint-${type}-preview`);
+            const input = document.getElementById(`config-checkpoint-${type}`);
+            
+            if (preview && input) {
+                preview.addEventListener('click', () => {
+                    this.openColorPicker(`config-checkpoint-${type}`);
+                });
+                
+                input.addEventListener('change', (e) => {
+                    const color = e.target.value;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                        preview.style.background = color;
+                        if (type === 'default') this.world.checkpointDefaultColor = color;
+                        else if (type === 'active') this.world.checkpointActiveColor = color;
+                        else if (type === 'touched') this.world.checkpointTouchedColor = color;
+                        this.triggerMapChange();
+                    }
+                });
+            }
+        });
 
         // Jumps
         document.getElementById('config-jumps').addEventListener('change', (e) => {
@@ -1444,6 +1992,13 @@ class Editor {
         document.getElementById('config-spike-touchbox').addEventListener('change', (e) => {
             this.world.spikeTouchbox = e.target.value;
             this.updateSpikeTouchboxDescription(e.target.value);
+            this.triggerMapChange();
+        });
+        
+        // Stored data type
+        document.getElementById('config-stored-data-type').addEventListener('change', (e) => {
+            this.world.storedDataType = e.target.value;
+            this.updateStoredDataTypeDescription(e.target.value);
             this.triggerMapChange();
         });
         
@@ -1908,15 +2463,15 @@ class Editor {
         // Other tools are mutually exclusive
         // Deactivate previous non-fly tool
         if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
-            if (this.currentTool === EditorTool.ERASE) {
-                this.isErasing = false;
+        if (this.currentTool === EditorTool.ERASE) {
+            this.isErasing = false;
             }
         }
 
         // Update non-fly button states
         this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
             if (btn.dataset.tool !== 'fly') {
-                btn.classList.remove('active');
+            btn.classList.remove('active');
             }
         });
 
@@ -1950,11 +2505,11 @@ class Editor {
             flyBtn.classList.toggle('active', this.isFlying);
         }
         
-        if (this.engine.localPlayer) {
+                if (this.engine.localPlayer) {
             this.engine.localPlayer.isFlying = this.isFlying;
             // Reset velocity when toggling fly mode
-            this.engine.localPlayer.vx = 0;
-            this.engine.localPlayer.vy = 0;
+                    this.engine.localPlayer.vx = 0;
+                    this.engine.localPlayer.vy = 0;
             
             if (!this.isFlying) {
                 // Reset jumps so player can jump again when leaving fly mode
@@ -2138,17 +2693,25 @@ class Editor {
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'checkpoint' ? 'active' : ''}" data-appearance="checkpoint">Checkpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'spawnpoint' ? 'active' : ''}" data-appearance="spawnpoint">Spawnpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'endpoint' ? 'active' : ''}" data-appearance="endpoint">Endpoint</button>
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'zone' ? 'active' : ''}" data-appearance="zone">Zone</button>
             `;
             this.reattachAppearanceListeners();
 
-            // Update acting type buttons for koreen
+            // Update acting type buttons for koreen (zone-only if appearance is zone)
             const actingBtns = options.acting.querySelector('.placement-option-btns');
+            if (this.koreenSettings.appearanceType === 'zone') {
+                actingBtns.innerHTML = `
+                    <button class="placement-opt-btn active" data-acting="zone">Zone</button>
+                `;
+                this.koreenSettings.actingType = 'zone';
+            } else {
             actingBtns.innerHTML = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
             `;
+            }
             this.reattachActingListeners();
         } else if (this.placementMode === PlacementMode.TEXT) {
             options.content.classList.remove('hidden');
@@ -2208,7 +2771,23 @@ class Editor {
                     this.koreenSettings.appearanceType = btn.dataset.appearance;
                     // Sync acting type with appearance type for koreens
                     this.koreenSettings.actingType = btn.dataset.appearance;
-                    this.syncActingTypeUI(btn.dataset.appearance);
+                    
+                    // Rebuild acting type buttons based on appearance (zone vs non-zone)
+                    const actingBtns = document.querySelector('#placement-acting .placement-option-btns');
+                    if (btn.dataset.appearance === 'zone') {
+                        actingBtns.innerHTML = `
+                            <button class="placement-opt-btn active" data-acting="zone">Zone</button>
+                        `;
+                        this.koreenSettings.actingType = 'zone';
+                    } else {
+                        actingBtns.innerHTML = `
+                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
+                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
+                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
+                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
+                        `;
+                    }
+                    this.reattachActingListeners();
                 }
                 this.updateDefaultColor();
             });
@@ -2323,7 +2902,7 @@ class Editor {
     updateLayersList() {
         const list = this.ui.layersList;
         list.innerHTML = '';
-        
+
         // Get overlap groups
         const groups = this.getOverlapGroups();
         
@@ -2340,12 +2919,12 @@ class Editor {
             
             for (const idx of sortedGroup) {
                 const obj = this.world.objects[idx];
-                const item = document.createElement('div');
+            const item = document.createElement('div');
                 item.className = `layer-item ${groupColor}`;
-                item.dataset.id = obj.id;
+            item.dataset.id = obj.id;
                 item.dataset.groupIndex = g.toString();
-                item.draggable = true;
-                
+            item.draggable = true;
+            
                 // Show group indicator for multi-object groups
                 const groupIndicator = group.length > 1 ? 
                     `<span class="layer-group-indicator" title="Overlapping with ${group.length - 1} other object(s)">●</span>` : '';
@@ -2368,6 +2947,9 @@ class Editor {
                 } else if (obj.appearanceType === 'endpoint') {
                     previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center;`;
                     previewContent = `<span class="material-symbols-outlined" style="font-size: 20px; color: #FFD700;">star</span>`;
+                } else if (obj.appearanceType === 'zone') {
+                    previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px dashed rgba(255, 255, 255, 1); background: rgba(255, 255, 255, 0.3); border-radius: 4px;`;
+                    previewContent = `<span class="material-symbols-outlined" style="font-size: 14px; color: rgba(255, 255, 255, 1);">select_all</span>`;
                 } else if (obj.type === 'text') {
                     previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: ${obj.color}; font-size: 14px;`;
                     previewContent = 'T';
@@ -2380,61 +2962,61 @@ class Editor {
                 const opacityLabel = obj.opacity < 1 ? 
                     `<span class="layer-opacity-label">${opacityText}</span>` : '';
                 
-                item.innerHTML = `
-                    <span class="material-symbols-outlined" style="cursor: grab; color: var(--text-muted);">drag_indicator</span>
+            item.innerHTML = `
+                <span class="material-symbols-outlined" style="cursor: grab; color: var(--text-muted);">drag_indicator</span>
                     ${groupIndicator}
                     <div class="layer-item-preview" style="${previewStyle}">${previewContent}${opacityLabel}</div>
-                    <span class="layer-item-name">${obj.name}</span>
-                    <div class="layer-item-actions">
-                        <button class="layer-btn layer-delete" data-delete="${obj.id}" title="Delete">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
-                        <button class="layer-btn ${obj.layer === 2 ? 'active' : ''}" data-layer="2" data-obj="${obj.id}" title="On top of player">
-                            <span class="material-symbols-outlined">arrow_upward_alt</span>
-                        </button>
-                        <button class="layer-btn ${obj.layer === 1 ? 'active' : ''}" data-layer="1" data-obj="${obj.id}" title="Same layer">
-                            <span class="material-symbols-outlined">remove</span>
-                        </button>
-                        <button class="layer-btn ${obj.layer === 0 ? 'active' : ''}" data-layer="0" data-obj="${obj.id}" title="Behind player">
-                            <span class="material-symbols-outlined">arrow_downward_alt</span>
-                        </button>
-                    </div>
-                `;
+                <span class="layer-item-name">${obj.name}</span>
+                <div class="layer-item-actions">
+                    <button class="layer-btn layer-delete" data-delete="${obj.id}" title="Delete">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                    <button class="layer-btn ${obj.layer === 2 ? 'active' : ''}" data-layer="2" data-obj="${obj.id}" title="On top of player">
+                        <span class="material-symbols-outlined">arrow_upward_alt</span>
+                    </button>
+                    <button class="layer-btn ${obj.layer === 1 ? 'active' : ''}" data-layer="1" data-obj="${obj.id}" title="Same layer">
+                        <span class="material-symbols-outlined">remove</span>
+                    </button>
+                    <button class="layer-btn ${obj.layer === 0 ? 'active' : ''}" data-layer="0" data-obj="${obj.id}" title="Behind player">
+                        <span class="material-symbols-outlined">arrow_downward_alt</span>
+                    </button>
+                </div>
+            `;
 
-                // Delete button
-                item.querySelector('.layer-delete').addEventListener('click', () => {
-                    this.world.removeObject(obj.id);
+            // Delete button
+            item.querySelector('.layer-delete').addEventListener('click', () => {
+                this.world.removeObject(obj.id);
+                this.updateLayersList();
+                this.triggerMapChange();
+            });
+
+            // Layer buttons
+            item.querySelectorAll('[data-layer]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    obj.layer = parseInt(btn.dataset.layer);
                     this.updateLayersList();
                     this.triggerMapChange();
                 });
+            });
 
-                // Layer buttons
-                item.querySelectorAll('[data-layer]').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        obj.layer = parseInt(btn.dataset.layer);
-                        this.updateLayersList();
-                        this.triggerMapChange();
-                    });
-                });
-
-                // Drag and drop
-                item.addEventListener('dragstart', (e) => {
+            // Drag and drop
+            item.addEventListener('dragstart', (e) => {
                     e.dataTransfer.setData('text/plain', idx.toString());
                     e.dataTransfer.setData('groupIndex', g.toString());
-                    item.classList.add('dragging');
-                });
+                item.classList.add('dragging');
+            });
 
-                item.addEventListener('dragend', () => {
-                    item.classList.remove('dragging');
-                });
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+            });
 
-                item.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                });
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
 
-                item.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                     const fromGroup = parseInt(e.dataTransfer.getData('groupIndex'));
                     const toGroup = parseInt(item.dataset.groupIndex);
                     
@@ -2444,8 +3026,8 @@ class Editor {
                     
                     if (fromIndex !== toIndex) {
                         this.world.reorderLayers(fromIndex, toIndex);
-                        this.updateLayersList();
-                        this.triggerMapChange();
+                this.updateLayersList();
+                this.triggerMapChange();
                     }
                 });
                 
@@ -2468,9 +3050,9 @@ class Editor {
                 // Double-click on preview to open edit popup
                 item.querySelector('.layer-item-preview').addEventListener('dblclick', () => {
                     this.openObjectEditPopup(obj);
-                });
+            });
 
-                list.appendChild(item);
+            list.appendChild(item);
             }
         }
     }
@@ -2517,7 +3099,7 @@ class Editor {
         
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
-        const d = max - min;
+            const d = max - min;
         
         let h = 0;
         if (d !== 0) {
@@ -2633,7 +3215,10 @@ class Editor {
     // INPUT HANDLING
     // ========================================
     handleKeyPress(e) {
-        if (this.engine.state !== GameState.EDITOR) return;
+        const isTestMode = this.engine.state === GameState.TESTING;
+        const isEditorMode = this.engine.state === GameState.EDITOR;
+        
+        if (!isEditorMode && !isTestMode) return;
         
         // Don't handle shortcuts if user is typing in an input field
         const activeEl = document.activeElement;
@@ -2651,12 +3236,18 @@ class Editor {
         
         // Skip other shortcuts if typing
         if (isTyping) return;
+        
+        // Fly mode toggle works in both editor and test mode
+        if (e.code === 'KeyG') {
+            e.preventDefault();
+            this.setTool(EditorTool.FLY);
+            return;
+        }
+        
+        // Other shortcuts only work in editor mode
+        if (!isEditorMode) return;
 
         switch (e.code) {
-            case 'KeyG':
-                e.preventDefault();
-                this.setTool(EditorTool.FLY);
-                break;
             case 'KeyM':
                 e.preventDefault();
                 this.setTool(EditorTool.MOVE);
@@ -2673,6 +3264,18 @@ class Editor {
     }
 
     handleEscape() {
+        // Cancel zone adjustment mode
+        if (this.zoneAdjustment.active) {
+            this.exitZoneAdjustmentMode();
+            return;
+        }
+        
+        // Cancel zone placement
+        if (this.zonePlacement.isPlacing) {
+            this.zonePlacement.isPlacing = false;
+            return;
+        }
+        
         if (this.placementMode !== PlacementMode.NONE) {
             this.stopPlacement();
         } else if (this.currentTool !== EditorTool.NONE) {
@@ -2685,6 +3288,8 @@ class Editor {
             this.closePanel('config');
             this.closePanel('layers');
             this.closePanel('settings');
+            this.closeObjectEditPopup();
+            this.closeZoneNamePopup();
         }
     }
 
@@ -2693,9 +3298,22 @@ class Editor {
 
         const worldPos = this.engine.getMouseWorldPos();
         const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+        
+        // Zone placement - update end corner
+        if (this.zonePlacement.isPlacing) {
+            this.zonePlacement.endX = gridPos.x;
+            this.zonePlacement.endY = gridPos.y;
+            return; // Don't do anything else during zone drawing
+        }
+        
+        // Zone adjustment - handle dragger movement
+        if (this.zoneAdjustment.active && this.zoneAdjustment.draggerHeld && this.engine.mouse.down) {
+            this.handleZoneDraggerMove(gridPos.x, gridPos.y);
+            return;
+        }
 
         // Fly mode camera movement
-        if (this.isFlying && this.engine.mouse.down && this.placementMode === PlacementMode.NONE) {
+        if (this.isFlying && this.engine.mouse.down && this.placementMode === PlacementMode.NONE && !this.zonePlacement.isPlacing) {
             this.camera.targetX -= e.movementX / this.camera.zoom;
             this.camera.targetY -= e.movementY / this.camera.zoom;
         }
@@ -2727,9 +3345,30 @@ class Editor {
     handleMouseDown(e) {
         if (this.engine.state !== GameState.EDITOR) return;
         if (this.isOverUI(e)) return;
+        
+        // Handle zone adjustment draggers
+        if (this.zoneAdjustment.active) {
+            const worldPos = this.engine.getMouseWorldPos();
+            const dragger = this.getZoneDraggerAtPoint(worldPos.x, worldPos.y);
+            if (dragger) {
+                this.zoneAdjustment.draggerHeld = dragger;
+                return;
+            }
+            // If clicking outside draggers, allow camera panning
+        }
 
         const worldPos = this.engine.getMouseWorldPos();
         const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+
+        // Zone placement mode - start drawing region
+        if (this.placementMode === PlacementMode.KOREEN && this.koreenSettings.appearanceType === 'zone') {
+            this.zonePlacement.isPlacing = true;
+            this.zonePlacement.startX = gridPos.x;
+            this.zonePlacement.startY = gridPos.y;
+            this.zonePlacement.endX = gridPos.x;
+            this.zonePlacement.endY = gridPos.y;
+            return;
+        }
 
         // Placement mode - start brush placement
         if (this.placementMode !== PlacementMode.NONE) {
@@ -2787,6 +3426,20 @@ class Editor {
     }
 
     handleMouseUp(e) {
+        // Complete zone placement
+        if (this.zonePlacement.isPlacing) {
+            this.zonePlacement.isPlacing = false;
+            this.completeZonePlacement();
+            return;
+        }
+        
+        // Release zone adjustment dragger
+        if (this.zoneAdjustment.draggerHeld) {
+            this.zoneAdjustment.draggerHeld = null;
+            this.triggerMapChange();
+            return;
+        }
+        
         // Stop brush placement
         this.isPlacing = false;
         
@@ -2809,7 +3462,10 @@ class Editor {
             el.closest('.color-picker-popup') ||
             el.closest('.modal-overlay') ||
             el.closest('.object-edit-popup') ||
-            el.closest('.object-edit-panel')
+            el.closest('.object-edit-panel') ||
+            el.closest('.zone-name-panel') ||
+            el.closest('.zone-edit-panel') ||
+            el.closest('.zone-adjust-stop')
         );
     }
 
@@ -2937,6 +3593,18 @@ class Editor {
 
         this.engine.startTestGame();
         
+        // Reset fly mode to OFF for test mode
+        this.isFlying = false;
+        if (this.engine.localPlayer) {
+            this.engine.localPlayer.isFlying = false;
+        }
+        
+        // Update fly button UI to show inactive state
+        const flyBtn = this.ui.toolbar.querySelector('[data-tool="fly"]');
+        if (flyBtn) {
+            flyBtn.classList.remove('active');
+        }
+        
         // Update UI
         this.ui.btnConfig.classList.add('hidden');
         this.ui.btnAdd.classList.add('hidden');
@@ -2989,40 +3657,33 @@ class Editor {
     // ========================================
     // EXPORT/IMPORT
     // ========================================
-    exportMap() {
-        const data = this.world.toJSON();
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.world.mapName.replace(/[^a-z0-9]/gi, '_')}.pkrn`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        this.showToast('Map exported successfully!', 'success');
+    async exportMap() {
+        try {
+            const exportManager = new ExportManager();
+            await exportManager.exportToFile(this.world, this.world.mapName, this.world.storedDataType);
+            this.showToast('Map exported successfully!', 'success');
+        } catch (err) {
+            console.error('Export failed:', err);
+            this.showToast('Export failed: ' + err.message, 'error');
+        }
     }
 
-    importMap(e) {
+    async importMap(e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                this.world.fromJSON(data);
-                this.updateBackground();
-                this.triggerMapChange();
-                this.showToast('Map imported successfully!', 'success');
-            } catch (err) {
-                this.showToast('Invalid map file!', 'error');
-            }
-        };
-        reader.readAsText(file);
+        try {
+            const importManager = new ImportManager();
+            const data = await importManager.importFromFile(file);
+            this.world.fromJSON(data);
+            this.updateBackground();
+            this.syncConfigPanel();
+            this.triggerMapChange();
+            this.showToast('Map imported successfully!', 'success');
+        } catch (err) {
+            console.error('Import failed:', err);
+            this.showToast('Import failed: ' + err.message, 'error');
+        }
         
         // Reset input
         e.target.value = '';
@@ -3115,7 +3776,7 @@ class Editor {
                 }
             }
         } else {
-            bgElement.className = `game-bg ${this.world.background}`;
+        bgElement.className = `game-bg ${this.world.background}`;
         }
         
         // Also sync config panel values with world
@@ -3146,6 +3807,22 @@ class Editor {
         const textPreview = document.getElementById('config-text-color-preview');
         if (textColor) textColor.value = this.world.defaultTextColor;
         if (textPreview) textPreview.style.background = this.world.defaultTextColor;
+        
+        // Checkpoint colors
+        const cpDefaultColor = document.getElementById('config-checkpoint-default');
+        const cpDefaultPreview = document.getElementById('config-checkpoint-default-preview');
+        if (cpDefaultColor) cpDefaultColor.value = this.world.checkpointDefaultColor || '#808080';
+        if (cpDefaultPreview) cpDefaultPreview.style.background = this.world.checkpointDefaultColor || '#808080';
+        
+        const cpActiveColor = document.getElementById('config-checkpoint-active');
+        const cpActivePreview = document.getElementById('config-checkpoint-active-preview');
+        if (cpActiveColor) cpActiveColor.value = this.world.checkpointActiveColor || '#4CAF50';
+        if (cpActivePreview) cpActivePreview.style.background = this.world.checkpointActiveColor || '#4CAF50';
+        
+        const cpTouchedColor = document.getElementById('config-checkpoint-touched');
+        const cpTouchedPreview = document.getElementById('config-checkpoint-touched-preview');
+        if (cpTouchedColor) cpTouchedColor.value = this.world.checkpointTouchedColor || '#2196F3';
+        if (cpTouchedPreview) cpTouchedPreview.style.background = this.world.checkpointTouchedColor || '#2196F3';
         
         // Jumps
         const jumpsSelect = document.getElementById('config-jumps');
@@ -3182,7 +3859,14 @@ class Editor {
         const spikeTouchbox = document.getElementById('config-spike-touchbox');
         if (spikeTouchbox) {
             spikeTouchbox.value = this.world.spikeTouchbox || 'normal';
-            this.updateSpikeTouchboxDescription(spikeTouchbox.value);
+            this.updateSpikeTouchboxDescription(this.world.spikeTouchbox || 'normal');
+        }
+        
+        // Stored data type
+        const storedDataType = document.getElementById('config-stored-data-type');
+        if (storedDataType) {
+            storedDataType.value = this.world.storedDataType || 'json';
+            this.updateStoredDataTypeDescription(this.world.storedDataType || 'json');
         }
         
         // Music settings
@@ -3333,6 +4017,18 @@ class Editor {
         };
         
         descEl.innerHTML = descriptions[mode] || descriptions['normal'];
+    }
+    
+    updateStoredDataTypeDescription(type) {
+        const descEl = document.getElementById('stored-data-type-description');
+        if (!descEl) return;
+        
+        const descriptions = {
+            'json': '<strong style="color: #6bcb77;">.json:</strong> Human-readable format. Easier to debug and edit manually. Recommended for smaller maps or during development.',
+            'dat': '<strong style="color: #4d96ff;">.dat:</strong> Binary format with compression. Smaller file size, faster loading. Recommended for extremely large maps with many objects or media files.'
+        };
+        
+        descEl.innerHTML = descriptions[type] || descriptions['json'];
     }
     
     handleMusicUpload(file) {
@@ -3666,14 +4362,15 @@ class Editor {
         }
 
         // Hover highlight (from canvas hover)
+        // Note: ctx already has camera.zoom applied via ctx.scale()
         if (this.hoveredObject && this.engine.state === GameState.EDITOR) {
-            const screenX = (this.hoveredObject.x - camera.x) * camera.zoom;
-            const screenY = (this.hoveredObject.y - camera.y) * camera.zoom;
-            const width = this.hoveredObject.width * camera.zoom;
-            const height = this.hoveredObject.height * camera.zoom;
+            const screenX = this.hoveredObject.x - camera.x;
+            const screenY = this.hoveredObject.y - camera.y;
+            const width = this.hoveredObject.width;
+            const height = this.hoveredObject.height;
 
             ctx.strokeStyle = '#f4a261';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 / camera.zoom;
             ctx.setLineDash([5, 5]);
             ctx.strokeRect(screenX, screenY, width, height);
             ctx.setLineDash([]);
@@ -3682,61 +4379,131 @@ class Editor {
         // Layer panel hover highlight - inverse color box
         if (this.highlightedLayerObject && this.engine.state === GameState.EDITOR) {
             const obj = this.highlightedLayerObject;
-            const screenX = (obj.x - camera.x) * camera.zoom;
-            const screenY = (obj.y - camera.y) * camera.zoom;
-            const width = obj.width * camera.zoom;
-            const height = obj.height * camera.zoom;
+            const screenX = obj.x - camera.x;
+            const screenY = obj.y - camera.y;
+            const width = obj.width;
+            const height = obj.height;
             
             // Draw inverse color highlight box
             ctx.save();
             ctx.globalCompositeOperation = 'difference';
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(screenX - 4, screenY - 4, width + 8, height + 8);
+            const pad = 4 / camera.zoom;
+            ctx.fillRect(screenX - pad, screenY - pad, width + pad * 2, height + pad * 2);
             ctx.restore();
             
             // Also draw a bright border for visibility
             ctx.strokeStyle = '#00FFFF';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(screenX - 2, screenY - 2, width + 4, height + 4);
+            ctx.lineWidth = 3 / camera.zoom;
+            const pad2 = 2 / camera.zoom;
+            ctx.strokeRect(screenX - pad2, screenY - pad2, width + pad2 * 2, height + pad2 * 2);
         }
 
         // Placement preview
         if (this.placementMode !== PlacementMode.NONE) {
-            const worldPos = this.engine.getMouseWorldPos();
-            const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
-            const screenX = (gridPos.x - camera.x) * camera.zoom;
-            const screenY = (gridPos.y - camera.y) * camera.zoom;
-            const size = GRID_SIZE * camera.zoom;
+            // Zone placement preview (rectangle)
+            if (this.zonePlacement.isPlacing) {
+                const { startX, startY, endX, endY } = this.zonePlacement;
+                const x = Math.min(startX, endX);
+                const y = Math.min(startY, endY);
+                const width = Math.abs(endX - startX) + GRID_SIZE;
+                const height = Math.abs(endY - startY) + GRID_SIZE;
+                
+                const screenX = x - camera.x;
+                const screenY = y - camera.y;
+                const screenW = width;
+                const screenH = height;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(screenX, screenY, screenW, screenH);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+                ctx.lineWidth = 2 / camera.zoom;
+                ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
+                ctx.strokeRect(screenX, screenY, screenW, screenH);
+                ctx.setLineDash([]);
+            } else {
+                // Normal placement preview
+                const worldPos = this.engine.getMouseWorldPos();
+                const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+                const screenX = gridPos.x - camera.x;
+                const screenY = gridPos.y - camera.y;
+                const size = GRID_SIZE;
 
-            ctx.fillStyle = 'rgba(45, 90, 39, 0.5)';
-            ctx.fillRect(screenX, screenY, size, size);
-            ctx.strokeStyle = '#4a8c3f';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(screenX, screenY, size, size);
+                ctx.fillStyle = 'rgba(45, 90, 39, 0.5)';
+                ctx.fillRect(screenX, screenY, size, size);
+                ctx.strokeStyle = '#4a8c3f';
+                ctx.lineWidth = 2 / camera.zoom;
+                ctx.strokeRect(screenX, screenY, size, size);
+            }
+        }
+        
+        // Zone adjustment handles
+        if (this.zoneAdjustment.active && this.zoneAdjustment.zone) {
+            this.renderZoneAdjustmentHandles(ctx, camera);
+        }
+    }
+    
+    renderZoneAdjustmentHandles(ctx, camera) {
+        const zone = this.zoneAdjustment.zone;
+        const handleSize = 12 / camera.zoom;
+        
+        const screenX = zone.x - camera.x;
+        const screenY = zone.y - camera.y;
+        const screenW = zone.width;
+        const screenH = zone.height;
+        
+        // Draw zone highlight (white to match zone style)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3 / camera.zoom;
+        ctx.setLineDash([]);
+        ctx.strokeRect(screenX, screenY, screenW, screenH);
+        
+        // Dragger positions
+        const draggers = [
+            { x: screenX, y: screenY, cursor: 'nw-resize', name: 'top-left' },
+            { x: screenX + screenW / 2, y: screenY, cursor: 'n-resize', name: 'top' },
+            { x: screenX + screenW, y: screenY, cursor: 'ne-resize', name: 'top-right' },
+            { x: screenX, y: screenY + screenH / 2, cursor: 'w-resize', name: 'left' },
+            { x: screenX + screenW, y: screenY + screenH / 2, cursor: 'e-resize', name: 'right' },
+            { x: screenX, y: screenY + screenH, cursor: 'sw-resize', name: 'bottom-left' },
+            { x: screenX + screenW / 2, y: screenY + screenH, cursor: 'n-resize', name: 'bottom' },
+            { x: screenX + screenW, y: screenY + screenH, cursor: 'se-resize', name: 'bottom-right' }
+        ];
+        
+        for (const d of draggers) {
+            // Handle background (dark for contrast against white border)
+            ctx.fillStyle = '#333';
+            ctx.fillRect(d.x - handleSize / 2, d.y - handleSize / 2, handleSize, handleSize);
+            
+            // Handle border (white to match zone)
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2 / camera.zoom;
+            ctx.strokeRect(d.x - handleSize / 2, d.y - handleSize / 2, handleSize, handleSize);
         }
     }
     
     renderDieLine(ctx, camera) {
         // Die line - players die if they fall below this Y position
         const dieLineY = this.world.dieLineY ?? 2000; // Default 2000 pixels below origin
-        const screenY = (dieLineY - camera.y) * camera.zoom;
+        const screenY = dieLineY - camera.y;
         
-        // Only render if visible on screen
-        if (screenY < 0 || screenY > camera.height) return;
+        // Only render if visible on screen (accounting for zoom)
+        if (screenY < -100 / camera.zoom || screenY > camera.height / camera.zoom + 100) return;
         
         // Draw red dashed die line
         ctx.save();
         ctx.strokeStyle = '#ff3333';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([15, 10]);
+        ctx.lineWidth = 3 / camera.zoom;
+        ctx.setLineDash([15 / camera.zoom, 10 / camera.zoom]);
         
         ctx.beginPath();
-        ctx.moveTo(0, screenY);
-        ctx.lineTo(camera.width, screenY);
+        ctx.moveTo(-camera.x, screenY);
+        ctx.lineTo(-camera.x + camera.width / camera.zoom, screenY);
         ctx.stroke();
         
         // Draw label
-        ctx.font = 'bold 14px monospace';
+        const fontSize = 14 / camera.zoom;
+        ctx.font = `bold ${fontSize}px monospace`;
         ctx.fillStyle = '#ff3333';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
@@ -3746,38 +4513,39 @@ class Editor {
         const text = '☠ DEATH LINE - Players die below this point';
         const textWidth = ctx.measureText(text).width;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(10, screenY - 24, textWidth + 10, 22);
+        const padding = 10 / camera.zoom;
+        ctx.fillRect(-camera.x + padding, screenY - 24 / camera.zoom, textWidth + padding, 22 / camera.zoom);
         
         // Text
         ctx.fillStyle = '#ff3333';
-        ctx.fillText(text, 15, screenY - 6);
+        ctx.fillText(text, -camera.x + 15 / camera.zoom, screenY - 6 / camera.zoom);
         
         ctx.restore();
     }
 
     renderGrid(ctx, camera) {
-        const gridSize = GRID_SIZE * camera.zoom;
+        // Note: ctx already has camera.zoom applied via ctx.scale()
         const startX = Math.floor(camera.x / GRID_SIZE) * GRID_SIZE;
         const startY = Math.floor(camera.y / GRID_SIZE) * GRID_SIZE;
         const endX = camera.x + camera.width / camera.zoom + GRID_SIZE;
         const endY = camera.y + camera.height / camera.zoom + GRID_SIZE;
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / camera.zoom;
 
         for (let x = startX; x < endX; x += GRID_SIZE) {
-            const screenX = (x - camera.x) * camera.zoom;
+            const screenX = x - camera.x;
             ctx.beginPath();
-            ctx.moveTo(screenX, 0);
-            ctx.lineTo(screenX, camera.height);
+            ctx.moveTo(screenX, -camera.y);
+            ctx.lineTo(screenX, -camera.y + camera.height / camera.zoom);
             ctx.stroke();
         }
 
         for (let y = startY; y < endY; y += GRID_SIZE) {
-            const screenY = (y - camera.y) * camera.zoom;
+            const screenY = y - camera.y;
             ctx.beginPath();
-            ctx.moveTo(0, screenY);
-            ctx.lineTo(camera.width, screenY);
+            ctx.moveTo(-camera.x, screenY);
+            ctx.lineTo(-camera.x + camera.width / camera.zoom, screenY);
             ctx.stroke();
         }
     }

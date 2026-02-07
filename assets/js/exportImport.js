@@ -1,12 +1,19 @@
 /**
  * PARKOREEN - Export/Import System
  * Handles .pkrn file format and map data serialization
+ * 
+ * .pkrn format v2.0:
+ * - Actually a ZIP file renamed to .pkrn
+ * - Contains: data.json or data.dat, plus uploaded media files
+ * - Backward compatible with v1.x (raw JSON)
  */
 
 // ============================================
 // FILE FORMAT VERSION
 // ============================================
-const PKRN_VERSION = '1.2';
+const PKRN_VERSION = '2.0';
+const PKRN_FORMAT_JSON = 'json';
+const PKRN_FORMAT_DAT = 'dat';
 
 // Default values for backward compatibility
 const PKRN_DEFAULTS = {
@@ -14,6 +21,9 @@ const PKRN_DEFAULTS = {
     defaultBlockColor: '#787878',
     defaultSpikeColor: '#c45a3f',
     defaultTextColor: '#000000',
+    checkpointDefaultColor: '#808080',
+    checkpointActiveColor: '#4CAF50',
+    checkpointTouchedColor: '#2196F3',
     maxJumps: 1,
     infiniteJumps: false,
     additionalAirjump: false,
@@ -23,6 +33,7 @@ const PKRN_DEFAULTS = {
     jumpForce: -14,
     gravity: 0.8,
     spikeTouchbox: 'normal',
+    storedDataType: 'json', // 'json' or 'dat'
     customBackground: {
         enabled: false,
         type: null,
@@ -44,6 +55,240 @@ const PKRN_DEFAULTS = {
 };
 
 // ============================================
+// BINARY DATA UTILITIES
+// ============================================
+class BinaryUtils {
+    /**
+     * Encode data to binary format (.dat)
+     * Uses a simple but efficient binary format
+     */
+    static encode(data) {
+        const json = JSON.stringify(data);
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(json);
+        
+        // Simple compression: RLE for repeated bytes
+        const compressed = this.compress(bytes);
+        return compressed;
+    }
+    
+    /**
+     * Decode binary format back to data
+     */
+    static decode(buffer) {
+        const decompressed = this.decompress(new Uint8Array(buffer));
+        const decoder = new TextDecoder();
+        const json = decoder.decode(decompressed);
+        return JSON.parse(json);
+    }
+    
+    /**
+     * Simple RLE compression
+     */
+    static compress(bytes) {
+        const result = [];
+        let i = 0;
+        
+        while (i < bytes.length) {
+            const byte = bytes[i];
+            let count = 1;
+            
+            // Count consecutive same bytes (max 255)
+            while (i + count < bytes.length && bytes[i + count] === byte && count < 255) {
+                count++;
+            }
+            
+            if (count >= 4) {
+                // RLE marker: 0xFF, count, byte
+                result.push(0xFF, count, byte);
+                i += count;
+            } else {
+                // Store byte directly (escape 0xFF as 0xFF 0x00)
+                if (byte === 0xFF) {
+                    result.push(0xFF, 0x00);
+                } else {
+                    result.push(byte);
+                }
+                i++;
+            }
+        }
+        
+        return new Uint8Array(result);
+    }
+    
+    /**
+     * Simple RLE decompression
+     */
+    static decompress(bytes) {
+        const result = [];
+        let i = 0;
+        
+        while (i < bytes.length) {
+            if (bytes[i] === 0xFF) {
+                i++;
+                if (bytes[i] === 0x00) {
+                    // Escaped 0xFF
+                    result.push(0xFF);
+                    i++;
+                } else {
+                    // RLE: count, byte
+                    const count = bytes[i++];
+                    const byte = bytes[i++];
+                    for (let j = 0; j < count; j++) {
+                        result.push(byte);
+                    }
+                }
+            } else {
+                result.push(bytes[i++]);
+            }
+        }
+        
+        return new Uint8Array(result);
+    }
+}
+
+// ============================================
+// MEDIA EXTRACTOR
+// ============================================
+class MediaExtractor {
+    /**
+     * Extract base64 media from world data and return references
+     * @param {Object} data - Serialized world data
+     * @returns {Object} { data: modifiedData, files: Map<filename, base64> }
+     */
+    static extract(data) {
+        const files = new Map();
+        let imgIndex = 1;
+        let soundIndex = 1;
+        
+        // Clone data to avoid modifying original
+        const modified = JSON.parse(JSON.stringify(data));
+        
+        // Extract custom background
+        if (modified.settings?.customBackground?.data) {
+            const bgData = modified.settings.customBackground.data;
+            if (bgData.startsWith('data:')) {
+                const ext = this.getExtensionFromDataUrl(bgData);
+                const filename = `uploaded_img_${imgIndex++}.${ext}`;
+                files.set(filename, bgData);
+                modified.settings.customBackground.data = `@file:${filename}`;
+            }
+        }
+        
+        // Extract nested end background
+        if (modified.settings?.customBackground?.endBackground?.data) {
+            const bgData = modified.settings.customBackground.endBackground.data;
+            if (bgData.startsWith('data:')) {
+                const ext = this.getExtensionFromDataUrl(bgData);
+                const filename = `uploaded_img_${imgIndex++}.${ext}`;
+                files.set(filename, bgData);
+                modified.settings.customBackground.endBackground.data = `@file:${filename}`;
+            }
+        }
+        
+        // Extract custom music
+        if (modified.settings?.music?.customData) {
+            const musicData = modified.settings.music.customData;
+            if (musicData.startsWith('data:')) {
+                const ext = this.getExtensionFromDataUrl(musicData);
+                const filename = `uploaded_sound_${soundIndex++}.${ext}`;
+                files.set(filename, musicData);
+                modified.settings.music.customData = `@file:${filename}`;
+            }
+        }
+        
+        return { data: modified, files };
+    }
+    
+    /**
+     * Inject file references back into data
+     * @param {Object} data - Data with file references
+     * @param {Map} files - Map of filename to base64 data
+     * @returns {Object} Data with embedded base64
+     */
+    static inject(data, files) {
+        const modified = JSON.parse(JSON.stringify(data));
+        
+        // Inject custom background
+        if (modified.settings?.customBackground?.data?.startsWith('@file:')) {
+            const filename = modified.settings.customBackground.data.substring(6);
+            if (files.has(filename)) {
+                modified.settings.customBackground.data = files.get(filename);
+            }
+        }
+        
+        // Inject nested end background
+        if (modified.settings?.customBackground?.endBackground?.data?.startsWith('@file:')) {
+            const filename = modified.settings.customBackground.endBackground.data.substring(6);
+            if (files.has(filename)) {
+                modified.settings.customBackground.endBackground.data = files.get(filename);
+            }
+        }
+        
+        // Inject custom music
+        if (modified.settings?.music?.customData?.startsWith('@file:')) {
+            const filename = modified.settings.music.customData.substring(6);
+            if (files.has(filename)) {
+                modified.settings.music.customData = files.get(filename);
+            }
+        }
+        
+        return modified;
+    }
+    
+    /**
+     * Get file extension from data URL
+     */
+    static getExtensionFromDataUrl(dataUrl) {
+        const match = dataUrl.match(/data:([^;]+)/);
+        if (match) {
+            const mimeType = match[1];
+            const extensions = {
+                'image/png': 'png',
+                'image/jpeg': 'jpg',
+                'image/gif': 'gif',
+                'image/webp': 'webp',
+                'video/mp4': 'mp4',
+                'video/webm': 'webm',
+                'audio/mpeg': 'mp3',
+                'audio/mp3': 'mp3',
+                'audio/wav': 'wav',
+                'audio/ogg': 'ogg',
+                'audio/webm': 'webm'
+            };
+            return extensions[mimeType] || 'bin';
+        }
+        return 'bin';
+    }
+    
+    /**
+     * Convert base64 data URL to binary
+     */
+    static dataUrlToBlob(dataUrl) {
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)[1];
+        const binary = atob(parts[1]);
+        const array = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            array[i] = binary.charCodeAt(i);
+        }
+        return new Blob([array], { type: mime });
+    }
+    
+    /**
+     * Convert binary to base64 data URL
+     */
+    static blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+}
+
+// ============================================
 // EXPORT MANAGER
 // ============================================
 class ExportManager {
@@ -52,32 +297,65 @@ class ExportManager {
     }
 
     /**
-     * Export world data to .pkrn file
+     * Export world data to .pkrn file (ZIP format)
      * @param {World} world - The world object to export
      * @param {string} filename - Optional filename (without extension)
+     * @param {string} format - 'json' or 'dat'
      */
-    exportToFile(world, filename = null) {
-        const data = this.serialize(world);
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+    async exportToFile(world, filename = null, format = null) {
+        const dataFormat = format || world.storedDataType || PKRN_FORMAT_JSON;
         
-        const name = filename || world.mapName || 'untitled_map';
-        const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${safeName}.pkrn`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        return true;
+        try {
+            const zip = new JSZip();
+            const serialized = this.serialize(world);
+            
+            // Extract media files
+            const { data, files } = MediaExtractor.extract(serialized);
+            
+            // Add data file
+            if (dataFormat === PKRN_FORMAT_DAT) {
+                const binary = BinaryUtils.encode(data);
+                zip.file('data.dat', binary);
+            } else {
+                const json = JSON.stringify(data, null, 2);
+                zip.file('data.json', json);
+            }
+            
+            // Add media files
+            for (const [filename, dataUrl] of files) {
+                const blob = MediaExtractor.dataUrlToBlob(dataUrl);
+                zip.file(filename, blob);
+            }
+            
+            // Generate ZIP
+            const blob = await zip.generateAsync({ 
+                type: 'blob',
+                compression: 'DEFLATE',
+                compressionOptions: { level: 6 }
+            });
+            
+            // Download
+            const url = URL.createObjectURL(blob);
+            const name = filename || world.mapName || 'untitled_map';
+            const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${safeName}.pkrn`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            return true;
+        } catch (err) {
+            console.error('Export failed:', err);
+            throw new Error('Failed to export: ' + err.message);
+        }
     }
 
     /**
-     * Export world data to JSON string
+     * Export world data to JSON string (for internal use)
      * @param {World} world - The world object to export
      * @returns {string} JSON string
      */
@@ -114,6 +392,9 @@ class ExportManager {
                 defaultBlockColor: world.defaultBlockColor,
                 defaultSpikeColor: world.defaultSpikeColor,
                 defaultTextColor: world.defaultTextColor,
+                checkpointDefaultColor: world.checkpointDefaultColor,
+                checkpointActiveColor: world.checkpointActiveColor,
+                checkpointTouchedColor: world.checkpointTouchedColor,
                 maxJumps: world.maxJumps,
                 infiniteJumps: world.infiniteJumps,
                 additionalAirjump: world.additionalAirjump,
@@ -125,6 +406,8 @@ class ExportManager {
                 gravity: world.gravity,
                 // Spike settings
                 spikeTouchbox: world.spikeTouchbox,
+                // Storage preference
+                storedDataType: world.storedDataType || 'json',
                 // Custom background
                 customBackground: world.customBackground,
                 // Music
@@ -172,6 +455,11 @@ class ExportManager {
         if (obj.spikeTouchbox) {
             data.stb = obj.spikeTouchbox;
         }
+        
+        // Zone-specific properties
+        if (obj.zoneName) {
+            data.zn = obj.zoneName;
+        }
 
         return data;
     }
@@ -182,37 +470,106 @@ class ExportManager {
 // ============================================
 class ImportManager {
     constructor() {
-        this.supportedVersions = ['1.0', '1.1', '1.2'];
+        this.supportedVersions = ['1.0', '1.1', '1.2', '2.0'];
     }
 
     /**
-     * Import from file
+     * Import from file (supports both old JSON and new ZIP format)
      * @param {File} file - The file to import
      * @returns {Promise<Object>} Parsed data
      */
-    importFromFile(file) {
-        return new Promise((resolve, reject) => {
-            if (!file.name.endsWith('.pkrn')) {
-                reject(new Error('Invalid file type. Please select a .pkrn file.'));
-                return;
-            }
+    async importFromFile(file) {
+        if (!file.name.endsWith('.pkrn')) {
+            throw new Error('Invalid file type. Please select a .pkrn file.');
+        }
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    const result = this.validate(data);
-                    if (result.valid) {
-                        resolve(this.deserialize(data));
-                    } else {
-                        reject(new Error(result.error));
-                    }
-                } catch (err) {
-                    reject(new Error('Failed to parse file: ' + err.message));
+        const buffer = await this.readFileAsArrayBuffer(file);
+        
+        // Check if it's a ZIP file (starts with PK signature)
+        const header = new Uint8Array(buffer.slice(0, 4));
+        const isZip = header[0] === 0x50 && header[1] === 0x4B;
+        
+        if (isZip) {
+            return await this.importFromZip(buffer);
+        } else {
+            // Legacy format: raw JSON
+            return await this.importFromLegacyFormat(buffer);
+        }
+    }
+    
+    /**
+     * Import from ZIP format (.pkrn v2.0)
+     */
+    async importFromZip(buffer) {
+        try {
+            const zip = await JSZip.loadAsync(buffer);
+            
+            // Find data file
+            let data;
+            if (zip.files['data.json']) {
+                const json = await zip.files['data.json'].async('string');
+                data = JSON.parse(json);
+            } else if (zip.files['data.dat']) {
+                const binary = await zip.files['data.dat'].async('arraybuffer');
+                data = BinaryUtils.decode(binary);
+            } else {
+                throw new Error('Invalid .pkrn file: missing data file');
+            }
+            
+            // Load media files
+            const files = new Map();
+            for (const filename of Object.keys(zip.files)) {
+                if (filename.startsWith('uploaded_')) {
+                    const blob = await zip.files[filename].async('blob');
+                    const dataUrl = await MediaExtractor.blobToDataUrl(blob);
+                    files.set(filename, dataUrl);
                 }
-            };
+            }
+            
+            // Inject media back into data
+            const injected = MediaExtractor.inject(data, files);
+            
+            // Validate and deserialize
+            const result = this.validate(injected);
+            if (result.valid) {
+                return this.deserialize(injected);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (err) {
+            throw new Error('Failed to parse ZIP file: ' + err.message);
+        }
+    }
+    
+    /**
+     * Import from legacy JSON format (.pkrn v1.x)
+     */
+    async importFromLegacyFormat(buffer) {
+        try {
+            const decoder = new TextDecoder();
+            const json = decoder.decode(buffer);
+            const data = JSON.parse(json);
+            
+            const result = this.validate(data);
+            if (result.valid) {
+                return this.deserialize(data);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (err) {
+            throw new Error('Failed to parse legacy format: ' + err.message);
+        }
+    }
+    
+    /**
+     * Read file as ArrayBuffer
+     */
+    readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
             reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsText(file);
+            reader.readAsArrayBuffer(file);
         });
     }
 
@@ -300,6 +657,9 @@ class ImportManager {
             defaultBlockColor: getString(settings.defaultBlockColor, PKRN_DEFAULTS.defaultBlockColor),
             defaultSpikeColor: getString(settings.defaultSpikeColor, PKRN_DEFAULTS.defaultSpikeColor),
             defaultTextColor: getString(settings.defaultTextColor, PKRN_DEFAULTS.defaultTextColor),
+            checkpointDefaultColor: getString(settings.checkpointDefaultColor, PKRN_DEFAULTS.checkpointDefaultColor),
+            checkpointActiveColor: getString(settings.checkpointActiveColor, PKRN_DEFAULTS.checkpointActiveColor),
+            checkpointTouchedColor: getString(settings.checkpointTouchedColor, PKRN_DEFAULTS.checkpointTouchedColor),
             maxJumps: getNumber(settings.maxJumps, PKRN_DEFAULTS.maxJumps, v => v >= 0),
             infiniteJumps: getBool(settings.infiniteJumps, PKRN_DEFAULTS.infiniteJumps),
             additionalAirjump: getBool(settings.additionalAirjump, PKRN_DEFAULTS.additionalAirjump),
@@ -312,6 +672,9 @@ class ImportManager {
             // Spike settings
             spikeTouchbox: ['full', 'normal', 'tip', 'ground', 'flag', 'air'].includes(settings.spikeTouchbox) 
                 ? settings.spikeTouchbox : PKRN_DEFAULTS.spikeTouchbox,
+            // Storage preference
+            storedDataType: ['json', 'dat'].includes(settings.storedDataType) 
+                ? settings.storedDataType : PKRN_DEFAULTS.storedDataType,
             // Custom background with validation
             customBackground: this.deserializeCustomBackground(settings.customBackground),
             // Music with validation
@@ -411,6 +774,12 @@ class ImportManager {
         if (spikeTouchbox && validSpikeModes.includes(spikeTouchbox)) {
             data.spikeTouchbox = spikeTouchbox;
         }
+        
+        // Zone-specific properties
+        const zoneName = obj.zn || obj.zoneName;
+        if (zoneName) {
+            data.zoneName = zoneName;
+        }
 
         return data;
     }
@@ -436,14 +805,8 @@ class CloudSyncManager {
     async saveToCloud(world, token, mapId = null) {
         const data = this.exportManager.serialize(world);
         
-        const endpoint = mapId 
-            ? `${this.apiUrl}/maps/${mapId}` 
-            : `${this.apiUrl}/maps`;
-        
-        const method = mapId ? 'PUT' : 'POST';
-        
-        const response = await fetch(endpoint, {
-            method,
+        const response = await fetch(`${this.apiUrl}/maps${mapId ? '/' + mapId : ''}`, {
+            method: mapId ? 'PUT' : 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
@@ -452,11 +815,10 @@ class CloudSyncManager {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(error.message || 'Failed to save map');
+            throw new Error('Failed to save to cloud');
         }
 
-        return response.json();
+        return await response.json();
     }
 
     /**
@@ -473,18 +835,30 @@ class CloudSyncManager {
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(error.message || 'Failed to load map');
+            throw new Error('Failed to load from cloud');
         }
 
         const data = await response.json();
-        const result = this.importManager.validate(data);
-        
-        if (!result.valid) {
-            throw new Error(result.error);
+        return this.importManager.importFromString(JSON.stringify(data));
+    }
+
+    /**
+     * List user's maps
+     * @param {string} token - Auth token
+     * @returns {Promise<Array>} List of maps
+     */
+    async listMaps(token) {
+        const response = await fetch(`${this.apiUrl}/maps`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to list maps');
         }
 
-        return this.importManager.deserialize(data);
+        return await response.json();
     }
 
     /**
@@ -501,36 +875,15 @@ class CloudSyncManager {
             }
         });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(error.message || 'Failed to delete map');
-        }
-
-        return true;
-    }
-
-    /**
-     * List all maps
-     * @param {string} token - Auth token
-     * @returns {Promise<Array>} List of maps
-     */
-    async listMaps(token) {
-        const response = await fetch(`${this.apiUrl}/maps`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(error.message || 'Failed to list maps');
-        }
-
-        return response.json();
+        return response.ok;
     }
 }
 
-// Export
-window.ExportManager = ExportManager;
-window.ImportManager = ImportManager;
-window.CloudSyncManager = CloudSyncManager;
+// Export for use
+if (typeof window !== 'undefined') {
+    window.ExportManager = ExportManager;
+    window.ImportManager = ImportManager;
+    window.CloudSyncManager = CloudSyncManager;
+    window.PKRN_VERSION = PKRN_VERSION;
+    window.PKRN_DEFAULTS = PKRN_DEFAULTS;
+}

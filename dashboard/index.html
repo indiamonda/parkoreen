@@ -160,11 +160,13 @@
         }
     </script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="/parkoreen/runtime.js?v=19"></script>
     <script src="/parkoreen/assets/js/style.js?v=11"></script>
+    <script src="/parkoreen/assets/js/exportImport.js?v=12"></script>
     
     <script>
-        console.log('[Dashboard] Version: v7');
+        console.log('[Dashboard] Version: v8');
         console.log('[Debug] Auth:', window.Auth);
         console.log('[Debug] Auth.isLoggedIn:', window.Auth ? window.Auth.isLoggedIn() : 'N/A');
         console.log('[Debug] MapManager:', window.MapManager);
@@ -260,8 +262,9 @@
                     if (!file) return;
                     
                     try {
-                        var text = await file.text();
-                        var data = JSON.parse(text);
+                        // Use ImportManager to handle both old JSON and new ZIP formats
+                        var importManager = new ImportManager();
+                        var data = await importManager.importFromFile(file);
                         var name = data.mapName || file.name.replace('.pkrn', '');
                         
                         var createFn = window.MapManager.createMap;

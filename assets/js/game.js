@@ -586,6 +586,9 @@ class WorldObject {
         // Per-spike touchbox mode (null = use world default, or 'full', 'normal', 'tip', 'ground', 'flag', 'air')
         this.spikeTouchbox = config.spikeTouchbox || null;
         
+        // Zone-specific property
+        this.zoneName = config.zoneName || null;
+        
         this.name = config.name || this.getDefaultName();
     }
 
@@ -604,11 +607,12 @@ class WorldObject {
         return typeNames[this.appearanceType] || 'Object';
     }
 
-    render(ctx, camera) {
-        const screenX = (this.x - camera.x) * camera.zoom;
-        const screenY = (this.y - camera.y) * camera.zoom;
-        const width = this.width * camera.zoom;
-        const height = this.height * camera.zoom;
+    render(ctx, camera, checkpointColors = null) {
+        // Note: ctx already has camera.zoom applied via ctx.scale()
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        const width = this.width;
+        const height = this.height;
 
         ctx.save();
         ctx.globalAlpha = this.opacity;
@@ -625,11 +629,13 @@ class WorldObject {
         } else if (this.appearanceType === 'spike') {
             this.renderSpike(ctx, screenX, screenY, width, height);
         } else if (this.appearanceType === 'checkpoint') {
-            this.renderCheckpoint(ctx, screenX, screenY, width, height);
+            this.renderCheckpoint(ctx, screenX, screenY, width, height, checkpointColors);
         } else if (this.appearanceType === 'spawnpoint') {
             this.renderSpawnpoint(ctx, screenX, screenY, width, height);
         } else if (this.appearanceType === 'endpoint') {
             this.renderEndpoint(ctx, screenX, screenY, width, height);
+        } else if (this.appearanceType === 'zone') {
+            this.renderZone(ctx, screenX, screenY, width, height);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
@@ -670,17 +676,21 @@ class WorldObject {
         ctx.fill();
     }
 
-    renderCheckpoint(ctx, x, y, w, h) {
+    renderCheckpoint(ctx, x, y, w, h, checkpointColors = null) {
         // Flag pole
         ctx.fillStyle = '#8B4513';
         ctx.fillRect(x + w * 0.4, y + h * 0.2, w * 0.1, h * 0.8);
         
-        // Flag color based on state
-        let flagColor = this.color || '#FFD700'; // Default: gold
+        // Flag color based on state (use provided colors or defaults)
+        const defaultColor = checkpointColors?.default || '#808080';
+        const activeColor = checkpointColors?.active || '#4CAF50';
+        const touchedColor = checkpointColors?.touched || '#2196F3';
+        
+        let flagColor = defaultColor;
         if (this.checkpointState === 'active') {
-            flagColor = '#4CAF50'; // Green for active (current checkpoint)
+            flagColor = activeColor;
         } else if (this.checkpointState === 'touched') {
-            flagColor = '#2196F3'; // Blue for previously touched
+            flagColor = touchedColor;
         }
         
         ctx.fillStyle = flagColor;
@@ -746,6 +756,37 @@ class WorldObject {
         }
         ctx.closePath();
         ctx.fill();
+    }
+    
+    renderZone(ctx, x, y, w, h) {
+        // Semi-transparent white fill (30% opacity)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(x, y, w, h);
+        
+        // Solid white border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.setLineDash([]);
+        
+        // Zone name label
+        if (this.zoneName) {
+            ctx.font = '12px "Parkoreen Game", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            const padding = 4;
+            const textWidth = ctx.measureText(this.zoneName).width;
+            
+            // Background for label
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(x + 4, y + 4, textWidth + padding * 2, 18);
+            
+            // Text (white to match border)
+            ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+            ctx.fillText(this.zoneName, x + 4 + padding, y + 6);
+        }
     }
 
     renderText(ctx, x, y, w, h) {
@@ -859,6 +900,7 @@ class WorldObject {
             hSpacing: this.hSpacing,
             vSpacing: this.vSpacing,
             spikeTouchbox: this.spikeTouchbox,
+            zoneName: this.zoneName,
             name: this.name
         };
     }
@@ -896,6 +938,12 @@ class World {
         this.defaultBlockColor = '#787878';
         this.defaultSpikeColor = '#c45a3f';
         this.defaultTextColor = '#000000';
+        
+        // Checkpoint color settings
+        this.checkpointDefaultColor = '#808080'; // Gray - default state
+        this.checkpointActiveColor = '#4CAF50';  // Green - current checkpoint
+        this.checkpointTouchedColor = '#2196F3'; // Blue - already touched
+        
         this.maxJumps = 1;
         this.infiniteJumps = false;
         this.additionalAirjump = false;
@@ -919,6 +967,11 @@ class World {
         // 'flag' - Only flat part acts as ground, rest = air
         // 'air' - No interaction at all
         this.spikeTouchbox = 'normal';
+        
+        // Stored data type for .pkrn export
+        // 'json' - Human-readable, larger file size
+        // 'dat' - Binary format, smaller file size
+        this.storedDataType = 'json';
     }
 
     addObject(obj) {
@@ -1038,25 +1091,42 @@ class World {
     }
 
     render(ctx, camera) {
-        // Render objects by layer
+        // Render objects by layer (skip zones - they render on top)
         const layers = [[], [], []];
         
+        // Checkpoint colors to pass to objects
+        const checkpointColors = {
+            default: this.checkpointDefaultColor,
+            active: this.checkpointActiveColor,
+            touched: this.checkpointTouchedColor
+        };
+        
         for (const obj of this.objects) {
+            if (obj.appearanceType === 'zone') continue; // Zones render last
             layers[obj.layer].push(obj);
         }
         
         // Behind player (layer 0)
         for (const obj of layers[0]) {
-            obj.render(ctx, camera);
+            obj.render(ctx, camera, checkpointColors);
         }
         
-        return layers; // Return for player rendering between layers
+        return { layers, checkpointColors }; // Return for player rendering between layers
     }
 
-    renderAbovePlayer(ctx, camera) {
-        // Above player (layer 2)
+    renderAbovePlayer(ctx, camera, checkpointColors) {
+        // Above player (layer 2) - skip zones
         for (const obj of this.objects) {
-            if (obj.layer === 2) {
+            if (obj.layer === 2 && obj.appearanceType !== 'zone') {
+                obj.render(ctx, camera, checkpointColors);
+            }
+        }
+    }
+    
+    renderZones(ctx, camera) {
+        // Render all zones on top of everything
+        for (const obj of this.objects) {
+            if (obj.appearanceType === 'zone') {
                 obj.render(ctx, camera);
             }
         }
@@ -1069,6 +1139,9 @@ class World {
             defaultBlockColor: this.defaultBlockColor,
             defaultSpikeColor: this.defaultSpikeColor,
             defaultTextColor: this.defaultTextColor,
+            checkpointDefaultColor: this.checkpointDefaultColor,
+            checkpointActiveColor: this.checkpointActiveColor,
+            checkpointTouchedColor: this.checkpointTouchedColor,
             maxJumps: this.maxJumps,
             infiniteJumps: this.infiniteJumps,
             additionalAirjump: this.additionalAirjump,
@@ -1081,6 +1154,8 @@ class World {
             gravity: this.gravity,
             // Spike settings
             spikeTouchbox: this.spikeTouchbox,
+            // Export/Import settings
+            storedDataType: this.storedDataType,
             // Custom background
             customBackground: this.customBackground,
             // Music
@@ -1094,6 +1169,9 @@ class World {
         this.defaultBlockColor = data.defaultBlockColor || '#787878';
         this.defaultSpikeColor = data.defaultSpikeColor || '#c45a3f';
         this.defaultTextColor = data.defaultTextColor || '#000000';
+        this.checkpointDefaultColor = data.checkpointDefaultColor || '#808080';
+        this.checkpointActiveColor = data.checkpointActiveColor || '#4CAF50';
+        this.checkpointTouchedColor = data.checkpointTouchedColor || '#2196F3';
         this.maxJumps = data.maxJumps || 1;
         this.infiniteJumps = data.infiniteJumps || false;
         this.additionalAirjump = data.additionalAirjump || false;
@@ -1109,6 +1187,10 @@ class World {
         // Spike touchbox mode
         const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
         this.spikeTouchbox = validSpikeModes.includes(data.spikeTouchbox) ? data.spikeTouchbox : 'normal';
+        
+        // Stored data type for export
+        const validDataTypes = ['json', 'dat'];
+        this.storedDataType = validDataTypes.includes(data.storedDataType) ? data.storedDataType : 'json';
         
         // Custom background with defaults
         if (data.customBackground && data.customBackground.enabled) {
@@ -1591,11 +1673,11 @@ class GameEngine {
         this.ctx.scale(this.camera.zoom, this.camera.zoom);
         
         // Render world objects behind player
-        const layers = this.world.render(this.ctx, this.camera);
+        const { layers, checkpointColors } = this.world.render(this.ctx, this.camera);
         
         // Render same layer objects
         for (const obj of layers[1]) {
-            obj.render(this.ctx, this.camera);
+            obj.render(this.ctx, this.camera, checkpointColors);
         }
         
         // Render players
@@ -1612,7 +1694,10 @@ class GameEngine {
         }
         
         // Render objects above player
-        this.world.renderAbovePlayer(this.ctx, this.camera);
+        this.world.renderAbovePlayer(this.ctx, this.camera, checkpointColors);
+        
+        // Render zones on top of everything
+        this.world.renderZones(this.ctx, this.camera);
         
         // Render editor overlays
         if (this.state === GameState.EDITOR && this.renderEditorOverlay) {

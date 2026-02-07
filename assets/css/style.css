@@ -540,6 +540,39 @@ a:hover {
     border: 2px solid var(--surface-light);
 }
 
+/* ====================================
+   ZONE POPUPS
+   ==================================== */
+.zone-name-panel,
+.zone-edit-panel {
+    background: var(--bg-medium);
+    border-radius: var(--border-radius-lg);
+    max-width: 350px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: scale(0.9);
+    transition: transform var(--transition);
+    box-shadow: var(--shadow-lg);
+}
+
+#zone-name-popup.active .zone-name-panel,
+#zone-edit-popup.active .zone-edit-panel {
+    transform: scale(1);
+}
+
+.zone-adjust-stop {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+    display: none;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 20px;
+    font-size: 14px;
+}
+
 .modal-actions .btn {
     min-width: 120px;
 }

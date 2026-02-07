@@ -2,9 +2,9 @@
 
 **A multiplayer parkour game where you build your own maps and challenge friends!**
 
-Build creative parkour courses, test them yourself, then host games and race against others in real-time. Share your maps and get them featured!
+Build creative parkour courses, test them yourself, then host games and race against others in real-time.
 
-![Parkoreen](https://img.shields.io/badge/version-1.0.0-green) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Parkoreen](https://img.shields.io/badge/version-2.0.0-green) ![License](https://img.shields.io/badge/license-Proprietary-red)
 
 ---
 
@@ -13,17 +13,10 @@ Build creative parkour courses, test them yourself, then host games and race aga
 - [Features](#-features)
 - [Getting Started](#-getting-started)
 - [Editor Guide](#-editor-guide)
-  - [Interface Overview](#interface-overview)
-  - [Navigation & Camera](#navigation--camera)
-  - [Toolbar Tools](#toolbar-tools)
-  - [Adding Objects](#adding-objects)
-  - [Layers Panel](#layers-panel)
-  - [Configuration](#configuration)
 - [Playing the Game](#-playing-the-game)
 - [Multiplayer](#-multiplayer)
 - [Keyboard Shortcuts](#-keyboard-shortcuts)
 - [File Format](#-file-format)
-- [Deployment](#-deployment)
 - [License](#-license)
 
 ---
@@ -34,9 +27,13 @@ Build creative parkour courses, test them yourself, then host games and race aga
 - 🏗️ **Powerful Map Editor** - Create complex parkour courses with ease
 - 👥 **Real-time Multiplayer** - Race against friends with live position sync
 - 💾 **Cloud Storage** - All your maps are saved online
-- 📤 **Export/Import** - Share maps as `.pkrn` files
+- 📤 **Export/Import** - Share maps as `.pkrn` files (ZIP-based format)
 - 📱 **Touchscreen Support** - Play on mobile devices
-- 🌐 **PWA Support** - Install as a standalone app
+- 🎨 **Customizable Checkpoints** - Set custom colors for checkpoint states
+- 🎵 **Background Music** - Built-in tracks or upload your own
+- 🖼️ **Custom Backgrounds** - Images, GIFs, or videos as backgrounds
+- 🏷️ **Zones** - Define named rectangular regions for scripting
+- ⚙️ **Physics Settings** - Customize player speed, jump height, and gravity
 
 ---
 
@@ -44,9 +41,9 @@ Build creative parkour courses, test them yourself, then host games and race aga
 
 ### Creating an Account
 
-1. Visit the game at `https://jimmyqrg.github.io/parkoreen/`
+1. Visit the game
 2. Click **Sign Up** to create a new account
-3. Enter your **Display Name** (how others see you), **Username** (unique, cannot be changed), and **Password**
+3. Enter your **Display Name**, **Username**, and **Password**
 4. Click **Create Account**
 
 ### Your Dashboard
@@ -60,13 +57,12 @@ After logging in, you'll see your **Dashboard** with all your maps:
 Each map card shows:
 - 🏠 **Host** - Start a multiplayer game with this map
 - ✏️ **Edit** - Open the map in the editor
+- 📋 **Duplicate** - Create a copy of the map
 - 🗑️ **Delete** - Remove the map (requires confirmation)
 
 ---
 
 ## 🛠️ Editor Guide
-
-The editor is where you'll spend most of your time creating amazing parkour courses!
 
 ### Interface Overview
 
@@ -76,10 +72,8 @@ When you open the editor, you'll see:
 ┌─────────────────────────────────────────────────────────┐
 │ [⚙ Config]                              [⚙ Settings]    │
 │                                                         │
-│                                                         │
 │                    GAME CANVAS                          │
 │                  (your map here)                        │
-│                                                         │
 │                                                         │
 │ [+ Add]                                    [≡ Layers]   │
 │                                                         │
@@ -87,259 +81,84 @@ When you open the editor, you'll see:
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Corner Buttons
-
-| Position | Icon | Function |
-|----------|------|----------|
-| Top-Left | 🔧 Build | Opens **Config Panel** (test game, theme, player settings, hosting) |
-| Top-Right | ⚙️ Settings | Opens **Settings Panel** (volume, touchscreen mode) |
-| Bottom-Left | ➕ Add | Opens **Add Menu** (place blocks, koreens, text) |
-| Bottom-Right | 📚 Layers | Opens **Layers Panel** (view and manage all objects) |
-
----
-
-### Navigation & Camera
-
-#### Moving Around the Map
+### Navigation
 
 | Action | Method |
 |--------|--------|
-| **Pan Camera** | Enable Fly mode (press `G`), then click and drag |
-| **Zoom In** | `Ctrl/Cmd + Scroll Up` or click Zoom In button |
-| **Zoom Out** | `Ctrl/Cmd + Scroll Down` or click Zoom Out button |
-
-The editor displays a **grid overlay** to help you align objects. Each grid cell is 32×32 pixels.
-
----
+| **Pan Camera** | Enable Fly mode (`G`), then click and drag |
+| **Zoom In** | `Ctrl/Cmd + Scroll Up` or click `+` button |
+| **Zoom Out** | `Ctrl/Cmd + Scroll Down` or click `-` button |
 
 ### Toolbar Tools
 
-The toolbar at the bottom provides quick access to essential tools:
-
-#### 🛫 Fly Mode (G)
-
-- **Purpose**: Move freely around your map without gravity
-- **How to use**: 
-  1. Press `G` or click the Fly button
-  2. Click and drag to pan the camera
-  3. Press `Escape` or `G` again to disable
-
-#### ↔️ Move Tool (M)
-
-- **Purpose**: Reposition existing objects
-- **How to use**:
-  1. Press `M` or click the Move button
-  2. Click on any object in your map
-  3. The object follows your mouse
-  4. Click again to place it, or press `Escape` to cancel
-
-#### 📋 Duplicate Tool (C)
-
-- **Purpose**: Copy an existing object
-- **How to use**:
-  1. Press `C` or click the Duplicate button
-  2. Click on any object to create a copy
-  3. The copy follows your mouse
-  4. Click to place the duplicate
-
-#### 🔄 Rotator (R)
-
-- **Purpose**: Rotate objects 90° counter-clockwise
-- **How to use**:
-  1. Press `R` or click the Rotator button
-  2. Click on any object to rotate it
-  3. Each click rotates by 90°
-
-#### 🔍 Zoom In / Zoom Out
-
-- **Purpose**: Adjust the view scale
-- **Shortcut**: `Ctrl/Cmd + Mouse Wheel`
-- Zoom range: 50% to 200%
-
-#### 🧹 Quick Eraser
-
-- **Purpose**: Rapidly delete objects
-- **How to use**:
-  1. Click the Eraser button to enable
-  2. Click and drag across objects to delete them
-  3. Press `Escape` to disable
-- **Note**: The eraser won't work when your mouse is over a UI button
-
----
+| Tool | Key | Description |
+|------|-----|-------------|
+| **Fly** | `G` | Move freely around the map |
+| **Move** | `M` | Reposition existing objects |
+| **Duplicate** | `C` | Copy an existing object |
+| **Rotate** | `R` | Rotate objects 90° counter-clockwise |
+| **Erase** | - | Delete objects (options: All, Top Layer, Bottom Layer) |
 
 ### Adding Objects
 
-Click the **Add** button (bottom-left) to open the Add Menu:
+Click **Add** to open the placement menu:
 
 #### 🟫 Block
-
-Blocks are the foundation of your map - platforms, walls, and obstacles.
-
-When you select **Block**, the placement toolbar appears with these options:
-
-| Option | Values | Description |
-|--------|--------|-------------|
-| **Appearance** | Ground, Spike | How the block looks visually |
-| **Acting Type** | Ground, Spike, Checkpoint, Spawnpoint, Endpoint | How the block behaves |
-| **Collision** | On, Off | Whether players can collide with it |
-| **Fill** | Add, Replace | Add only to empty cells, or replace existing objects |
-| **Color** | Any hex color | Click the color preview to open the color picker |
-| **Opacity** | 0% - 100% | Transparency level |
-
-**Acting Types Explained:**
-
-- **Ground**: Normal solid surface - players can stand on it and collide with it
-- **Spike**: Hurts players on contact (resets them to checkpoint/spawn)
-- **Checkpoint**: Saves player's progress - they respawn here after dying
-- **Spawnpoint**: Where players start the game (you need exactly one!)
-- **Endpoint**: The finish line - reaching this wins the game
-
-**Pro Tips:**
-- A spike that *looks* like ground can be a tricky trap!
-- A ground block that *looks* like a spike can be a fake-out
-- Use collision OFF for decorative elements
+Solid platforms and obstacles with options:
+- **Appearance**: Ground or Spike
+- **Acting Type**: Ground, Spike, Checkpoint, Spawnpoint, Endpoint
+- **Collision**: On/Off
+- **Fill Mode**: Add, Replace, or Overlap (place on top of existing)
 
 #### 🔷 Koreen
+Special marker objects:
+- Checkpoint flags
+- Spawn points
+- End points
+- **Zones**: Named rectangular regions (click & drag to place)
 
-Koreens are special marker objects for game mechanics.
+#### 📝 Text
+Text labels with customizable font, alignment, and spacing.
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| **Appearance** | Checkpoint, Spawnpoint, Endpoint | Visual style |
-| **Acting Type** | Ground, Spike, Checkpoint, Spawnpoint, Endpoint, Text | Behavior |
-| **Fill** | Add, Replace | Placement mode |
-| **Opacity** | 0% - 100% | Transparency |
+### Configuration Panel
 
-**When to use Koreens:**
-- When you want the classic checkpoint flag appearance
-- When you want a spawn/end marker that doesn't look like a block
+Access via the Config button (top-left):
 
-#### 📝 Text Box
+#### Game Settings
+- **Test Game** - Try your map instantly
+- **Map Name** - Set the map's display name
+- **Background** - Sky, Galaxy, or Custom (image/video)
 
-Add text labels, signs, or decorations to your map.
+#### Physics
+- **Player Speed** - Movement speed (default: 5)
+- **Jump Height** - Jump force (default: -14)
+- **Gravity** - Fall speed modifier (default: 0.8)
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| **Content** | Any text | What the text says |
-| **Acting Type** | Ground, Spike, Checkpoint, Spawnpoint, Endpoint, Text | Behavior (usually "Text" for no collision) |
-| **Font** | Google Fonts | Choose from 50+ fonts |
-| **Color** | Any hex color | Text color |
-| **Opacity** | 0% - 100% | Transparency |
-| **H-Align** | Left, Center, Right | Horizontal text alignment |
-| **V-Align** | Top, Center, Bottom | Vertical text alignment |
-| **H-Spacing** | Percentage | Horizontal offset |
-| **V-Spacing** | Percentage | Vertical offset |
+#### Player Settings
+- **Jumps** - Set number or infinite
+- **Additional Airjump** - All jumps available in air
+- **Collide with Each Other** - Player collision in multiplayer
 
-**Font Selection:**
-- Click the font dropdown to see all available fonts
-- Use the search bar to find specific fonts
-- Recently used fonts appear at the top for quick access
-- Click the ✕ next to a recent font to remove it from the list
+#### Checkpoint Colors
+- **Default Color** - Untouched checkpoints (gray)
+- **Active Color** - Current checkpoint (green)
+- **Already Checked** - Previously touched (blue)
 
-#### Placing Objects
+#### Spike Behavior
+Configure how spikes interact with players:
+- **Full Spike** - Entire spike is dangerous
+- **Normal Spike** - Flat base is ground, rest damages
+- **Tip Spike** - Only peak damages
+- **Ground** - Acts as solid ground
+- **Flag** - Flat part is ground, rest passes through
+- **Air** - No collision at all
 
-1. Select your object type and configure options
-2. Move your mouse to the desired location (green preview shows placement)
-3. Click to place the object
-4. Objects snap to the grid automatically
-5. Press `Escape` or click the ✕ button (top-left) to exit placement mode
+#### Music
+- Built-in tracks or upload custom music
+- Volume control and loop toggle
 
----
-
-### Layers Panel
-
-The Layers Panel (bottom-right button) shows all objects in your map:
-
-```
-┌─────────────────────────────────────────┐
-│ Layers                              [✕] │
-├─────────────────────────────────────────┤
-│ ≡ Block_001           [🗑] [↑][—][↓]    │
-│ ≡ Spike_002           [🗑] [↑][—][↓]    │
-│ ≡ Checkpoint_003      [🗑] [↑][—][↓]    │
-│ ≡ Spawnpoint_004      [🗑] [↑][—][↓]    │
-└─────────────────────────────────────────┘
-```
-
-#### Layer Controls
-
-| Icon | Function |
-|------|----------|
-| ≡ (drag handle) | Drag to reorder objects |
-| 🗑️ Delete | Remove this object |
-| ↑ Arrow Up | Render **above** the player |
-| — Line | Render on the **same layer** as the player |
-| ↓ Arrow Down | Render **behind** the player |
-
-#### Layer Order Matters!
-
-- Objects at the **top** of the list render **on top** of objects below
-- Drag objects to reorder them visually
-- Use the arrow buttons to control whether objects appear in front of or behind the player
-
----
-
-### Configuration
-
-Click the **Config** button (top-left) to access game settings:
-
-#### 🎮 Test Game
-
-Click **Test Game** to try your map immediately!
-- You'll spawn at the spawnpoint
-- Play through to test difficulty and flow
-- Click the **Stop** button (bottom-right) to return to editing
-
-**Requirement:** You must have a spawnpoint placed to test!
-
-#### 🎨 Theme Settings
-
-| Setting | Description |
-|---------|-------------|
-| **Background** | Choose between Sky or Galaxy |
-| **Default Block Color** | New blocks will use this color |
-| **Default Spike Color** | New spikes will use this color |
-| **Default Text Color** | New text will use this color |
-
-**Note:** Changing defaults doesn't affect existing objects!
-
-#### 🏃 Player Settings
-
-| Setting | Description |
-|---------|-------------|
-| **Jumps** | Set Number or Infinite |
-| **Number of Jumps** | How many times the player can jump (if not infinite) |
-| **Additional Airjump** | If ON: all jumps available in air. If OFF: 1 jump on ground, rest in air |
-| **Collide with Each Other** | Whether players can bump into each other in multiplayer |
-
-**Jump Examples:**
-- Jumps = 1, Additional Airjump OFF: Classic single jump
-- Jumps = 2, Additional Airjump OFF: 1 ground jump + 1 air jump (double jump)
-- Jumps = 3, Additional Airjump ON: 3 jumps anytime (even if you walk off a ledge)
-- Jumps = Infinite: Fly anywhere!
-
-#### 📤 Export & Import
-
-- **Export**: Download your map as a `.pkrn` file
-- **Import**: Load a `.pkrn` file (replaces current map!)
-
-Share `.pkrn` files with friends to let them play or edit your maps!
-
-#### 🌐 Host Game
-
-Configure multiplayer settings:
-
-| Setting | Description |
-|---------|-------------|
-| **Max Player Amount** | 1 to 999,999 players |
-| **Use Password** | Require a password to join |
-| **Custom Password** | The password players must enter |
-
-Click **Host Game** to start! Requirements:
-- ✅ Must have a spawnpoint
-- ✅ If password enabled, it can't be empty
-
-You'll receive a **6-character room code** to share with friends.
+#### Export/Import Settings
+- **Data Type**: `.json` (readable) or `.dat` (compressed)
 
 ---
 
@@ -349,27 +168,16 @@ You'll receive a **6-character room code** to share with friends.
 
 | Action | Keyboard | Touch |
 |--------|----------|-------|
-| Move Left | `A` or `←` | Left D-pad |
-| Move Right | `D` or `→` | Right D-pad |
+| Move Left | `A` or `←` | D-pad Left |
+| Move Right | `D` or `→` | D-pad Right |
 | Jump | `W`, `↑`, or `Space` | Jump button |
-| Move Up (Fly mode) | `W`, `↑`, or `space` | Up D-pad |
-| Move Down (Fly mode) | `S`, `↓`, or `shift` | Down D-pad |
+| Fly Up | `W` or `↑` (in fly mode) | D-pad Up |
+| Fly Down | `S` or `↓` (in fly mode) | D-pad Down |
 
-### Game HUD
+### Test Mode
 
-During gameplay, you'll see:
-
-- **Top-Left**: Leave button (exit to dashboard)
-- **Top-Right**: Settings button
-- **Top-Center**: Room code (in multiplayer)
-- **Bottom-Left**: Chat button
-- **Bottom-Right**: Players list button
-
-### Touchscreen Mode
-
-Enable in Settings for on-screen controls:
-- **D-pad** (bottom-left): Movement arrows
-- **Jump button** (bottom-right): Large jump button
+- Press `G` to toggle fly mode during testing
+- Fly mode is OFF by default when starting a test
 
 ---
 
@@ -381,26 +189,18 @@ Enable in Settings for on-screen controls:
 2. Click **Config** → **Host Game**
 3. Set max players and optional password
 4. Click **Host Game**
-5. Share the 6-character room code with friends
+5. Share the 6-character room code
 
 ### Joining a Game
 
-1. From the Dashboard, click **Join**
-2. Enter the 6-character room code
+1. From Dashboard, click **Join**
+2. Enter the room code
 3. Enter password if required
 4. Click **Join**
 
-### In-Game Features
+### Player Colors
 
-- **Player List**: See all players and their colors
-- **Chat**: Send messages to other players
-- **Kick** (Host only): Remove players from the room
-
-### Important Notes
-
-- If the host leaves, **everyone is kicked** and the room closes
-- Each player gets a random color when joining
-- The game ends when any player reaches the endpoint
+Each player gets a unique color automatically calculated to be maximally different from other players in the room.
 
 ---
 
@@ -411,7 +211,7 @@ Enable in Settings for on-screen controls:
 | `G` | Toggle Fly mode |
 | `M` | Move tool |
 | `C` | Duplicate tool |
-| `R` | Rotate object under cursor |
+| `R` | Rotate selected object |
 | `Escape` | Cancel current action / Close panels |
 | `Ctrl/Cmd + Scroll` | Zoom in/out |
 
@@ -419,84 +219,68 @@ Enable in Settings for on-screen controls:
 
 ## 📁 File Format
 
-Parkoreen maps use the `.pkrn` file extension (JSON format):
+Parkoreen maps use the `.pkrn` file extension.
+
+### Version 2.0 Format
+
+`.pkrn` files are ZIP archives containing:
+
+```
+map_name.pkrn (ZIP)
+├── data.json          (or data.dat for compressed)
+├── uploaded_img_1.png (custom backgrounds)
+├── uploaded_sound_1.mp3 (custom music)
+└── ...
+```
+
+### Data Structure
 
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "metadata": {
-    "name": "My Awesome Map",
-    "createdAt": "2026-01-29T12:00:00.000Z",
+    "name": "My Map",
+    "createdAt": "2026-02-07T00:00:00.000Z",
     "objectCount": 42
   },
   "settings": {
     "background": "sky",
     "defaultBlockColor": "#787878",
     "defaultSpikeColor": "#c45a3f",
-    "defaultTextColor": "#000000",
-    "maxJumps": 2,
-    "infiniteJumps": false,
-    "additionalAirjump": false,
-    "collideWithEachOther": true
+    "checkpointDefaultColor": "#808080",
+    "checkpointActiveColor": "#4CAF50",
+    "checkpointTouchedColor": "#2196F3",
+    "playerSpeed": 5,
+    "jumpForce": -14,
+    "gravity": 0.8,
+    "spikeTouchbox": "normal",
+    "storedDataType": "json"
   },
-  "objects": [
-    {
-      "id": "obj_123",
-      "x": 0,
-      "y": 0,
-      "w": 32,
-      "h": 32,
-      "t": "block",
-      "at": "ground",
-      "act": "ground",
-      "col": 1,
-      "c": "#787878",
-      "o": 1,
-      "l": 1,
-      "r": 0,
-      "n": "Block"
-    }
-  ]
+  "objects": [...]
 }
 ```
 
----
+### Backward Compatibility
 
-## 🚀 Deployment
-
-### Frontend (GitHub Pages)
-
-1. Push to your GitHub repository
-2. Go to **Settings** → **Pages**
-3. Select your branch and save
-4. Access at `https://jimmyqrg.github.io/parkoreen/`
-
-### Backend (Cloudflare Workers)
-
-1. Install Wrangler: `npm install -g wrangler`
-2. Navigate to the worker folder
-3. Create KV namespaces:
-   ```bash
-   wrangler kv:namespace create "USERS"
-   wrangler kv:namespace create "MAPS"
-   wrangler kv:namespace create "SESSIONS"
-   ```
-4. Update `wrangler.toml` with your namespace IDs
-5. Deploy: `wrangler deploy`
+Old `.pkrn` files (v1.x JSON format) are still supported and will be automatically upgraded on import.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
+
+Copyright (c) 2026 JimmyQrg
+
+This software and all associated files are the exclusive property of JimmyQrg. No permission is granted to use, copy, modify, distribute, or create derivative works from this software.
+
+See the [LICENSE](LICENSE) file for full terms.
 
 ---
 
 ## 🙏 Credits
 
 Created by **JimmyQrg** © 2026
-
-- [GitHub](https://github.com/jimmyqrg/)
 
 ---
 
