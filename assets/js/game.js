@@ -496,8 +496,9 @@ class Player {
         
         // Draw position above player (editor/test mode only)
         if (showPosition) {
+            const fontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = '11px "Parkoreen Game", monospace';
+            ctx.font = `${Math.round(11 * fontScale)}px "Parkoreen Game", monospace`;
             ctx.textAlign = 'center';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
             ctx.shadowBlur = 3;
@@ -507,12 +508,13 @@ class Player {
         }
         
         // Draw name
+        const nameFontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
         ctx.fillStyle = 'white';
-        ctx.font = '14px "Parkoreen Game", monospace';
+        ctx.font = `${Math.round(14 * nameFontScale)}px "Parkoreen Game", monospace`;
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
         ctx.shadowBlur = 2;
-        ctx.fillText(this.name, screenX + this.width / 2, screenY + this.height + 16);
+        ctx.fillText(this.name, screenX + this.width / 2, screenY + this.height + Math.round(16 * nameFontScale));
         ctx.shadowBlur = 0;
     }
 }
@@ -544,16 +546,31 @@ class Camera {
         this.y += (this.targetY - this.y) * CAMERA_LERP;
     }
 
-    setZoom(zoom) {
-        this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
+    setZoom(zoom, centerX = null, centerY = null) {
+        const oldZoom = this.zoom;
+        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
+        
+        if (oldZoom !== newZoom && centerX !== null && centerY !== null) {
+            // Adjust camera position to keep the center point in the same screen position
+            // Before zoom: screenCenter = (centerX - this.x) * oldZoom
+            // After zoom: screenCenter = (centerX - newX) * newZoom
+            // We want them equal, so: (centerX - this.x) * oldZoom = (centerX - newX) * newZoom
+            // Solving for newX: newX = centerX - (centerX - this.x) * oldZoom / newZoom
+            this.x = centerX - (centerX - this.x) * oldZoom / newZoom;
+            this.y = centerY - (centerY - this.y) * oldZoom / newZoom;
+            this.targetX = this.x;
+            this.targetY = this.y;
+        }
+        
+        this.zoom = newZoom;
     }
 
-    zoomIn() {
-        this.setZoom(this.zoom + 0.1);
+    zoomIn(centerX = null, centerY = null) {
+        this.setZoom(this.zoom + 0.1, centerX, centerY);
     }
 
-    zoomOut() {
-        this.setZoom(this.zoom - 0.1);
+    zoomOut(centerX = null, centerY = null) {
+        this.setZoom(this.zoom - 0.1, centerX, centerY);
     }
 
     screenToWorld(screenX, screenY) {
@@ -802,7 +819,8 @@ class WorldObject {
         
         // Zone name label
         if (this.zoneName) {
-            ctx.font = '12px "Parkoreen Game", sans-serif';
+            const zoneFontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
+            ctx.font = `${Math.round(12 * zoneFontScale)}px "Parkoreen Game", sans-serif`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             
@@ -861,7 +879,8 @@ class WorldObject {
         
         // Teleportal name label
         if (this.teleportalName) {
-            ctx.font = '10px "Parkoreen Game", sans-serif';
+            const tpFontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
+            ctx.font = `${Math.round(10 * tpFontScale)}px "Parkoreen Game", sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             
@@ -881,7 +900,13 @@ class WorldObject {
     renderText(ctx, x, y, w, h) {
         ctx.fillStyle = this.color;
         const scaleFactor = w / this.width;
-        const fontSize = this.fontSize * scaleFactor;
+        
+        // Apply global font size setting (from Settings)
+        const globalFontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) 
+            ? Settings.get('fontSize') / 100 
+            : 1;
+        
+        const fontSize = this.fontSize * scaleFactor * globalFontScale;
         ctx.font = `${fontSize}px "${this.font}"`;
         
         // Apply letter spacing (hSpacing is a percentage)
@@ -1746,14 +1771,25 @@ class GameEngine {
         if ((e.ctrlKey || e.metaKey) && (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
             e.preventDefault();
             
+            // Get the center point for zoom (player position if available, otherwise screen center)
+            let centerX, centerY;
+            if (this.localPlayer) {
+                centerX = this.localPlayer.x + this.localPlayer.width / 2;
+                centerY = this.localPlayer.y + this.localPlayer.height / 2;
+            } else {
+                // Use screen center as fallback
+                centerX = this.camera.x + this.camera.width / 2 / this.camera.zoom;
+                centerY = this.camera.y + this.camera.height / 2 / this.camera.zoom;
+            }
+            
             // Ctrl+Shift+Scroll: Reset zoom to default (1.0)
             if (e.shiftKey) {
-                this.camera.setZoom(1.0);
+                this.camera.setZoom(1.0, centerX, centerY);
             } else {
                 // Scale zoom amount based on deltaY for smoother trackpad zoom
                 // Limit to small increments for smooth zooming
                 const zoomAmount = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY) * 0.002, 0.1);
-                this.camera.setZoom(this.camera.zoom - zoomAmount);
+                this.camera.setZoom(this.camera.zoom - zoomAmount, centerX, centerY);
             }
         }
         

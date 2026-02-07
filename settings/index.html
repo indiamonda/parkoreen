@@ -35,6 +35,15 @@
                 </div>
 
                 <div class="settings-row">
+                    <span class="settings-row-label">Font Size</span>
+                    <div class="settings-volume">
+                        <input type="range" class="form-range" id="fontsize-range" min="50" max="150" value="100">
+                        <input type="number" class="form-input form-input-sm" id="fontsize-number" min="50" max="150" value="100" style="width: 60px; text-align: center;">
+                        <span style="font-size: 12px; color: var(--text-muted);">%</span>
+                    </div>
+                </div>
+
+                <div class="settings-row">
                     <span class="settings-row-label">Touchscreen Mode</span>
                     <label class="toggle">
                         <input type="checkbox" id="touchscreen-toggle">
@@ -150,11 +159,18 @@
 
             var volumeRange = document.getElementById('volume-range');
             var volumeNumber = document.getElementById('volume-number');
+            var fontsizeRange = document.getElementById('fontsize-range');
+            var fontsizeNumber = document.getElementById('fontsize-number');
             var touchscreenToggle = document.getElementById('touchscreen-toggle');
 
             var savedVolume = Settings.get('volume');
             volumeRange.value = savedVolume;
             volumeNumber.value = savedVolume;
+            
+            var savedFontSize = Settings.get('fontSize') || 100;
+            fontsizeRange.value = savedFontSize;
+            fontsizeNumber.value = savedFontSize;
+            
             touchscreenToggle.checked = Settings.get('touchscreenMode');
 
             // Back button
@@ -173,6 +189,19 @@
                 volumeRange.value = vol;
                 volumeNumber.value = vol;
                 Settings.set('volume', vol);
+            };
+
+            // Font size controls
+            fontsizeRange.oninput = function(e) {
+                fontsizeNumber.value = e.target.value;
+                Settings.set('fontSize', parseInt(e.target.value));
+            };
+
+            fontsizeNumber.onchange = function(e) {
+                var size = Math.max(50, Math.min(150, parseInt(e.target.value) || 100));
+                fontsizeRange.value = size;
+                fontsizeNumber.value = size;
+                Settings.set('fontSize', size);
             };
 
             // Touchscreen toggle

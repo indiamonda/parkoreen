@@ -111,6 +111,7 @@ class Editor {
             content: 'Text',
             actingType: 'text',
             font: 'Parkoreen Game',
+            fontSize: 24,
             color: '#000000',
             opacity: 1,
             hAlign: 'center',
@@ -274,6 +275,7 @@ class Editor {
                 </button>
             </div>
             <div class="panel-body">
+                <!-- Test Game Button -->
                 <div class="config-section">
                     <button class="btn btn-primary" id="btn-test-game" style="width: 100%;">
                         <span class="material-symbols-outlined">play_arrow</span>
@@ -281,6 +283,7 @@ class Editor {
                     </button>
                 </div>
                 
+                <!-- Map Info -->
                 <div class="config-section collapsible expanded">
                     <div class="config-section-header">
                         <span class="config-section-title">Map Info</span>
@@ -294,12 +297,14 @@ class Editor {
                     </div>
                 </div>
                 
+                <!-- Theme & Visuals -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
-                        <span class="config-section-title">Theme</span>
+                        <span class="config-section-title">Theme & Visuals</span>
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
+                        <!-- Background -->
                     <div class="form-group">
                         <label class="form-label">Background</label>
                         <select class="form-select" id="config-background">
@@ -311,7 +316,7 @@ class Editor {
                         
                         <!-- Custom Background Options -->
                         <div id="custom-bg-options" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                            <div class="form-group">
+                    <div class="form-group">
                                 <label class="form-label">Upload Background</label>
                                 <div class="custom-bg-upload" id="custom-bg-dropzone" style="border: 2px dashed var(--surface-light); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;">
                                     <span class="material-symbols-outlined" style="font-size: 32px; color: var(--text-muted);">upload_file</span>
@@ -338,7 +343,6 @@ class Editor {
                                     </select>
                                 </div>
                                 
-                                <!-- Loop/Bounce Amount (shown for loop and bounce) -->
                                 <div id="custom-bg-loop-options" class="form-group">
                                     <label class="form-label">Loop Amount</label>
                                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -350,7 +354,6 @@ class Editor {
                                     </div>
                                 </div>
                                 
-                                <!-- End Type (shown for play once or limited loops) -->
                                 <div id="custom-bg-end-options" class="form-group hidden">
                                     <label class="form-label">End Type</label>
                                     <select class="form-select" id="custom-bg-endtype">
@@ -359,7 +362,6 @@ class Editor {
                                     </select>
                                 </div>
                                 
-                                <!-- End Background Upload (shown when replace is selected) -->
                                 <div id="custom-bg-end-upload" class="form-group hidden">
                                     <label class="form-label">End Background</label>
                                     <div class="custom-bg-upload" id="custom-bg-end-dropzone" style="border: 2px dashed var(--surface-light); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer;">
@@ -369,7 +371,6 @@ class Editor {
                                     </div>
                                 </div>
                                 
-                                <!-- Boolean Triggers -->
                                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface-light);">
                                     <label class="form-label">Playback Options</label>
                                     <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
@@ -396,63 +397,64 @@ class Editor {
                             </div>
                         </div>
                         
-                    <div class="form-group">
-                        <label class="form-label">Default Block Color</label>
+                        <!-- Default Colors -->
+                        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--surface-light);">
+                            <label class="form-label" style="font-weight: 600; margin-bottom: 12px;">Default Colors</label>
+                            <div class="form-group">
+                                <label class="form-label">Block Color</label>
                         <div class="color-picker-option">
                             <div class="color-preview" id="config-block-color-preview" style="background: #787878"></div>
                             <input type="text" class="form-input color-input" id="config-block-color" value="#787878">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Default Spike Color</label>
+                                <label class="form-label">Spike Color</label>
                         <div class="color-picker-option">
                             <div class="color-preview" id="config-spike-color-preview" style="background: #c45a3f"></div>
                             <input type="text" class="form-input color-input" id="config-spike-color" value="#c45a3f">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Default Text Color</label>
+                                <label class="form-label">Text Color</label>
                         <div class="color-picker-option">
                             <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
                             <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
+                        </div>
+                    </div>
+                </div>
+                
+                        <!-- Checkpoint Colors -->
+                        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--surface-light);">
+                            <label class="form-label" style="font-weight: 600; margin-bottom: 12px;">Checkpoint Colors</label>
+                    <div class="form-group">
+                                <label class="form-label">Default</label>
+                                <div class="color-picker-option">
+                                    <div class="color-preview" id="config-checkpoint-default-preview" style="background: #808080"></div>
+                                    <input type="text" class="form-input color-input" id="config-checkpoint-default" value="#808080">
+                                </div>
+                                <small style="color: #888; font-size: 11px;">Untouched checkpoints</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Active</label>
+                                <div class="color-picker-option">
+                                    <div class="color-preview" id="config-checkpoint-active-preview" style="background: #4CAF50"></div>
+                                    <input type="text" class="form-input color-input" id="config-checkpoint-active" value="#4CAF50">
+                                </div>
+                                <small style="color: #888; font-size: 11px;">Current/latest checkpoint</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Already Checked</label>
+                                <div class="color-picker-option">
+                                    <div class="color-preview" id="config-checkpoint-touched-preview" style="background: #2196F3"></div>
+                                    <input type="text" class="form-input color-input" id="config-checkpoint-touched" value="#2196F3">
+                                </div>
+                                <small style="color: #888; font-size: 11px;">Previously touched checkpoints</small>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="config-section collapsible">
-                    <div class="config-section-header">
-                        <span class="config-section-title">Checkpoint Colors</span>
-                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
-                    </div>
-                    <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Default Color</label>
-                            <div class="color-picker-option">
-                                <div class="color-preview" id="config-checkpoint-default-preview" style="background: #808080"></div>
-                                <input type="text" class="form-input color-input" id="config-checkpoint-default" value="#808080">
-                            </div>
-                            <small style="color: #888; font-size: 11px;">Color when checkpoint hasn't been touched</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Active Color</label>
-                            <div class="color-picker-option">
-                                <div class="color-preview" id="config-checkpoint-active-preview" style="background: #4CAF50"></div>
-                                <input type="text" class="form-input color-input" id="config-checkpoint-active" value="#4CAF50">
-                            </div>
-                            <small style="color: #888; font-size: 11px;">Color for the current/latest checkpoint</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Already Checked Color</label>
-                            <div class="color-picker-option">
-                                <div class="color-preview" id="config-checkpoint-touched-preview" style="background: #2196F3"></div>
-                                <input type="text" class="form-input color-input" id="config-checkpoint-touched" value="#2196F3">
-                            </div>
-                            <small style="color: #888; font-size: 11px;">Color for previously touched checkpoints</small>
-                        </div>
-                    </div>
-                </div>
-                
+                <!-- Music -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
                         <span class="config-section-title">Music</span>
@@ -492,7 +494,7 @@ class Editor {
                         </div>
                         
                         <div class="form-group" id="music-volume-group">
-                            <label class="form-label">Music Volume</label>
+                            <label class="form-label">Volume</label>
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <input type="range" class="form-range" id="config-music-volume" min="0" max="100" value="50" style="flex: 1;">
                                 <span id="config-music-volume-label" style="font-size: 12px; color: var(--text-muted); min-width: 35px;">50%</span>
@@ -500,7 +502,7 @@ class Editor {
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label">Loop Music</label>
+                            <label class="form-label">Loop</label>
                             <label class="toggle">
                                 <input type="checkbox" id="config-music-loop" checked>
                                 <span class="toggle-slider"></span>
@@ -509,14 +511,25 @@ class Editor {
                     </div>
                 </div>
                 
+                <!-- Player -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
                         <span class="config-section-title">Player</span>
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                    <div class="form-group">
-                        <label class="form-label">Jumps</label>
+                        <div class="form-group">
+                            <label class="form-label">Movement Speed</label>
+                            <input type="number" class="form-input" id="config-player-speed" min="0.1" step="0.5" value="5">
+                            <small style="color: #888; font-size: 11px;">Default: 5 - Higher = faster</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Jump Height</label>
+                            <input type="number" class="form-input" id="config-jump-force" min="-50" max="-1" step="0.5" value="-14">
+                            <small style="color: #888; font-size: 11px;">Default: -14 - Lower = higher jump</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Jump Count</label>
                         <select class="form-select" id="config-jumps">
                             <option value="set">Set Number</option>
                             <option value="infinite">Infinite</option>
@@ -532,6 +545,7 @@ class Editor {
                             <input type="checkbox" id="config-airjump">
                             <span class="toggle-slider"></span>
                         </label>
+                            <small style="color: #888; font-size: 11px;">When enabled, all jumps available in air</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Collide with Each Other</label>
@@ -543,53 +557,7 @@ class Editor {
                     </div>
                 </div>
                 
-                <div class="config-section collapsible">
-                    <div class="config-section-header">
-                        <span class="config-section-title">Physics</span>
-                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
-                    </div>
-                    <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Player Speed</label>
-                            <input type="number" class="form-input" id="config-player-speed" min="0.1" step="0.5" value="5" title="Horizontal movement speed (default: 5)">
-                            <small style="color: #888; font-size: 11px;">Default: 5 - Higher = faster movement</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Jump Height</label>
-                            <input type="number" class="form-input" id="config-jump-force" min="-50" max="-1" step="0.5" value="-14" title="Jump force (default: -14, negative = upward)">
-                            <small style="color: #888; font-size: 11px;">Default: -14 - Lower (more negative) = higher jump</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Gravity</label>
-                            <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.8" title="Gravity strength (default: 0.8)">
-                            <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall/jump speed</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="config-section collapsible">
-                    <div class="config-section-header">
-                        <span class="config-section-title">Spike Behavior</span>
-                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
-                    </div>
-                    <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Spike Touchbox Mode</label>
-                            <select class="form-select" id="config-spike-touchbox">
-                                <option value="full">Full Spike</option>
-                                <option value="normal" selected>Normal Spike</option>
-                                <option value="tip">Tip Spike</option>
-                                <option value="ground">Ground</option>
-                                <option value="flag">Flag</option>
-                                <option value="air">Air</option>
-                            </select>
-                            <div id="spike-touchbox-description" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
-                                <strong style="color: #fff;">Normal Spike:</strong> The flat base of the spike acts as solid ground. All other parts will damage the player on contact.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
+                <!-- World -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
                         <span class="config-section-title">World</span>
@@ -597,39 +565,44 @@ class Editor {
                     </div>
                     <div class="config-section-content">
                     <div class="form-group">
-                        <label class="form-label">Death Line Y Position</label>
-                        <input type="number" class="form-input" id="config-die-line-y" value="2000" title="Players die below this Y position (void death)">
-                        <small style="color: #888; font-size: 11px;">Players falling below this line will die</small>
-                        </div>
+                            <label class="form-label">Gravity</label>
+                            <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.8">
+                            <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall</small>
                     </div>
+                        <div class="form-group">
+                            <label class="form-label">Death Line Y</label>
+                            <input type="number" class="form-input" id="config-die-line-y" value="2000">
+                            <small style="color: #888; font-size: 11px;">Players die below this Y position</small>
                 </div>
                 
-                <div class="config-section collapsible">
-                    <div class="config-section-header">
-                        <span class="config-section-title">Export/Import</span>
-                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
-                    </div>
-                    <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Stored Data Type <span style="color: #888; font-size: 11px;">(Advanced)</span></label>
-                            <select class="form-select" id="config-stored-data-type">
-                                <option value="json" selected>.json</option>
-                                <option value="dat">.dat</option>
-                            </select>
-                            <div id="stored-data-type-description" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
-                                <strong style="color: #fff;">.json:</strong> Human-readable format. Easier to debug and edit manually. Recommended for smaller maps or during development.
+                        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--surface-light);">
+                            <label class="form-label" style="font-weight: 600; margin-bottom: 12px;">Spike Behavior</label>
+                            <div class="form-group">
+                                <label class="form-label">Touchbox Mode</label>
+                                <select class="form-select" id="config-spike-touchbox">
+                                    <option value="full">Full Spike</option>
+                                    <option value="normal" selected>Normal Spike</option>
+                                    <option value="tip">Tip Spike</option>
+                                    <option value="ground">Ground</option>
+                                    <option value="flag">Flag</option>
+                                    <option value="air">Air</option>
+                                </select>
+                                <div id="spike-touchbox-description" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
+                                    <strong style="color: #fff;">Normal Spike:</strong> The flat base acts as ground. Other parts damage the player.
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
+                <!-- Export & Import -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
                         <span class="config-section-title">Export & Import</span>
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                    <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                         <button class="btn btn-secondary" id="btn-export" style="flex: 1;">
                             <span class="material-symbols-outlined">download</span>
                             Export
@@ -640,9 +613,21 @@ class Editor {
                         </button>
                     </div>
                     <input type="file" id="import-file" accept=".pkrn" style="display: none;">
+                        
+                        <div class="form-group">
+                            <label class="form-label">Data Format <span style="color: #888; font-size: 11px;">(Advanced)</span></label>
+                            <select class="form-select" id="config-stored-data-type">
+                                <option value="json" selected>.json</option>
+                                <option value="dat">.dat</option>
+                            </select>
+                            <div id="stored-data-type-description" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
+                                <strong style="color: #fff;">.json:</strong> Human-readable. Recommended for smaller maps.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
+                <!-- Host Game -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
                         <span class="config-section-title">Host Game</span>
@@ -650,7 +635,7 @@ class Editor {
                     </div>
                     <div class="config-section-content">
                     <div class="form-group">
-                        <label class="form-label">Max Player Amount</label>
+                            <label class="form-label">Max Players</label>
                         <input type="number" class="form-input" id="config-max-players" min="1" max="999999" value="10">
                     </div>
                     <div class="form-group">
@@ -661,7 +646,7 @@ class Editor {
                         </label>
                     </div>
                     <div class="form-group hidden" id="config-password-group">
-                        <label class="form-label">Custom Password</label>
+                            <label class="form-label">Password</label>
                         <div style="display: flex; gap: 8px;">
                             <input type="text" class="form-input" id="config-password" style="flex: 1;">
                             <button class="btn btn-icon btn-secondary" id="btn-regenerate-password" title="Regenerate">
@@ -809,6 +794,12 @@ class Editor {
                 </div>
             </div>
             
+            <div class="placement-option hidden" id="placement-fontsize">
+                <span class="placement-option-label">Font Size</span>
+                <input type="number" class="form-input form-input-sm" id="placement-fontsize-input" min="8" max="200" value="24" style="width: 70px;">
+                <span style="font-size: 12px; color: var(--text-muted);">px</span>
+            </div>
+            
             <div class="placement-option hidden" id="placement-font-preview" style="flex-direction: column; align-items: flex-start; width: 100%;">
                 <span class="placement-option-label">Preview</span>
                 <div id="font-preview-box" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; min-height: 36px; display: flex; align-items: center; justify-content: center;">
@@ -900,6 +891,14 @@ class Editor {
                     <div class="settings-volume">
                         <input type="range" class="form-range" id="settings-volume-range" min="0" max="100" value="100">
                         <input type="number" class="form-input form-input-sm" id="settings-volume-number" min="0" max="100" value="100" style="width: 60px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Font Size</label>
+                    <div class="settings-volume">
+                        <input type="range" class="form-range" id="settings-fontsize-range" min="50" max="150" value="100">
+                        <input type="number" class="form-input form-input-sm" id="settings-fontsize-number" min="50" max="150" value="100" style="width: 60px;">
+                        <span style="font-size: 12px; color: var(--text-muted);">%</span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -2246,6 +2245,14 @@ class Editor {
             this.textSettings.content = e.target.value;
             this.updatePlacementFontPreview();
         });
+        
+        // Font size
+        document.getElementById('placement-fontsize-input').addEventListener('change', (e) => {
+            const size = Math.max(8, Math.min(200, parseInt(e.target.value) || 24));
+            e.target.value = size;
+            this.textSettings.fontSize = size;
+            this.updatePlacementFontPreview();
+        });
 
         // Horizontal align
         document.querySelectorAll('[data-halign]').forEach(btn => {
@@ -2654,8 +2661,11 @@ class Editor {
     attachSettingsListeners() {
         const volumeRange = document.getElementById('settings-volume-range');
         const volumeNumber = document.getElementById('settings-volume-number');
+        const fontsizeRange = document.getElementById('settings-fontsize-range');
+        const fontsizeNumber = document.getElementById('settings-fontsize-number');
         const touchscreen = document.getElementById('settings-touchscreen');
 
+        // Volume listeners
         volumeRange.addEventListener('input', (e) => {
             volumeNumber.value = e.target.value;
             this.engine.audioManager.setVolume(parseInt(e.target.value) / 100);
@@ -2668,6 +2678,24 @@ class Editor {
             this.engine.audioManager.setVolume(vol / 100);
         });
 
+        // Font size listeners
+        fontsizeRange.addEventListener('input', (e) => {
+            fontsizeNumber.value = e.target.value;
+            if (typeof Settings !== 'undefined') {
+                Settings.set('fontSize', parseInt(e.target.value));
+            }
+        });
+
+        fontsizeNumber.addEventListener('change', (e) => {
+            const size = Math.max(50, Math.min(150, parseInt(e.target.value) || 100));
+            fontsizeRange.value = size;
+            fontsizeNumber.value = size;
+            if (typeof Settings !== 'undefined') {
+                Settings.set('fontSize', size);
+            }
+        });
+
+        // Touchscreen listener
         touchscreen.addEventListener('change', (e) => {
             this.engine.touchscreenMode = e.target.checked;
             localStorage.setItem('parkoreen_touchscreen', e.target.checked);
@@ -2684,6 +2712,13 @@ class Editor {
             const vol = Math.round(parseFloat(savedVolume) * 100);
             volumeRange.value = vol;
             volumeNumber.value = vol;
+        }
+        
+        // Load saved font size
+        if (typeof Settings !== 'undefined') {
+            const savedFontSize = Settings.get('fontSize') || 100;
+            fontsizeRange.value = savedFontSize;
+            fontsizeNumber.value = savedFontSize;
         }
     }
 
@@ -3090,12 +3125,22 @@ class Editor {
     }
 
     handleToolbarAction(action) {
+        // Get center point for zoom (player position if available)
+        let centerX, centerY;
+        if (this.engine.localPlayer) {
+            centerX = this.engine.localPlayer.x + this.engine.localPlayer.width / 2;
+            centerY = this.engine.localPlayer.y + this.engine.localPlayer.height / 2;
+        } else {
+            centerX = this.camera.x + this.camera.width / 2 / this.camera.zoom;
+            centerY = this.camera.y + this.camera.height / 2 / this.camera.zoom;
+        }
+        
         switch (action) {
             case 'zoom-in':
-                this.camera.zoomIn();
+                this.camera.zoomIn(centerX, centerY);
                 break;
             case 'zoom-out':
-                this.camera.zoomOut();
+                this.camera.zoomOut(centerX, centerY);
                 break;
         }
     }
@@ -3194,6 +3239,7 @@ class Editor {
             opacity: document.getElementById('placement-opacity'),
             content: document.getElementById('placement-content'),
             font: document.getElementById('placement-font'),
+            fontSize: document.getElementById('placement-fontsize'),
             fontPreview: document.getElementById('placement-font-preview'),
             halign: document.getElementById('placement-halign'),
             valign: document.getElementById('placement-valign'),
@@ -3271,6 +3317,7 @@ class Editor {
             options.content.classList.remove('hidden');
             options.acting.classList.remove('hidden');
             options.font.classList.remove('hidden');
+            options.fontSize.classList.remove('hidden');
             options.fontPreview.classList.remove('hidden');
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
@@ -3303,6 +3350,12 @@ class Editor {
             if (fontValue) {
                 fontValue.textContent = this.textSettings.font || 'Parkoreen Game';
                 fontValue.style.fontFamily = `"${this.textSettings.font || 'Parkoreen Game'}"`;
+            }
+            
+            // Update font size input
+            const fontSizeInput = document.getElementById('placement-fontsize-input');
+            if (fontSizeInput) {
+                fontSizeInput.value = this.textSettings.fontSize || 24;
             }
             
             // Update font preview
@@ -3341,10 +3394,14 @@ class Editor {
         const content = this.textSettings.content || 'Text';
         const font = this.textSettings.font || 'Parkoreen Game';
         const color = this.textSettings.color || '#FFFFFF';
+        const fontSize = this.textSettings.fontSize || 24;
+        // Scale preview font size - cap at 32px for the preview box
+        const previewFontSize = Math.min(fontSize, 32);
         
         previewText.textContent = content.split('\n')[0].substring(0, 30) || 'Text';
         previewText.style.fontFamily = `"${font}"`;
         previewText.style.color = color;
+        previewText.style.fontSize = `${previewFontSize}px`;
     }
 
     reattachAppearanceListeners() {
@@ -4162,6 +4219,7 @@ class Editor {
             opacity: settings.opacity !== undefined ? settings.opacity : 1,
             content: settings.content || '',
             font: settings.font || 'Arial',
+            fontSize: settings.fontSize || 24,
             hAlign: settings.hAlign || 'center',
             vAlign: settings.vAlign || 'center',
             hSpacing: settings.hSpacing || 0,

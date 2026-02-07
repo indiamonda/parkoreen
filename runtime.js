@@ -792,10 +792,17 @@ class SettingsManager {
     constructor() {
         this.defaults = {
             volume: 100,
-            touchscreenMode: false
+            touchscreenMode: false,
+            fontSize: 100 // percentage (50-150)
         };
         this.settings = { ...this.defaults };
         this.load();
+        this.applyFontSize();
+    }
+    
+    applyFontSize() {
+        const size = this.settings.fontSize || 100;
+        document.documentElement.style.fontSize = `${size}%`;
     }
 
     load() {
@@ -820,6 +827,11 @@ class SettingsManager {
     set(key, value) {
         this.settings[key] = value;
         this.save();
+        
+        // Apply font size immediately when changed
+        if (key === 'fontSize') {
+            this.applyFontSize();
+        }
     }
 
     reset() {
