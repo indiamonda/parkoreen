@@ -96,6 +96,15 @@
                 </button>
             </div>
 
+            <!-- Help -->
+            <div class="settings-section">
+                <div class="settings-section-title">Help</div>
+                <button class="btn btn-secondary" id="btn-howtoplay" style="width: 100%;">
+                    <span class="material-symbols-outlined">help</span>
+                    How To Play
+                </button>
+            </div>
+
             <!-- Sign Out -->
             <div class="settings-section">
                 <button class="btn btn-danger" id="btn-logout" style="width: 100%;">
@@ -176,6 +185,11 @@
             // Back button
             document.getElementById('btn-back').onclick = function() {
                 Navigation.toDashboard();
+            };
+            
+            // How To Play button
+            document.getElementById('btn-howtoplay').onclick = function() {
+                Navigation.toHowToPlay();
             };
 
             // Volume controls

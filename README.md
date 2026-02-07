@@ -28,12 +28,17 @@ Build creative parkour courses, test them yourself, then host games and race aga
 - 👥 **Real-time Multiplayer** - Race against friends with live position sync
 - 💾 **Cloud Storage** - All your maps are saved online
 - 📤 **Export/Import** - Share maps as `.pkrn` files (ZIP-based format)
-- 📱 **Touchscreen Support** - Play on mobile devices
+- 📱 **Touchscreen Support** - Play on mobile devices with joystick controls
 - 🎨 **Customizable Checkpoints** - Set custom colors for checkpoint states
 - 🎵 **Background Music** - Built-in tracks or upload your own
 - 🖼️ **Custom Backgrounds** - Images, GIFs, or videos as backgrounds
 - 🏷️ **Zones** - Define named rectangular regions for scripting
+- 🌀 **Teleportals** - Create linked portals for teleportation
 - ⚙️ **Physics Settings** - Customize player speed, jump height, and gravity
+- 🔄 **Object Transforms** - Rotate and flip objects horizontally
+- 🔤 **Adjustable Font Size** - Global font scaling in settings
+- 🎯 **Drop Hurt Only Mode** - Spikes only damage when moving toward them
+- 📖 **How To Play Guide** - In-app tutorial for new players
 
 ---
 
@@ -96,7 +101,8 @@ When you open the editor, you'll see:
 | **Fly** | `G` | Move freely around the map |
 | **Move** | `M` | Reposition existing objects |
 | **Duplicate** | `C` | Copy an existing object |
-| **Rotate** | `R` | Rotate objects 90° counter-clockwise |
+| **Rotate Right** | - | Single click to rotate object 90° clockwise |
+| **Rotate** | - | Click and drag to rotate object (snaps to 90° increments) |
 | **Erase** | - | Delete objects (options: All, Top Layer, Bottom Layer) |
 
 ### Adding Objects
@@ -118,7 +124,34 @@ Special marker objects:
 - **Zones**: Named rectangular regions (click & drag to place)
 
 #### 📝 Text
-Text labels with customizable font, alignment, and spacing.
+Text labels with customizable:
+- **Font** - Choose from many available fonts
+- **Font Size** - Adjustable size (8-200px)
+- **Alignment** - Horizontal and vertical alignment
+- **Spacing** - Letter and line spacing
+
+#### 🌀 Teleportal
+Teleportation portals that can be linked together:
+- Name each portal uniquely
+- Configure **Send To** and **Receive From** connections
+- Connected portals show green lines, invalid connections show red
+
+### Editing Objects
+
+Click on any object (with no tool active) to open the **Edit Popup**:
+
+- **Name** - Custom name for the object
+- **Color** - Change the object's color
+- **Opacity** - Transparency (0-100%)
+- **Rotation** - Rotate left/right buttons
+- **Collision** - Enable/disable collision
+- **Flip Horizontal** - Mirror the object horizontally (not available for zones)
+
+For **Spikes**, you can also set per-object touchbox behavior and Drop Hurt Only mode. Spikes are rendered with a pixel-art sawtooth style and have carefully tuned hitboxes - the dangerous area is small and focused on the tip, giving players more forgiving collision.
+
+For **Text**, you can edit the content, font, and preview the text.
+
+For **Teleportals**, you can configure portal connections.
 
 ### Configuration Panel
 
@@ -153,6 +186,8 @@ Configure how spikes interact with players:
 - **Flag** - Flat part is ground, rest passes through
 - **Air** - No collision at all
 
+**Drop Hurt Only** (toggle): When enabled, spikes only damage the player when they are moving *toward* the spike's tip direction. For example, a spike pointing up will only hurt a player falling down onto it, not one jumping up through it. This can be set globally or per-spike.
+
 #### Music
 - Built-in tracks or upload custom music
 - Volume control and loop toggle
@@ -168,16 +203,29 @@ Configure how spikes interact with players:
 
 | Action | Keyboard | Touch |
 |--------|----------|-------|
-| Move Left | `A` or `←` | D-pad Left |
-| Move Right | `D` or `→` | D-pad Right |
+| Move Left | `A` or `←` | Joystick Left |
+| Move Right | `D` or `→` | Joystick Right |
 | Jump | `W`, `↑`, or `Space` | Jump button |
-| Fly Up | `W` or `↑` (in fly mode) | D-pad Up |
-| Fly Down | `S` or `↓` (in fly mode) | D-pad Down |
+| Fly Up | `W` or `↑` (in fly mode) | Joystick Up |
+| Fly Down | `S` or `↓` (in fly mode) | Joystick Down |
+
+> **Note:** In fly mode, the joystick provides full 360° movement. In normal mode, only left/right is used.
 
 ### Test Mode
 
 - Press `G` to toggle fly mode during testing
 - Fly mode is OFF by default when starting a test
+- Player position coordinates are displayed above the player
+
+### Settings
+
+Access Settings from the Dashboard or in-game (Editor/Test/Play modes):
+
+- **Volume** - Adjust game audio volume
+- **Touchscreen Mode** - Enable touch controls
+- **Font Size** - Scale all text (50-150%)
+- **How To Play** - Opens an in-app tutorial explaining game mechanics
+- **Back to Dashboard** - Return to your map list (with confirmation)
 
 ---
 
@@ -211,9 +259,9 @@ Each player gets a unique color automatically calculated to be maximally differe
 | `G` | Toggle Fly mode |
 | `M` | Move tool |
 | `C` | Duplicate tool |
-| `R` | Rotate selected object |
 | `Escape` | Cancel current action / Close panels |
-| `Ctrl/Cmd + Scroll` | Zoom in/out |
+| `Ctrl/Cmd + Scroll` | Zoom in/out (centered on player) |
+| `Ctrl/Cmd + Shift + Scroll` | Reset zoom to 100% |
 
 ---
 
@@ -254,6 +302,7 @@ map_name.pkrn (ZIP)
     "jumpForce": -14,
     "gravity": 0.8,
     "spikeTouchbox": "normal",
+    "dropHurtOnly": false,
     "storedDataType": "json"
   },
   "objects": [...]

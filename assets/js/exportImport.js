@@ -33,6 +33,7 @@ const PKRN_DEFAULTS = {
     jumpForce: -14,
     gravity: 0.8,
     spikeTouchbox: 'normal',
+    dropHurtOnly: false,
     storedDataType: 'json', // 'json' or 'dat'
     customBackground: {
         enabled: false,
@@ -406,6 +407,7 @@ class ExportManager {
                 gravity: world.gravity,
                 // Spike settings
                 spikeTouchbox: world.spikeTouchbox,
+                dropHurtOnly: world.dropHurtOnly,
                 // Storage preference
                 storedDataType: world.storedDataType || 'json',
                 // Custom background
@@ -455,6 +457,9 @@ class ExportManager {
         // Spike-specific properties
         if (obj.spikeTouchbox) {
             data.stb = obj.spikeTouchbox;
+        }
+        if (obj.dropHurtOnly !== undefined) {
+            data.dho = obj.dropHurtOnly;
         }
         
         // Zone-specific properties
@@ -684,6 +689,7 @@ class ImportManager {
             // Spike settings
             spikeTouchbox: ['full', 'normal', 'tip', 'ground', 'flag', 'air'].includes(settings.spikeTouchbox) 
                 ? settings.spikeTouchbox : PKRN_DEFAULTS.spikeTouchbox,
+            dropHurtOnly: settings.dropHurtOnly === true,
             // Storage preference
             storedDataType: ['json', 'dat'].includes(settings.storedDataType) 
                 ? settings.storedDataType : PKRN_DEFAULTS.storedDataType,
@@ -786,6 +792,10 @@ class ImportManager {
         const spikeTouchbox = obj.stb || obj.spikeTouchbox;
         if (spikeTouchbox && validSpikeModes.includes(spikeTouchbox)) {
             data.spikeTouchbox = spikeTouchbox;
+        }
+        const dropHurtOnly = obj.dho !== undefined ? obj.dho : obj.dropHurtOnly;
+        if (dropHurtOnly !== undefined) {
+            data.dropHurtOnly = dropHurtOnly === true;
         }
         
         // Zone-specific properties

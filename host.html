@@ -461,6 +461,11 @@
             if (Settings.get('touchscreenMode')) {
                 editor.updateTouchControls();
             }
+            
+            // Start music playback
+            if (editor && editor.startMusicPlayback) {
+                editor.startMusicPlayback();
+            }
 
             // Reconnect to multiplayer for this room
             await reconnectToRoom(roomCode);
@@ -792,6 +797,11 @@
                 editor.updateTouchControls();
             }
             
+            // Start music playback
+            if (editor && editor.startMusicPlayback) {
+                editor.startMusicPlayback();
+            }
+            
             // Start sending position updates
             startPositionUpdates();
             
@@ -859,10 +869,16 @@
                 if (lastEndGameData && lastEndGameData.wasTestMode) {
                     // Restart test mode
                     engine.startTestGame();
+                    if (editor && editor.startMusicPlayback) {
+                        editor.startMusicPlayback();
+                    }
                 } else {
                     // Restart play mode
                     const user = Auth.getUser();
                     engine.startGame(user.name, user.color);
+                    if (editor && editor.startMusicPlayback) {
+                        editor.startMusicPlayback();
+                    }
                 }
             });
 

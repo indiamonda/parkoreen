@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Parkoreen - How To Play">
+    <title>How To Play - Parkoreen</title>
+    <link rel="manifest" href="/parkoreen/manifest.json">
+    <meta name="theme-color" content="#2d5a27">
+    <link rel="icon" type="image/png" sizes="32x32" href="/parkoreen/assets/png/icons/icon-play-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="/parkoreen/assets/png/icons/icon-play-64.png">
+    <link rel="apple-touch-icon" href="/parkoreen/assets/png/icons/icon-play-128.png">
+    <link rel="stylesheet" href="/parkoreen/assets/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
+    <style>
+        .howtoplay-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+        
+        .howtoplay-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .howtoplay-title {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .howtoplay-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 1.4rem;
+            color: var(--primary-light);
+            margin: 24px 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--surface-light);
+        }
+        
+        .section-title .material-symbols-outlined {
+            font-size: 1.5rem;
+        }
+        
+        .info-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        
+        .info-box.tip {
+            border-left: 4px solid var(--primary);
+        }
+        
+        .info-box.warning {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .info-box-title {
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .controls-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+        
+        .controls-table th,
+        .controls-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--surface-light);
+        }
+        
+        .controls-table th {
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+        
+        .controls-table td:first-child {
+            font-weight: 500;
+        }
+        
+        .key-badge {
+            display: inline-block;
+            background: var(--surface-light);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .object-type {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 16px 0;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+        }
+        
+        .object-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-light);
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        
+        .object-icon .material-symbols-outlined {
+            font-size: 28px;
+            color: var(--primary);
+        }
+        
+        .object-info h4 {
+            margin: 0 0 4px 0;
+            color: var(--text);
+        }
+        
+        .object-info p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .spike-mode {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        
+        .spike-mode strong {
+            color: var(--primary-light);
+        }
+        
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+        
+        @media (max-width: 600px) {
+            .howtoplay-container {
+                padding: 15px;
+            }
+            
+            .howtoplay-card {
+                padding: 16px;
+            }
+            
+            .howtoplay-title {
+                font-size: 1.5rem;
+            }
+            
+            .section-title {
+                font-size: 1.2rem;
+            }
+            
+            .controls-table th,
+            .controls-table td {
+                padding: 8px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="btn btn-icon btn-secondary back-btn" id="btn-back">
+        <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+
+    <div class="howtoplay-container">
+        <div class="howtoplay-card">
+            <h1 class="howtoplay-title">
+                <span class="material-symbols-outlined">help</span>
+                How To Play
+            </h1>
+            <p class="howtoplay-subtitle">Learn how to play Parkoreen and master the parkour!</p>
+            
+            <!-- Basic Gameplay -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">sports_esports</span>
+                Basic Gameplay
+            </h2>
+            <p>Parkoreen is a 2D platformer parkour game. Your goal is to navigate through obstacle courses and reach the end point!</p>
+            
+            <div class="info-box tip">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">lightbulb</span>
+                    Game Objective
+                </div>
+                Start at the <strong>spawn point</strong>, navigate through the map, touch <strong>checkpoints</strong> to save your progress, and reach the <strong>end point</strong> to complete the level!
+            </div>
+            
+            <!-- Controls -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">keyboard</span>
+                Controls
+            </h2>
+            
+            <table class="controls-table">
+                <tr>
+                    <th>Action</th>
+                    <th>Keyboard</th>
+                    <th>Touchscreen</th>
+                </tr>
+                <tr>
+                    <td>Move Left</td>
+                    <td><span class="key-badge">A</span> or <span class="key-badge">←</span></td>
+                    <td>Joystick Left</td>
+                </tr>
+                <tr>
+                    <td>Move Right</td>
+                    <td><span class="key-badge">D</span> or <span class="key-badge">→</span></td>
+                    <td>Joystick Right</td>
+                </tr>
+                <tr>
+                    <td>Jump</td>
+                    <td><span class="key-badge">W</span> <span class="key-badge">↑</span> or <span class="key-badge">Space</span></td>
+                    <td>Jump Button</td>
+                </tr>
+            </table>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">flight</span>
+                    Fly Mode (Editor/Testing)
+                </div>
+                In the editor or test mode, press <span class="key-badge">G</span> to toggle fly mode. This lets you move freely in all directions to explore the map.
+            </div>
+            
+            <!-- Objects -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">category</span>
+                Game Objects
+            </h2>
+            
+            <div class="object-type">
+                <div class="object-icon">
+                    <span class="material-symbols-outlined">square</span>
+                </div>
+                <div class="object-info">
+                    <h4>Blocks</h4>
+                    <p>Solid platforms you can stand on and jump from. These form the main structure of parkour courses.</p>
+                </div>
+            </div>
+            
+            <div class="object-type">
+                <div class="object-icon" style="background: #c45a3f;">
+                    <span class="material-symbols-outlined" style="color: #fff;">warning</span>
+                </div>
+                <div class="object-info">
+                    <h4>Spikes</h4>
+                    <p>Dangerous obstacles! Touching the pointed part will kill you and send you back to the last checkpoint. The flat base is usually safe to stand on.</p>
+                </div>
+            </div>
+            
+            <div class="object-type">
+                <div class="object-icon" style="background: #4CAF50;">
+                    <span class="material-symbols-outlined" style="color: #fff;">flag</span>
+                </div>
+                <div class="object-info">
+                    <h4>Checkpoints</h4>
+                    <p>Touch these to save your progress! If you die, you'll respawn at the last checkpoint you touched. They change color when activated.</p>
+                </div>
+            </div>
+            
+            <div class="object-type">
+                <div class="object-icon" style="background: #2196F3;">
+                    <span class="material-symbols-outlined" style="color: #fff;">play_arrow</span>
+                </div>
+                <div class="object-info">
+                    <h4>Spawn Point</h4>
+                    <p>Where you start the game. This is your initial respawn location until you touch a checkpoint.</p>
+                </div>
+            </div>
+            
+            <div class="object-type">
+                <div class="object-icon" style="background: #FFD700;">
+                    <span class="material-symbols-outlined" style="color: #333;">emoji_events</span>
+                </div>
+                <div class="object-info">
+                    <h4>End Point</h4>
+                    <p>The finish line! Reach this to complete the level and see your completion time.</p>
+                </div>
+            </div>
+            
+            <div class="object-type">
+                <div class="object-icon" style="background: #9C27B0;">
+                    <span class="material-symbols-outlined" style="color: #fff;">move</span>
+                </div>
+                <div class="object-info">
+                    <h4>Teleportals</h4>
+                    <p>Magical portals that teleport you to another location! Walk into one to be instantly transported to its connected portal.</p>
+                </div>
+            </div>
+            
+            <!-- Spike Behavior -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">dangerous</span>
+                Understanding Spikes
+            </h2>
+            <p>Spikes can have different behaviors depending on the map settings:</p>
+            
+            <div class="spike-mode">
+                <strong>Normal Spike:</strong> The flat base acts as ground (safe to stand on), but the pointed parts will hurt you.
+            </div>
+            
+            <div class="spike-mode">
+                <strong>Full Spike:</strong> The entire spike is dangerous - don't touch any part of it!
+            </div>
+            
+            <div class="spike-mode">
+                <strong>Tip Spike:</strong> Only the very tip is dangerous. The base is ground, and the sides are safe.
+            </div>
+            
+            <div class="info-box warning">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">info</span>
+                    Drop Hurt Only
+                </div>
+                Some maps have "Drop Hurt Only" enabled. This means spikes only hurt you when you're moving <em>toward</em> the spike's tip. For example, a spike pointing up won't hurt you if you jump up through it - only if you fall down onto it!
+            </div>
+            
+            <!-- Multiplayer -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">group</span>
+                Multiplayer
+            </h2>
+            <p>Play with friends in real-time!</p>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">add</span>
+                    Joining a Game
+                </div>
+                <ol style="margin: 8px 0 0 20px; color: var(--text-muted);">
+                    <li>Click <strong>Join</strong> on the Dashboard</li>
+                    <li>Enter the 6-character room code</li>
+                    <li>Enter password if required</li>
+                    <li>Start racing!</li>
+                </ol>
+            </div>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">broadcast_on_personal</span>
+                    Hosting a Game
+                </div>
+                <ol style="margin: 8px 0 0 20px; color: var(--text-muted);">
+                    <li>Open your map in the editor</li>
+                    <li>Click <strong>Config</strong> → <strong>Host Game</strong></li>
+                    <li>Set max players and optional password</li>
+                    <li>Share the room code with friends!</li>
+                </ol>
+            </div>
+            
+            <!-- Settings -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">settings</span>
+                In-Game Settings
+            </h2>
+            <p>Access settings anytime by clicking the ⚙️ Settings button (top-right in editor/play mode):</p>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">volume_up</span>
+                    Volume
+                </div>
+                Adjust the game audio volume from 0% to 100%.
+            </div>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">text_fields</span>
+                    Font Size
+                </div>
+                Scale all text in the game from 50% to 150%. Useful for accessibility or different screen sizes.
+            </div>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">touch_app</span>
+                    Touchscreen Mode
+                </div>
+                Enable touch controls for mobile devices. Shows a joystick and jump button on screen.
+            </div>
+            
+            <div class="info-box">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">home</span>
+                    Back to Dashboard
+                </div>
+                Return to your map list at any time. You'll be asked to confirm before leaving.
+            </div>
+            
+            <!-- Tips -->
+            <h2 class="section-title">
+                <span class="material-symbols-outlined">tips_and_updates</span>
+                Pro Tips
+            </h2>
+            
+            <div class="info-box tip">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">speed</span>
+                    Momentum
+                </div>
+                Keep moving! Your character maintains momentum, so running jumps go further than standing jumps.
+            </div>
+            
+            <div class="info-box tip">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">replay</span>
+                    Checkpoint Reset
+                </div>
+                Standing on a checkpoint and quickly switching directions (left-right or right-left) will reset your jumps! Useful for tricky sections.
+            </div>
+            
+            <div class="info-box tip">
+                <div class="info-box-title">
+                    <span class="material-symbols-outlined">zoom_in</span>
+                    Zooming
+                </div>
+                Use <span class="key-badge">Ctrl</span> + <span class="key-badge">Scroll</span> to zoom in/out and see more of the map. Use <span class="key-badge">Ctrl</span> + <span class="key-badge">Shift</span> + <span class="key-badge">Scroll</span> to reset zoom.
+            </div>
+            
+            <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--surface-light);">
+                <p style="color: var(--text-muted); margin-bottom: 16px;">Ready to play?</p>
+                <button class="btn btn-primary" id="btn-start" style="padding: 12px 32px;">
+                    <span class="material-symbols-outlined">play_arrow</span>
+                    Go to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-footer" style="position: fixed; bottom: 0; left: 0; right: 0;">
+        <span>© Copyright JimmyQrg 2026</span>
+        <a href="https://github.com/jimmyqrg/" target="_blank" rel="noopener" class="github-link">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z'/%3E%3C/svg%3E" alt="GitHub">
+        </a>
+    </footer>
+
+    <script src="/parkoreen/runtime.js?v=19"></script>
+    <script src="/parkoreen/assets/js/style.js?v=11"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Back button
+            document.getElementById('btn-back').onclick = function() {
+                window.history.back();
+            };
+            
+            // Start button
+            document.getElementById('btn-start').onclick = function() {
+                Navigation.toDashboard();
+            };
+        });
+    </script>
+</body>
+</html>

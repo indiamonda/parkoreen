@@ -860,6 +860,10 @@ const Navigation = {
         window.location.href = '/parkoreen/settings/';
     },
     
+    toHowToPlay() {
+        window.location.href = '/parkoreen/howtoplay/';
+    },
+    
     toLogin() {
         window.location.href = '/parkoreen/login/';
     },

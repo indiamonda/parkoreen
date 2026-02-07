@@ -599,6 +599,19 @@ class Editor {
                                     <strong style="color: #fff;">Normal Spike:</strong> The flat base acts as ground. Other parts damage the player.
                                 </div>
                             </div>
+                            
+                            <div class="form-group" style="margin-top: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                    <label class="toggle">
+                                        <input type="checkbox" id="config-drop-hurt-only">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <label class="form-label" for="config-drop-hurt-only" style="margin: 0; cursor: pointer;">Drop Hurt Only</label>
+                                </div>
+                                <div id="drop-hurt-only-description" style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 12px; color: #aaa; line-height: 1.5;">
+                                    <strong style="color: #fff;">Drop Hurt Only:</strong> Spikes only damage the player when they are moving <em>toward</em> the spike's tip direction. For example, a spike pointing up will only hurt a player who is falling down (or moving down-left/down-right). If the player jumps up through the spike, they won't be hurt.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -916,6 +929,16 @@ class Editor {
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                    <button class="btn btn-secondary" id="settings-how-to-play" style="width: 100%; margin-bottom: 8px;">
+                        <span class="material-symbols-outlined">help</span>
+                        How To Play
+                    </button>
+                    <button class="btn btn-primary" id="settings-back-to-dashboard" style="width: 100%;">
+                        <span class="material-symbols-outlined">home</span>
+                        Back to Dashboard
+                    </button>
+                </div>
             </div>
         `;
         document.body.appendChild(settingsPanel);
@@ -1000,6 +1023,21 @@ class Editor {
                             <option value="air">Air</option>
                         </select>
                         <div id="object-edit-spike-desc" style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 11px; color: #aaa; line-height: 1.4;"></div>
+                        
+                        <div style="margin-top: 12px;">
+                            <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                                <select class="form-select" id="object-edit-drop-hurt-only" style="width: auto;">
+                                    <option value="">Use World Default</option>
+                                    <option value="true">Enabled</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                                Drop Hurt Only
+                            </label>
+                            <div style="margin-top: 6px; padding: 6px 8px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 11px; color: #aaa; line-height: 1.4;">
+                                When enabled, this spike only hurts the player when they move toward the spike's tip.
+                            </div>
+                        </div>
+                        
                         <div id="object-edit-spike-attached" style="margin-top: 8px; padding: 8px; background: rgba(255,193,7,0.15); border-radius: 6px; font-size: 11px; color: #ffc107; line-height: 1.4; display: none;">
                             <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">info</span>
                             This spike is attached to ground - its flat side will act as ground regardless of the touchbox setting.
@@ -1169,6 +1207,19 @@ class Editor {
             if (this.editingObject && this.editingObject.appearanceType === 'spike') {
                 this.editingObject.spikeTouchbox = e.target.value || null;
                 this.updateSpikeTouchboxEditDescription(e.target.value);
+                this.triggerMapChange();
+            }
+        });
+        
+        // Object edit drop hurt only
+        document.getElementById('object-edit-drop-hurt-only').addEventListener('change', (e) => {
+            if (this.editingObject && (this.editingObject.appearanceType === 'spike' || this.editingObject.actingType === 'spike')) {
+                const value = e.target.value;
+                if (value === '') {
+                    this.editingObject.dropHurtOnly = undefined;
+                } else {
+                    this.editingObject.dropHurtOnly = value === 'true';
+                }
                 this.triggerMapChange();
             }
         });
@@ -1573,7 +1624,7 @@ class Editor {
             type: 'teleportal',
             appearanceType: 'teleportal',
             actingType: this.teleportalSettings.actingType || 'portal',
-            collision: true,
+            collision: false, // Teleportals don't collide by default
             color: this.teleportalSettings.color || '#9C27B0',
             opacity: this.teleportalSettings.opacity || 1,
             name: 'New Teleportal',
@@ -1724,6 +1775,16 @@ class Editor {
             document.getElementById('object-edit-spike-touchbox').value = obj.spikeTouchbox || '';
             this.updateSpikeTouchboxEditDescription(obj.spikeTouchbox || '');
             this.updateSpikeAttachedWarning();
+            
+            // Set dropHurtOnly value
+            const dropHurtOnlySelect = document.getElementById('object-edit-drop-hurt-only');
+            if (obj.dropHurtOnly === true) {
+                dropHurtOnlySelect.value = 'true';
+            } else if (obj.dropHurtOnly === false) {
+                dropHurtOnlySelect.value = 'false';
+            } else {
+                dropHurtOnlySelect.value = '';
+            }
         } else {
             spikeGroup.style.display = 'none';
         }
@@ -1751,9 +1812,9 @@ class Editor {
             textGroup.style.display = 'none';
         }
         
-        // Show/hide teleportal options
+        // Show/hide teleportal options (only when actingType is 'portal')
         const teleportalGroup = document.getElementById('object-edit-teleportal-group');
-        if (obj.type === 'teleportal') {
+        if (obj.type === 'teleportal' && obj.actingType === 'portal') {
             teleportalGroup.style.display = 'block';
             this.updateTeleportalConnectionLists();
         } else {
@@ -2457,6 +2518,12 @@ class Editor {
             this.triggerMapChange();
         });
         
+        // Drop Hurt Only toggle
+        document.getElementById('config-drop-hurt-only').addEventListener('change', (e) => {
+            this.world.dropHurtOnly = e.target.checked;
+            this.triggerMapChange();
+        });
+        
         // Stored data type
         document.getElementById('config-stored-data-type').addEventListener('change', (e) => {
             this.world.storedDataType = e.target.value;
@@ -2753,6 +2820,26 @@ class Editor {
             fontsizeRange.value = savedFontSize;
             fontsizeNumber.value = savedFontSize;
         }
+        
+        // How To Play button
+        document.getElementById('settings-how-to-play').addEventListener('click', () => {
+            if (typeof Navigation !== 'undefined') {
+                Navigation.toHowToPlay();
+            } else {
+                window.location.href = '/parkoreen/howtoplay/';
+            }
+        });
+        
+        // Back to Dashboard button
+        document.getElementById('settings-back-to-dashboard').addEventListener('click', () => {
+            if (confirm('Are you sure you want to leave? Unsaved changes will be lost.')) {
+                if (typeof Navigation !== 'undefined') {
+                    Navigation.toDashboard();
+                } else {
+                    window.location.href = '/parkoreen/dashboard/';
+                }
+            }
+        });
     }
 
     attachFontDropdownListeners() {
@@ -4338,6 +4425,9 @@ class Editor {
         this.ui.btnStopTest.classList.remove('hidden');
         this.ui.placementToolbar.classList.remove('active');
         
+        // Start music playback
+        this.startMusicPlayback();
+        
         // Show limited toolbar (fly, zoom in, zoom out only)
         this.ui.toolbar.classList.remove('hidden');
         this.ui.toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
@@ -4363,6 +4453,9 @@ class Editor {
 
     stopTest() {
         this.engine.stopGame();
+        
+        // Stop music playback
+        this.stopMusicPlayback();
         
         // Restore UI
         this.ui.btnConfig.classList.remove('hidden');
@@ -4586,6 +4679,12 @@ class Editor {
         if (spikeTouchbox) {
             spikeTouchbox.value = this.world.spikeTouchbox || 'normal';
             this.updateSpikeTouchboxDescription(this.world.spikeTouchbox || 'normal');
+        }
+        
+        // Drop Hurt Only
+        const dropHurtOnly = document.getElementById('config-drop-hurt-only');
+        if (dropHurtOnly) {
+            dropHurtOnly.checked = this.world.dropHurtOnly || false;
         }
         
         // Stored data type
@@ -4815,6 +4914,26 @@ class Editor {
             this.bgMusic.volume = music.volume / 100;
             this.bgMusic.loop = music.loop;
             // Don't auto-play in editor
+        }
+    }
+    
+    startMusicPlayback() {
+        // Set up the music if not already done
+        this.updateMusicPlayback();
+        
+        // Start playing if there's music to play
+        if (this.bgMusic && this.bgMusic.src && this.world.music.type !== 'none') {
+            this.bgMusic.currentTime = 0;
+            this.bgMusic.play().catch(err => {
+                console.log('Music playback blocked by browser:', err);
+            });
+        }
+    }
+    
+    stopMusicPlayback() {
+        if (this.bgMusic) {
+            this.bgMusic.pause();
+            this.bgMusic.currentTime = 0;
         }
     }
     

@@ -321,6 +321,7 @@ class Player {
         
         const hurtBox = this.getHurtTouchbox();
         const worldSpikeMode = world?.spikeTouchbox || 'normal';
+        const dropHurtOnly = world?.dropHurtOnly || false;
         
         for (const obj of world.objects) {
             // Only check objects that act as spikes and have collision enabled
@@ -331,12 +332,19 @@ class Player {
                 // In 'air', 'ground', or 'flag' mode, spikes don't damage
                 if (spikeMode === 'air' || spikeMode === 'ground' || spikeMode === 'flag') continue;
                 
+                // Check dropHurtOnly - if enabled, only hurt when player moves toward spike tip
+                // Use per-object dropHurtOnly if set, otherwise use world default
+                const useDropHurtOnly = obj.dropHurtOnly !== undefined ? obj.dropHurtOnly : dropHurtOnly;
+                if (useDropHurtOnly && !this.isMovingTowardSpikeTip(obj)) {
+                    continue;
+                }
+                
                 // In 'full' mode, any contact with spike = damage
                 if (spikeMode === 'full') {
-                if (this.boxIntersects(hurtBox, obj)) {
-                    this.die();
-                    return;
-                }
+                    if (this.boxIntersects(hurtBox, obj)) {
+                        this.die();
+                        return;
+                    }
                     continue;
                 }
                 
@@ -369,7 +377,7 @@ class Player {
     // Get the flat (base) part of a spike based on rotation
     getSpikeFlat(spike) {
         const rotation = spike.rotation || 0;
-        const flatDepth = spike.height * 0.25; // 25% of spike is flat base
+        const flatDepth = spike.height * 0.35; // 35% of spike is flat base (increased from 25%)
         
         switch (rotation) {
             case 0: // Tip up, flat at bottom
@@ -385,41 +393,93 @@ class Player {
         }
     }
     
-    // Get the danger zone of a spike (everything except flat)
+    // Get the danger zone of a spike (much smaller - only the tip area)
     getSpikeDanger(spike) {
         const rotation = spike.rotation || 0;
-        const flatDepth = spike.height * 0.25;
+        const safeDepth = spike.height * 0.5; // Bottom 50% is safe (increased from 25%)
+        const sideInset = spike.width * 0.2; // Inset from sides (20% on each side)
         
         switch (rotation) {
-            case 0: // Tip up
-                return { x: spike.x, y: spike.y, width: spike.width, height: spike.height - flatDepth };
+            case 0: // Tip up - danger is smaller triangle at top
+                return { 
+                    x: spike.x + sideInset, 
+                    y: spike.y, 
+                    width: spike.width - sideInset * 2, 
+                    height: spike.height - safeDepth 
+                };
             case 90: // Tip right
-                return { x: spike.x + flatDepth, y: spike.y, width: spike.width - flatDepth, height: spike.height };
+                return { 
+                    x: spike.x + safeDepth, 
+                    y: spike.y + sideInset, 
+                    width: spike.width - safeDepth, 
+                    height: spike.height - sideInset * 2 
+                };
             case 180: // Tip down
-                return { x: spike.x, y: spike.y + flatDepth, width: spike.width, height: spike.height - flatDepth };
+                return { 
+                    x: spike.x + sideInset, 
+                    y: spike.y + safeDepth, 
+                    width: spike.width - sideInset * 2, 
+                    height: spike.height - safeDepth 
+                };
             case 270: // Tip left
-                return { x: spike.x, y: spike.y, width: spike.width - flatDepth, height: spike.height };
+                return { 
+                    x: spike.x, 
+                    y: spike.y + sideInset, 
+                    width: spike.width - safeDepth, 
+                    height: spike.height - sideInset * 2 
+                };
             default:
-                return { x: spike.x, y: spike.y, width: spike.width, height: spike.height - flatDepth };
+                return { 
+                    x: spike.x + sideInset, 
+                    y: spike.y, 
+                    width: spike.width - sideInset * 2, 
+                    height: spike.height - safeDepth 
+                };
         }
     }
     
-    // Get only the tip of a spike (top 20%)
+    // Get only the tip of a spike (very small - top 10%)
     getSpikeTip(spike) {
         const rotation = spike.rotation || 0;
-        const tipDepth = spike.height * 0.2; // Top 20% is the tip
+        const tipDepth = spike.height * 0.1; // Top 10% is the tip (reduced from 20%)
+        const tipWidth = spike.width * 0.3; // 30% width (reduced from 50%)
         
         switch (rotation) {
             case 0: // Tip up
-                return { x: spike.x + spike.width * 0.25, y: spike.y, width: spike.width * 0.5, height: tipDepth };
+                return { x: spike.x + spike.width * 0.35, y: spike.y, width: tipWidth, height: tipDepth };
             case 90: // Tip right
-                return { x: spike.x + spike.width - tipDepth, y: spike.y + spike.height * 0.25, width: tipDepth, height: spike.height * 0.5 };
+                return { x: spike.x + spike.width - tipDepth, y: spike.y + spike.height * 0.35, width: tipDepth, height: tipWidth };
             case 180: // Tip down
-                return { x: spike.x + spike.width * 0.25, y: spike.y + spike.height - tipDepth, width: spike.width * 0.5, height: tipDepth };
+                return { x: spike.x + spike.width * 0.35, y: spike.y + spike.height - tipDepth, width: tipWidth, height: tipDepth };
             case 270: // Tip left
-                return { x: spike.x, y: spike.y + spike.height * 0.25, width: tipDepth, height: spike.height * 0.5 };
+                return { x: spike.x, y: spike.y + spike.height * 0.35, width: tipDepth, height: tipWidth };
             default:
-                return { x: spike.x + spike.width * 0.25, y: spike.y, width: spike.width * 0.5, height: tipDepth };
+                return { x: spike.x + spike.width * 0.35, y: spike.y, width: tipWidth, height: tipDepth };
+        }
+    }
+    
+    // Check if player is moving toward the spike's tip direction
+    isMovingTowardSpikeTip(spike) {
+        const rotation = spike.rotation || 0;
+        const vx = this.vx || 0;
+        const vy = this.vy || 0;
+        const speed = Math.sqrt(vx * vx + vy * vy);
+        
+        // If not moving, don't trigger drop hurt
+        if (speed < 0.5) return false;
+        
+        // Check movement direction relative to spike tip direction
+        switch (rotation) {
+            case 0: // Tip up - player must be moving down (positive vy)
+                return vy > 0;
+            case 90: // Tip right - player must be moving left (negative vx)
+                return vx < 0;
+            case 180: // Tip down - player must be moving up (negative vy)
+                return vy < 0;
+            case 270: // Tip left - player must be moving right (positive vx)
+                return vx > 0;
+            default:
+                return vy > 0; // Default to tip up
         }
     }
 
@@ -623,6 +683,9 @@ class WorldObject {
         // Per-spike touchbox mode (null = use world default, or 'full', 'normal', 'tip', 'ground', 'flag', 'air')
         this.spikeTouchbox = config.spikeTouchbox || null;
         
+        // Per-spike dropHurtOnly (undefined = use world default, true/false = override)
+        this.dropHurtOnly = config.dropHurtOnly;
+        
         // Zone-specific property
         this.zoneName = config.zoneName || null;
         
@@ -711,22 +774,93 @@ class WorldObject {
     }
 
     renderSpike(ctx, x, y, w, h) {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.moveTo(x + w / 2, y);
-        ctx.lineTo(x + w, y + h);
-        ctx.lineTo(x, y + h);
-        ctx.closePath();
-        ctx.fill();
+        // Pixel-art style sawtooth spike rendering (matching SVG style)
+        // Multiple small triangular teeth like in the SVG
+        const color = this.color;
+        const pixelSize = Math.max(1, Math.min(w, h) / 32); // Smaller pixels for detail
         
-        // Highlight
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.beginPath();
-        ctx.moveTo(x + w / 2, y);
-        ctx.lineTo(x + w * 0.6, y + h * 0.4);
-        ctx.lineTo(x + w * 0.4, y + h * 0.4);
-        ctx.closePath();
-        ctx.fill();
+        // Number of teeth depends on width (4-6 teeth typical)
+        const numTeeth = Math.max(3, Math.min(6, Math.round(w / 12)));
+        const toothWidth = w / numTeeth;
+        const baseHeight = h * 0.2; // Small base at bottom
+        const toothHeight = h - baseHeight;
+        
+        ctx.fillStyle = color;
+        
+        // Draw the base
+        ctx.fillRect(x, y + h - baseHeight, w, baseHeight);
+        
+        // Draw each tooth as a pixel-art triangle
+        for (let t = 0; t < numTeeth; t++) {
+            const toothX = x + t * toothWidth;
+            const toothCenterX = toothX + toothWidth / 2;
+            const toothBaseY = y + h - baseHeight;
+            const toothTipY = y;
+            
+            // Build tooth from bottom up with shrinking width
+            const rowCount = Math.ceil(toothHeight / pixelSize);
+            for (let row = 0; row < rowCount; row++) {
+                const rowY = toothBaseY - (row + 1) * pixelSize;
+                if (rowY < toothTipY) break;
+                
+                const progress = row / rowCount;
+                const rowWidth = toothWidth * (1 - progress * 0.95);
+                const startX = toothCenterX - rowWidth / 2;
+                const pixels = Math.max(1, Math.ceil(rowWidth / pixelSize));
+                
+                for (let p = 0; p < pixels; p++) {
+                    ctx.fillRect(startX + p * pixelSize, rowY, pixelSize, pixelSize);
+                }
+            }
+        }
+        
+        // Add highlight on left side of each tooth
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        for (let t = 0; t < numTeeth; t++) {
+            const toothX = x + t * toothWidth;
+            const toothCenterX = toothX + toothWidth / 2;
+            const toothBaseY = y + h - baseHeight;
+            
+            const rowCount = Math.ceil(toothHeight / pixelSize);
+            for (let row = 0; row < rowCount * 0.6; row++) {
+                const rowY = toothBaseY - (row + 1) * pixelSize;
+                if (rowY < y) break;
+                
+                const progress = row / rowCount;
+                const rowWidth = toothWidth * (1 - progress * 0.95);
+                const startX = toothCenterX - rowWidth / 2;
+                
+                // Just the leftmost 2 pixels
+                const highlightPixels = Math.min(2, Math.ceil(rowWidth * 0.3 / pixelSize));
+                for (let p = 0; p < highlightPixels; p++) {
+                    ctx.fillRect(startX + p * pixelSize, rowY, pixelSize, pixelSize);
+                }
+            }
+        }
+        
+        // Add shadow on right side of each tooth
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        for (let t = 0; t < numTeeth; t++) {
+            const toothX = x + t * toothWidth;
+            const toothCenterX = toothX + toothWidth / 2;
+            const toothBaseY = y + h - baseHeight;
+            
+            const rowCount = Math.ceil(toothHeight / pixelSize);
+            for (let row = 0; row < rowCount * 0.7; row++) {
+                const rowY = toothBaseY - (row + 1) * pixelSize;
+                if (rowY < y) break;
+                
+                const progress = row / rowCount;
+                const rowWidth = toothWidth * (1 - progress * 0.95);
+                const endX = toothCenterX + rowWidth / 2;
+                
+                // Just the rightmost 2 pixels
+                const shadowPixels = Math.min(2, Math.ceil(rowWidth * 0.25 / pixelSize));
+                for (let p = 0; p < shadowPixels; p++) {
+                    ctx.fillRect(endX - (p + 1) * pixelSize, rowY, pixelSize, pixelSize);
+                }
+            }
+        }
     }
 
     renderCheckpoint(ctx, x, y, w, h, checkpointColors = null) {
@@ -1021,6 +1155,7 @@ class WorldObject {
             hSpacing: this.hSpacing,
             vSpacing: this.vSpacing,
             spikeTouchbox: this.spikeTouchbox,
+            dropHurtOnly: this.dropHurtOnly,
             zoneName: this.zoneName,
             teleportalName: this.teleportalName,
             sendTo: this.sendTo,
@@ -1091,6 +1226,9 @@ class World {
         // 'flag' - Only flat part acts as ground, rest = air
         // 'air' - No interaction at all
         this.spikeTouchbox = 'normal';
+        
+        // Drop Hurt Only - spikes only damage when player moves toward the spike tip
+        this.dropHurtOnly = false;
         
         // Stored data type for .pkrn export
         // 'json' - Human-readable, larger file size
@@ -1257,7 +1395,8 @@ class World {
     }
     
     renderTeleportalConnections(ctx, camera, time) {
-        const teleportals = this.objects.filter(obj => obj.type === 'teleportal');
+        // Only show connections for teleportals that are acting as portals
+        const teleportals = this.objects.filter(obj => obj.type === 'teleportal' && obj.actingType === 'portal');
         
         for (const portal of teleportals) {
             if (!portal.teleportalName) continue;
@@ -1431,6 +1570,7 @@ class World {
             gravity: this.gravity,
             // Spike settings
             spikeTouchbox: this.spikeTouchbox,
+            dropHurtOnly: this.dropHurtOnly,
             // Export/Import settings
             storedDataType: this.storedDataType,
             // Custom background
@@ -1464,6 +1604,9 @@ class World {
         // Spike touchbox mode
         const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
         this.spikeTouchbox = validSpikeModes.includes(data.spikeTouchbox) ? data.spikeTouchbox : 'normal';
+        
+        // Drop Hurt Only
+        this.dropHurtOnly = data.dropHurtOnly === true;
         
         // Stored data type for export
         const validDataTypes = ['json', 'dat'];
@@ -1995,6 +2138,7 @@ class GameEngine {
         
         for (const obj of this.world.objects) {
             if (obj.type !== 'teleportal') continue;
+            if (obj.actingType !== 'portal') continue; // Only teleport when acting as portal
             if (!obj.teleportalName) continue;
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
@@ -2002,9 +2146,11 @@ class GameEngine {
             for (const targetName of obj.sendTo) {
                 if (!targetName) continue;
                 
-                // Find the target portal
+                // Find the target portal (must also be acting as portal)
                 const targetPortal = this.world.objects.find(p => 
-                    p.type === 'teleportal' && p.teleportalName === targetName
+                    p.type === 'teleportal' && 
+                    p.actingType === 'portal' && 
+                    p.teleportalName === targetName
                 );
                 
                 if (!targetPortal) continue;
