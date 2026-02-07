@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Parkoreen Dashboard - Manage your parkour maps">
     <title>Dashboard - Parkoreen</title>
-    <link rel="manifest" href="/parkoreen/manifest.json">
+    <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#2d5a27">
-    <link rel="icon" type="image/png" sizes="32x32" href="/parkoreen/assets/png/icons/icon-dashboard-32.png">
-    <link rel="icon" type="image/png" sizes="64x64" href="/parkoreen/assets/png/icons/icon-dashboard-64.png">
-    <link rel="apple-touch-icon" href="/parkoreen/assets/png/icons/icon-dashboard-128.png">
-    <link rel="stylesheet" href="/parkoreen/assets/css/style.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/png/icons/icon-dashboard-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="../assets/png/icons/icon-dashboard-64.png">
+    <link rel="apple-touch-icon" href="../assets/png/icons/icon-dashboard-128.png">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -161,9 +161,9 @@
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="/parkoreen/runtime.js?v=19"></script>
-    <script src="/parkoreen/assets/js/style.js?v=11"></script>
-    <script src="/parkoreen/assets/js/exportImport.js?v=12"></script>
+    <script src="../runtime.js?v=19"></script>
+    <script src="../assets/js/style.js?v=11"></script>
+    <script src="../assets/js/exportImport.js?v=12"></script>
     
     <script>
         console.log('[Dashboard] Version: v8');
@@ -175,7 +175,7 @@
         console.log('[Debug] MapManager.listMaps type:', window.MapManager ? typeof window.MapManager.listMaps : 'N/A');
         
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/parkoreen/sw.js')
+            navigator.serviceWorker.register('../sw.js')
                 .then(function() { console.log('SW registered'); })
                 .catch(function(e) { console.log('SW failed:', e); });
         }
@@ -190,7 +190,7 @@
             if (!Auth.requireAuth()) return;
             await loadMaps();
 
-            document.getElementById('btn-join').onclick = function() { window.open('/parkoreen/join.html', '_blank'); };
+            document.getElementById('btn-join').onclick = function() { window.open('../join.html', '_blank'); };
             document.getElementById('btn-settings').onclick = function() { Navigation.toSettings(); };
             document.getElementById('btn-new-map').onclick = createNewMap;
             document.getElementById('btn-create-first').onclick = createNewMap;
@@ -275,7 +275,7 @@
                         await saveFn.call(window.MapManager, result.id, { data: data });
                         
                         toastSuccess('Map imported!');
-                        window.open('/parkoreen/host.html?map=' + result.id, '_blank');
+                        window.open('../host.html?map=' + result.id, '_blank');
                         await loadMaps();
                     } catch (err) {
                         toastError('Failed to import: ' + err.message);
@@ -290,7 +290,7 @@
                     var createFn = window.MapManager.createMap;
                     var result = await createFn.call(window.MapManager, name.trim());
                     toastSuccess('Map created!');
-                    window.open('/parkoreen/host.html?map=' + result.id, '_blank');
+                    window.open('../host.html?map=' + result.id, '_blank');
                 } catch (e) {
                     toastError('Failed to create map: ' + e.message);
                 }
@@ -366,11 +366,11 @@
         }
 
         function hostMap(id) {
-            window.open('/parkoreen/host.html?map=' + id + '&mode=host', '_blank');
+            window.open('../host.html?map=' + id + '&mode=host', '_blank');
         }
 
         function editMap(id) {
-            window.open('/parkoreen/host.html?map=' + id, '_blank');
+            window.open('../host.html?map=' + id, '_blank');
         }
 
         async function duplicateMap(id, name) {

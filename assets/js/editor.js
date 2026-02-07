@@ -71,6 +71,10 @@ class Editor {
         this.isDragging = false;
         this.highlightedLayerObject = null; // Object highlighted from layers panel hover
         
+        // Rotation drag state
+        this.rotatingObject = null;
+        this.rotationStartPos = null;
+        
         // Placement settings
         this.placementSettings = {
             appearanceType: 'ground',
@@ -239,9 +243,13 @@ class Editor {
                 <span class="material-symbols-outlined">content_copy</span>
                 <span class="toolbar-btn-label">Duplicate (C)</span>
             </button>
-            <button class="toolbar-btn" data-tool="rotate" title="Rotate (R)">
-                <span class="material-symbols-outlined">rotate_left</span>
-                <span class="toolbar-btn-label">Rotate Left (R)</span>
+            <button class="toolbar-btn" data-action="rotate-right" title="Rotate Right">
+                <span class="material-symbols-outlined">rotate_right</span>
+                <span class="toolbar-btn-label">Rotate Right</span>
+            </button>
+            <button class="toolbar-btn" data-tool="rotate" title="Rotate (drag)">
+                <span class="material-symbols-outlined">sync</span>
+                <span class="toolbar-btn-label">Rotate</span>
             </button>
             <div class="toolbar-divider"></div>
             <button class="toolbar-btn" data-action="zoom-in" title="Zoom In">
@@ -972,6 +980,14 @@ class Editor {
                         </label>
                     </div>
                     
+                    <div class="form-group" id="object-edit-flip-group">
+                        <label class="form-label">Flip Horizontal</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="object-edit-flip-horizontal">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
                     <div class="form-group" id="object-edit-spike-group" style="display: none;">
                         <label class="form-label">Spike Touchbox</label>
                         <select class="form-select" id="object-edit-spike-touchbox">
@@ -1136,6 +1152,14 @@ class Editor {
         document.getElementById('object-edit-collision').addEventListener('change', (e) => {
             if (this.editingObject) {
                 this.editingObject.collision = e.target.checked;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Flip horizontal toggle
+        document.getElementById('object-edit-flip-horizontal').addEventListener('change', (e) => {
+            if (this.editingObject) {
+                this.editingObject.flipHorizontal = e.target.checked;
                 this.triggerMapChange();
             }
         });
@@ -1683,6 +1707,15 @@ class Editor {
         document.getElementById('object-edit-opacity-label').textContent = Math.round(obj.opacity * 100) + '%';
         document.getElementById('object-edit-rotation-label').textContent = obj.rotation + '°';
         document.getElementById('object-edit-collision').checked = obj.collision;
+        
+        // Show/hide flip horizontal (not for zones)
+        const flipGroup = document.getElementById('object-edit-flip-group');
+        if (obj.appearanceType === 'zone') {
+            flipGroup.style.display = 'none';
+        } else {
+            flipGroup.style.display = 'block';
+            document.getElementById('object-edit-flip-horizontal').checked = obj.flipHorizontal || false;
+        }
         
         // Show/hide spike options
         const spikeGroup = document.getElementById('object-edit-spike-group');
@@ -3142,6 +3175,18 @@ class Editor {
             case 'zoom-out':
                 this.camera.zoomOut(centerX, centerY);
                 break;
+            case 'rotate-right':
+                this.rotateObjectUnderMouse(90);
+                break;
+        }
+    }
+    
+    rotateObjectUnderMouse(degrees) {
+        const worldPos = this.engine.getMouseWorldPos();
+        const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
+        if (obj) {
+            obj.rotation = (obj.rotation + degrees + 360) % 360;
+            this.triggerMapChange();
         }
     }
 
@@ -3913,10 +3958,6 @@ class Editor {
                 e.preventDefault();
                 this.setTool(EditorTool.DUPLICATE);
                 break;
-            case 'KeyR':
-                e.preventDefault();
-                this.rotateSelected();
-                break;
         }
     }
 
@@ -3984,6 +4025,31 @@ class Editor {
         if (this.movingObject) {
             this.movingObject.x = gridPos.x;
             this.movingObject.y = gridPos.y;
+        }
+        
+        // Rotating object (drag-based rotation)
+        if (this.rotatingObject && this.rotationStartPos) {
+            // Calculate angle from object center to mouse position
+            const objCenterX = this.rotatingObject.x + this.rotatingObject.width / 2;
+            const objCenterY = this.rotatingObject.y + this.rotatingObject.height / 2;
+            
+            const dx = worldPos.x - objCenterX;
+            const dy = worldPos.y - objCenterY;
+            
+            // Calculate angle in degrees (0 = right, 90 = down, 180 = left, -90 = up)
+            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            
+            // Snap to nearest 90-degree increment
+            angle = Math.round(angle / 90) * 90;
+            
+            // Convert to game rotation system (0 = up, 90 = right, 180 = down, 270 = left)
+            // atan2 gives: 0 = right, 90 = down, 180/-180 = left, -90 = up
+            // Game uses: 0 = default (up), 90 = right, 180 = down, 270 = left
+            let rotation = (angle + 90 + 360) % 360;
+            
+            if (this.rotatingObject.rotation !== rotation) {
+                this.rotatingObject.rotation = rotation;
+            }
         }
 
         // Quick eraser
@@ -4056,8 +4122,8 @@ class Editor {
             case EditorTool.ROTATE:
                 const objToRotate = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (objToRotate) {
-                    objToRotate.rotation = (objToRotate.rotation - 90 + 360) % 360;
-                    this.triggerMapChange();
+                    this.rotatingObject = objToRotate;
+                    this.rotationStartPos = { x: worldPos.x, y: worldPos.y };
                 }
                 break;
             
@@ -4106,6 +4172,13 @@ class Editor {
             this.setTool(EditorTool.NONE);
             this.triggerMapChange();
         }
+        
+        // Finish rotation drag
+        if (this.rotatingObject) {
+            this.rotatingObject = null;
+            this.rotationStartPos = null;
+            this.triggerMapChange();
+        }
     }
 
     isOverUI(e) {
@@ -4124,15 +4197,6 @@ class Editor {
             el.closest('.zone-edit-panel') ||
             el.closest('.zone-adjust-stop')
         );
-    }
-
-    rotateSelected() {
-        const worldPos = this.engine.getMouseWorldPos();
-        const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
-        if (obj) {
-            obj.rotation = (obj.rotation - 90 + 360) % 360;
-            this.triggerMapChange();
-        }
     }
 
     // ========================================

@@ -294,7 +294,7 @@ class Player {
                 if (spikeMode === 'full') continue;
                 
                 // For normal, tip, ground, flag modes - check flat part collision
-                if (this.boxIntersects(box, obj)) {
+            if (this.boxIntersects(box, obj)) {
                     const flatBox = this.getSpikeFlat(obj);
                     if (this.boxIntersects(box, flatBox)) {
                         // Flat part acts as ground in normal, tip, ground, flag modes
@@ -333,10 +333,10 @@ class Player {
                 
                 // In 'full' mode, any contact with spike = damage
                 if (spikeMode === 'full') {
-                    if (this.boxIntersects(hurtBox, obj)) {
-                        this.die();
-                        return;
-                    }
+                if (this.boxIntersects(hurtBox, obj)) {
+                    this.die();
+                    return;
+                }
                     continue;
                 }
                 
@@ -451,7 +451,7 @@ class Player {
     resetJumps() {
         // When landing on ground, reset to full jumps
         // (The walk-off-ledge penalty is handled in moveWithCollision)
-        this.jumpsRemaining = this.maxJumps;
+            this.jumpsRemaining = this.maxJumps;
     }
 
     die() {
@@ -498,12 +498,12 @@ class Player {
         if (showPosition) {
             const fontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = `${Math.round(11 * fontScale)}px "Parkoreen Game", monospace`;
+            ctx.font = `${Math.round(16 * fontScale)}px "Parkoreen Game", monospace`;
             ctx.textAlign = 'center';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-            ctx.shadowBlur = 3;
+            ctx.shadowBlur = 4;
             const posText = `(${Math.round(this.x)}, ${Math.round(this.y)})`;
-            ctx.fillText(posText, screenX + this.width / 2, screenY - 6);
+            ctx.fillText(posText, screenX + this.width / 2, screenY - 10);
             ctx.shadowBlur = 0;
         }
         
@@ -606,6 +606,7 @@ class WorldObject {
         this.opacity = config.opacity !== undefined ? config.opacity : 1;
         this.layer = config.layer || 1; // 0: behind, 1: same, 2: above player
         this.rotation = config.rotation || 0;
+        this.flipHorizontal = config.flipHorizontal || false;
         
         // Text specific
         this.content = config.content || '';
@@ -662,10 +663,15 @@ class WorldObject {
         ctx.save();
         ctx.globalAlpha = this.opacity;
         
-        // Apply rotation
-        if (this.rotation !== 0) {
+        // Apply rotation and flip
+        if (this.rotation !== 0 || this.flipHorizontal) {
             ctx.translate(screenX + width / 2, screenY + height / 2);
-            ctx.rotate(this.rotation * Math.PI / 180);
+            if (this.rotation !== 0) {
+                ctx.rotate(this.rotation * Math.PI / 180);
+            }
+            if (this.flipHorizontal) {
+                ctx.scale(-1, 1);
+            }
             ctx.translate(-(screenX + width / 2), -(screenY + height / 2));
         }
 
@@ -1006,6 +1012,7 @@ class WorldObject {
             opacity: this.opacity,
             layer: this.layer,
             rotation: this.rotation,
+            flipHorizontal: this.flipHorizontal,
             content: this.content,
             font: this.font,
             fontSize: this.fontSize,

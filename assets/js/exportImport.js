@@ -437,6 +437,7 @@ class ExportManager {
             o: obj.opacity,
             l: obj.layer,
             r: obj.rotation,
+            fh: obj.flipHorizontal ? 1 : 0,
             n: obj.name
         };
 
@@ -765,6 +766,7 @@ class ImportManager {
             opacity: obj.o !== undefined ? obj.o : (obj.opacity !== undefined ? obj.opacity : 1),
             layer: obj.l !== undefined ? obj.l : (obj.layer !== undefined ? obj.layer : 1),
             rotation: obj.r || obj.rotation || 0,
+            flipHorizontal: obj.fh ? !!obj.fh : (obj.flipHorizontal || false),
             name: obj.n || obj.name || 'Object'
         };
 
