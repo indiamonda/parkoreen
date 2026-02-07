@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Parkoreen - Map Editor & Game">
     <title>Parkoreen</title>
-    <link rel="manifest" href="/parkoreen/manifest.json">
+    <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#2d5a27">
-    <link rel="icon" type="image/png" sizes="32x32" href="/parkoreen/assets/png/icons/icon-play-32.png" id="favicon-32">
-    <link rel="icon" type="image/png" sizes="64x64" href="/parkoreen/assets/png/icons/icon-play-64.png" id="favicon-64">
-    <link rel="apple-touch-icon" href="/parkoreen/assets/png/icons/icon-play-128.png">
-    <link rel="stylesheet" href="/parkoreen/assets/css/style.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/png/icons/icon-play-32.png" id="favicon-32">
+    <link rel="icon" type="image/png" sizes="64x64" href="../assets/png/icons/icon-play-64.png" id="favicon-64">
+    <link rel="apple-touch-icon" href="../assets/png/icons/icon-play-128.png">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <style>
         /* Page-specific styles */
@@ -152,11 +152,11 @@
     
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="/parkoreen/runtime.js?v=19"></script>
-    <script src="/parkoreen/assets/js/style.js?v=11"></script>
-    <script src="/parkoreen/assets/js/game.js?v=12"></script>
-    <script src="/parkoreen/assets/js/editor.js?v=14"></script>
-    <script src="/parkoreen/assets/js/exportImport.js?v=12"></script>
+    <script src="../runtime.js?v=19"></script>
+    <script src="../assets/js/style.js?v=11"></script>
+    <script src="../assets/js/game.js?v=12"></script>
+    <script src="../assets/js/editor.js?v=14"></script>
+    <script src="../assets/js/exportImport.js?v=12"></script>
     <script>
         // Global state
         let engine;
@@ -230,7 +230,7 @@
             
             // Event listeners
             document.getElementById('corrupted-return').addEventListener('click', () => {
-                window.location.href = '/parkoreen/dashboard/';
+                window.location.href = '../dashboard/';
             });
             
             document.getElementById('corrupted-force').addEventListener('click', () => {
@@ -245,8 +245,8 @@
             // type: 'play', 'editor'
             const favicon32 = document.getElementById('favicon-32');
             const favicon64 = document.getElementById('favicon-64');
-            if (favicon32) favicon32.href = `/parkoreen/assets/png/icons/icon-${type}-32.png`;
-            if (favicon64) favicon64.href = `/parkoreen/assets/png/icons/icon-${type}-64.png`;
+            if (favicon32) favicon32.href = `../assets/png/icons/icon-${type}-32.png`;
+            if (favicon64) favicon64.href = `../assets/png/icons/icon-${type}-64.png`;
         }
 
         document.addEventListener('DOMContentLoaded', async () => {

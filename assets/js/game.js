@@ -608,8 +608,10 @@ class WorldObject {
         // Zone-specific property
         this.zoneName = config.zoneName || null;
         
-        // Teleportal-specific property
+        // Teleportal-specific properties
         this.teleportalName = config.teleportalName || null;
+        this.sendTo = config.sendTo || []; // Array of teleportal names this portal sends to
+        this.receiveFrom = config.receiveFrom || []; // Array of teleportal names this portal receives from
         
         this.name = config.name || this.getDefaultName();
     }
@@ -989,6 +991,8 @@ class WorldObject {
             spikeTouchbox: this.spikeTouchbox,
             zoneName: this.zoneName,
             teleportalName: this.teleportalName,
+            sendTo: this.sendTo,
+            receiveFrom: this.receiveFrom,
             name: this.name
         };
     }
@@ -1218,6 +1222,159 @@ class World {
                 obj.render(ctx, camera);
             }
         }
+    }
+    
+    renderTeleportalConnections(ctx, camera, time) {
+        const teleportals = this.objects.filter(obj => obj.type === 'teleportal');
+        
+        for (const portal of teleportals) {
+            if (!portal.teleportalName) continue;
+            
+            const portalCenterX = portal.x + portal.width / 2 - camera.x;
+            const portalCenterY = portal.y + portal.height / 2 - camera.y;
+            
+            // Process sendTo connections
+            for (const targetName of portal.sendTo) {
+                if (!targetName) continue;
+                
+                const targetPortal = teleportals.find(p => p.teleportalName === targetName);
+                if (!targetPortal) continue;
+                
+                const targetCenterX = targetPortal.x + targetPortal.width / 2 - camera.x;
+                const targetCenterY = targetPortal.y + targetPortal.height / 2 - camera.y;
+                
+                // Check if this is a valid two-way connection
+                const isValid = targetPortal.receiveFrom.includes(portal.teleportalName);
+                
+                if (isValid) {
+                    // Valid connection: Green glowing line with animated arrows
+                    this.renderValidTeleportalConnection(ctx, portalCenterX, portalCenterY, targetCenterX, targetCenterY, time);
+                } else {
+                    // Invalid send: Red fading arrows going out
+                    this.renderInvalidSendConnection(ctx, portalCenterX, portalCenterY, targetCenterX, targetCenterY, time);
+                }
+            }
+            
+            // Process receiveFrom connections (only render invalid ones - valid ones already rendered from sender)
+            for (const sourceName of portal.receiveFrom) {
+                if (!sourceName) continue;
+                
+                const sourcePortal = teleportals.find(p => p.teleportalName === sourceName);
+                if (!sourcePortal) continue;
+                
+                // Check if source portal sends to this one
+                const isValid = sourcePortal.sendTo.includes(portal.teleportalName);
+                
+                if (!isValid) {
+                    // Invalid receive: Red arrows coming IN to this portal
+                    const sourceCenterX = sourcePortal.x + sourcePortal.width / 2 - camera.x;
+                    const sourceCenterY = sourcePortal.y + sourcePortal.height / 2 - camera.y;
+                    this.renderInvalidReceiveConnection(ctx, sourceCenterX, sourceCenterY, portalCenterX, portalCenterY, time);
+                }
+            }
+        }
+    }
+    
+    renderValidTeleportalConnection(ctx, x1, y1, x2, y2, time) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        
+        // Glowing green line
+        ctx.save();
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#4ade80';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        // Animated arrows along the line
+        const arrowCount = Math.max(2, Math.floor(dist / 60));
+        const animOffset = (time * 0.001) % 1; // 0 to 1 over 1 second
+        
+        for (let i = 0; i < arrowCount; i++) {
+            const t = ((i / arrowCount) + animOffset) % 1;
+            const ax = x1 + dx * t;
+            const ay = y1 + dy * t;
+            
+            this.drawArrowHead(ctx, ax, ay, angle, '#4ade80', 8);
+        }
+        
+        ctx.restore();
+    }
+    
+    renderInvalidSendConnection(ctx, x1, y1, x2, y2, time) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const maxDist = Math.min(dist * 0.4, 80); // Fade out distance
+        
+        ctx.save();
+        
+        // Animated arrows that fade out
+        const arrowCount = 3;
+        const animOffset = (time * 0.002) % 1;
+        
+        for (let i = 0; i < arrowCount; i++) {
+            const t = ((i / arrowCount) + animOffset) % 1;
+            const currentDist = t * maxDist;
+            const ax = x1 + Math.cos(angle) * currentDist;
+            const ay = y1 + Math.sin(angle) * currentDist;
+            const opacity = 1 - t;
+            
+            ctx.globalAlpha = opacity;
+            this.drawArrowHead(ctx, ax, ay, angle, '#f87171', 8);
+        }
+        
+        ctx.restore();
+    }
+    
+    renderInvalidReceiveConnection(ctx, x1, y1, x2, y2, time) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const maxDist = Math.min(dist * 0.4, 80);
+        
+        ctx.save();
+        
+        // Animated arrows that fade IN toward the receiving portal
+        const arrowCount = 3;
+        const animOffset = (time * 0.002) % 1;
+        
+        for (let i = 0; i < arrowCount; i++) {
+            const t = ((i / arrowCount) + animOffset) % 1;
+            const startDist = dist - maxDist;
+            const currentDist = startDist + t * maxDist;
+            const ax = x1 + Math.cos(angle) * currentDist;
+            const ay = y1 + Math.sin(angle) * currentDist;
+            const opacity = t; // Fade IN as they approach
+            
+            ctx.globalAlpha = opacity;
+            this.drawArrowHead(ctx, ax, ay, angle, '#f87171', 8);
+        }
+        
+        ctx.restore();
+    }
+    
+    drawArrowHead(ctx, x, y, angle, color, size) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(size, 0);
+        ctx.lineTo(-size * 0.6, -size * 0.5);
+        ctx.lineTo(-size * 0.6, size * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
 
     toJSON() {
@@ -1779,6 +1936,74 @@ class GameEngine {
                 this.localPlayer.directionChangeWindowStart = now;
             }
         }
+        
+        // Check for teleportal collisions
+        this.checkTeleportalCollisions();
+    }
+    
+    checkTeleportalCollisions() {
+        if (!this.localPlayer || this.localPlayer.isDead) return;
+        
+        // Cooldown to prevent instant re-teleporting
+        const now = Date.now();
+        if (this.lastTeleportTime && now - this.lastTeleportTime < 500) return;
+        
+        const playerBox = this.localPlayer.getGroundTouchbox();
+        
+        for (const obj of this.world.objects) {
+            if (obj.type !== 'teleportal') continue;
+            if (!obj.teleportalName) continue;
+            if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
+            
+            // Check if this portal has valid send connections
+            for (const targetName of obj.sendTo) {
+                if (!targetName) continue;
+                
+                // Find the target portal
+                const targetPortal = this.world.objects.find(p => 
+                    p.type === 'teleportal' && p.teleportalName === targetName
+                );
+                
+                if (!targetPortal) continue;
+                
+                // Check if it's a valid two-way connection
+                const isValid = targetPortal.receiveFrom.includes(obj.teleportalName);
+                
+                if (isValid) {
+                    // Teleport the player to the target portal
+                    const targetX = targetPortal.x + targetPortal.width / 2 - this.localPlayer.width / 2;
+                    const targetY = targetPortal.y + targetPortal.height / 2 - this.localPlayer.height / 2;
+                    
+                    this.localPlayer.x = targetX;
+                    this.localPlayer.y = targetY;
+                    this.lastTeleportTime = now;
+                    
+                    // Spawn teleport particles at destination
+                    this.spawnTeleportParticles(targetX + this.localPlayer.width / 2, targetY + this.localPlayer.height / 2, obj.color);
+                    
+                    return; // Only teleport once per frame
+                }
+            }
+        }
+    }
+    
+    spawnTeleportParticles(x, y, color) {
+        // Create a burst of particles at teleport destination
+        const particleCount = 12;
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (i / particleCount) * Math.PI * 2;
+            const speed = 80 + Math.random() * 40;
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0.6 + Math.random() * 0.3,
+                maxLife: 0.6 + Math.random() * 0.3,
+                size: 4 + Math.random() * 4,
+                color: color || '#9b59b6'
+            });
+        }
     }
 
     respawnPlayer() {
@@ -1865,6 +2090,11 @@ class GameEngine {
         
         // Render zones on top of everything
         this.world.renderZones(this.ctx, this.camera);
+        
+        // Render teleportal connections (in editor and test mode)
+        if (this.state === GameState.EDITOR || this.state === GameState.TESTING) {
+            this.world.renderTeleportalConnections(this.ctx, this.camera, Date.now());
+        }
         
         // Render editor overlays
         if (this.state === GameState.EDITOR && this.renderEditorOverlay) {

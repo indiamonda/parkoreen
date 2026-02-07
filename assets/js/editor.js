@@ -1011,6 +1011,38 @@ class Editor {
                         </div>
                     </div>
                     
+                    <div class="form-group" id="object-edit-teleportal-group" style="display: none;">
+                        <div class="teleportal-section">
+                            <label class="form-label">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">output</span>
+                                Send To
+                            </label>
+                            <div id="teleportal-send-list" class="teleportal-connection-list"></div>
+                            <button class="btn btn-sm btn-secondary" id="teleportal-add-send" style="margin-top: 8px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                                Add
+                            </button>
+                        </div>
+                        
+                        <div class="teleportal-section" style="margin-top: 16px;">
+                            <label class="form-label">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">input</span>
+                                Receive From
+                            </label>
+                            <div id="teleportal-receive-list" class="teleportal-connection-list"></div>
+                            <button class="btn btn-sm btn-secondary" id="teleportal-add-receive" style="margin-top: 8px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                                Add
+                            </button>
+                        </div>
+                        
+                        <div id="teleportal-connection-info" style="margin-top: 12px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 11px; color: #aaa; line-height: 1.4;">
+                            <strong>Connection Guide:</strong><br>
+                            • <span style="color: #4ade80;">Green</span> = Valid two-way connection (player will teleport)<br>
+                            • <span style="color: #f87171;">Red</span> = One-way only (no teleport)
+                        </div>
+                    </div>
+                    
                     <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
                         <button class="btn btn-danger" id="object-edit-delete" style="width: 100%;">
                             <span class="material-symbols-outlined">delete</span>
@@ -1189,6 +1221,24 @@ class Editor {
                 this.triggerMapChange();
             }
         });
+        
+        // Teleportal: Add Send button
+        document.getElementById('teleportal-add-send').addEventListener('click', () => {
+            if (this.editingObject && this.editingObject.type === 'teleportal') {
+                this.editingObject.sendTo.push('');
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            }
+        });
+        
+        // Teleportal: Add Receive button
+        document.getElementById('teleportal-add-receive').addEventListener('click', () => {
+            if (this.editingObject && this.editingObject.type === 'teleportal') {
+                this.editingObject.receiveFrom.push('');
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            }
+        });
     }
     
     closeObjectEditPopup() {
@@ -1223,6 +1273,138 @@ class Editor {
         } else {
             warningEl.style.display = 'none';
         }
+    }
+    
+    // ========================================
+    // TELEPORTAL CONNECTION MANAGEMENT
+    // ========================================
+    getOtherTeleportals() {
+        // Get all teleportals except the currently editing one
+        return this.world.objects.filter(obj => 
+            obj.type === 'teleportal' && 
+            obj.teleportalName && 
+            obj !== this.editingObject
+        );
+    }
+    
+    isTeleportalConnectionValid(fromPortal, toPortalName, direction) {
+        // Check if the connection forms a valid two-way link
+        const toPortal = this.world.objects.find(obj => 
+            obj.type === 'teleportal' && obj.teleportalName === toPortalName
+        );
+        
+        if (!toPortal) return false;
+        
+        if (direction === 'send') {
+            // fromPortal sends to toPortal - check if toPortal receives from fromPortal
+            return toPortal.receiveFrom.includes(fromPortal.teleportalName);
+        } else {
+            // fromPortal receives from toPortal - check if toPortal sends to fromPortal
+            return toPortal.sendTo.includes(fromPortal.teleportalName);
+        }
+    }
+    
+    updateTeleportalConnectionLists() {
+        if (!this.editingObject || this.editingObject.type !== 'teleportal') return;
+        
+        const sendList = document.getElementById('teleportal-send-list');
+        const receiveList = document.getElementById('teleportal-receive-list');
+        const otherPortals = this.getOtherTeleportals();
+        
+        // Build Send list
+        if (this.editingObject.sendTo.length === 0) {
+            sendList.innerHTML = '<div class="teleportal-connection-empty">No outgoing connections</div>';
+        } else {
+            sendList.innerHTML = this.editingObject.sendTo.map((targetName, index) => {
+                const isConnected = this.isTeleportalConnectionValid(this.editingObject, targetName, 'send');
+                const optionsHtml = otherPortals.map(p => 
+                    `<option value="${p.teleportalName}" ${p.teleportalName === targetName ? 'selected' : ''}>${p.teleportalName}</option>`
+                ).join('');
+                
+                return `
+                    <div class="teleportal-connection-item ${isConnected ? 'connected' : ''}" data-index="${index}" data-type="send">
+                        <select>
+                            <option value="">Select portal...</option>
+                            ${optionsHtml}
+                        </select>
+                        <button class="remove-connection" title="Remove">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">close</span>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Build Receive list
+        if (this.editingObject.receiveFrom.length === 0) {
+            receiveList.innerHTML = '<div class="teleportal-connection-empty">No incoming connections</div>';
+        } else {
+            receiveList.innerHTML = this.editingObject.receiveFrom.map((sourceName, index) => {
+                const isConnected = this.isTeleportalConnectionValid(this.editingObject, sourceName, 'receive');
+                const optionsHtml = otherPortals.map(p => 
+                    `<option value="${p.teleportalName}" ${p.teleportalName === sourceName ? 'selected' : ''}>${p.teleportalName}</option>`
+                ).join('');
+                
+                return `
+                    <div class="teleportal-connection-item ${isConnected ? 'connected' : ''}" data-index="${index}" data-type="receive">
+                        <select>
+                            <option value="">Select portal...</option>
+                            ${optionsHtml}
+                        </select>
+                        <button class="remove-connection" title="Remove">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">close</span>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Attach event listeners
+        this.attachTeleportalListeners();
+    }
+    
+    attachTeleportalListeners() {
+        // Select change listeners
+        document.querySelectorAll('#teleportal-send-list .teleportal-connection-item select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const item = e.target.closest('.teleportal-connection-item');
+                const index = parseInt(item.dataset.index);
+                this.editingObject.sendTo[index] = e.target.value;
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            });
+        });
+        
+        document.querySelectorAll('#teleportal-receive-list .teleportal-connection-item select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const item = e.target.closest('.teleportal-connection-item');
+                const index = parseInt(item.dataset.index);
+                this.editingObject.receiveFrom[index] = e.target.value;
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            });
+        });
+        
+        // Remove button listeners
+        document.querySelectorAll('#teleportal-send-list .remove-connection').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const item = e.target.closest('.teleportal-connection-item');
+                const index = parseInt(item.dataset.index);
+                this.editingObject.sendTo.splice(index, 1);
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            });
+        });
+        
+        document.querySelectorAll('#teleportal-receive-list .remove-connection').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const item = e.target.closest('.teleportal-connection-item');
+                const index = parseInt(item.dataset.index);
+                this.editingObject.receiveFrom.splice(index, 1);
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            });
+        });
     }
     
     // ========================================
@@ -1535,6 +1717,15 @@ class Editor {
             this.updateObjectEditFontPreview();
         } else {
             textGroup.style.display = 'none';
+        }
+        
+        // Show/hide teleportal options
+        const teleportalGroup = document.getElementById('object-edit-teleportal-group');
+        if (obj.type === 'teleportal') {
+            teleportalGroup.style.display = 'block';
+            this.updateTeleportalConnectionLists();
+        } else {
+            teleportalGroup.style.display = 'none';
         }
         
         // Show popup

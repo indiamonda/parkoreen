@@ -460,6 +460,17 @@ class ExportManager {
         if (obj.zoneName) {
             data.zn = obj.zoneName;
         }
+        
+        // Teleportal-specific properties
+        if (obj.teleportalName) {
+            data.tpn = obj.teleportalName;
+        }
+        if (obj.sendTo && obj.sendTo.length > 0) {
+            data.tps = obj.sendTo;
+        }
+        if (obj.receiveFrom && obj.receiveFrom.length > 0) {
+            data.tpr = obj.receiveFrom;
+        }
 
         return data;
     }
@@ -779,6 +790,23 @@ class ImportManager {
         const zoneName = obj.zn || obj.zoneName;
         if (zoneName) {
             data.zoneName = zoneName;
+        }
+        
+        // Teleportal-specific properties
+        const teleportalName = obj.tpn || obj.teleportalName;
+        if (teleportalName) {
+            data.teleportalName = teleportalName;
+        }
+        
+        // Teleportal connections
+        const sendTo = obj.tps || obj.sendTo;
+        if (sendTo && Array.isArray(sendTo)) {
+            data.sendTo = sendTo;
+        }
+        
+        const receiveFrom = obj.tpr || obj.receiveFrom;
+        if (receiveFrom && Array.isArray(receiveFrom)) {
+            data.receiveFrom = receiveFrom;
         }
 
         return data;
