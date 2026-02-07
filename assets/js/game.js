@@ -649,6 +649,22 @@ class Camera {
 }
 
 // ============================================
+// SPIKE IMAGE LOADER
+// ============================================
+const SpikeImage = {
+    image: null,
+    loaded: false,
+    load() {
+        if (this.image) return;
+        this.image = new Image();
+        this.image.onload = () => { this.loaded = true; };
+        this.image.src = '/parkoreen/assets/mp3/Spike 64x.svg';
+    }
+};
+// Load spike image immediately
+SpikeImage.load();
+
+// ============================================
 // WORLD OBJECT CLASS
 // ============================================
 class WorldObject {
@@ -774,91 +790,42 @@ class WorldObject {
     }
 
     renderSpike(ctx, x, y, w, h) {
-        // Pixel-art style sawtooth spike rendering (matching SVG style)
-        // Multiple small triangular teeth like in the SVG
-        const color = this.color;
-        const pixelSize = Math.max(1, Math.min(w, h) / 32); // Smaller pixels for detail
-        
-        // Number of teeth depends on width (4-6 teeth typical)
-        const numTeeth = Math.max(3, Math.min(6, Math.round(w / 12)));
-        const toothWidth = w / numTeeth;
-        const baseHeight = h * 0.2; // Small base at bottom
-        const toothHeight = h - baseHeight;
-        
-        ctx.fillStyle = color;
-        
-        // Draw the base
-        ctx.fillRect(x, y + h - baseHeight, w, baseHeight);
-        
-        // Draw each tooth as a pixel-art triangle
-        for (let t = 0; t < numTeeth; t++) {
-            const toothX = x + t * toothWidth;
-            const toothCenterX = toothX + toothWidth / 2;
-            const toothBaseY = y + h - baseHeight;
-            const toothTipY = y;
+        // Use the SVG spike image if loaded
+        if (SpikeImage.loaded && SpikeImage.image) {
+            // Create an offscreen canvas to tint the spike with the object's color
+            const offscreen = document.createElement('canvas');
+            offscreen.width = w;
+            offscreen.height = h;
+            const offCtx = offscreen.getContext('2d');
             
-            // Build tooth from bottom up with shrinking width
-            const rowCount = Math.ceil(toothHeight / pixelSize);
-            for (let row = 0; row < rowCount; row++) {
-                const rowY = toothBaseY - (row + 1) * pixelSize;
-                if (rowY < toothTipY) break;
-                
-                const progress = row / rowCount;
-                const rowWidth = toothWidth * (1 - progress * 0.95);
-                const startX = toothCenterX - rowWidth / 2;
-                const pixels = Math.max(1, Math.ceil(rowWidth / pixelSize));
-                
-                for (let p = 0; p < pixels; p++) {
-                    ctx.fillRect(startX + p * pixelSize, rowY, pixelSize, pixelSize);
-                }
-            }
-        }
-        
-        // Add highlight on left side of each tooth
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        for (let t = 0; t < numTeeth; t++) {
-            const toothX = x + t * toothWidth;
-            const toothCenterX = toothX + toothWidth / 2;
-            const toothBaseY = y + h - baseHeight;
+            // Draw the spike image scaled to fit
+            offCtx.drawImage(SpikeImage.image, 0, 0, w, h);
             
-            const rowCount = Math.ceil(toothHeight / pixelSize);
-            for (let row = 0; row < rowCount * 0.6; row++) {
-                const rowY = toothBaseY - (row + 1) * pixelSize;
-                if (rowY < y) break;
-                
-                const progress = row / rowCount;
-                const rowWidth = toothWidth * (1 - progress * 0.95);
-                const startX = toothCenterX - rowWidth / 2;
-                
-                // Just the leftmost 2 pixels
-                const highlightPixels = Math.min(2, Math.ceil(rowWidth * 0.3 / pixelSize));
-                for (let p = 0; p < highlightPixels; p++) {
-                    ctx.fillRect(startX + p * pixelSize, rowY, pixelSize, pixelSize);
-                }
-            }
-        }
-        
-        // Add shadow on right side of each tooth
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        for (let t = 0; t < numTeeth; t++) {
-            const toothX = x + t * toothWidth;
-            const toothCenterX = toothX + toothWidth / 2;
-            const toothBaseY = y + h - baseHeight;
+            // Tint the spike with the object's color using multiply blend
+            offCtx.globalCompositeOperation = 'source-in';
+            offCtx.fillStyle = this.color;
+            offCtx.fillRect(0, 0, w, h);
             
-            const rowCount = Math.ceil(toothHeight / pixelSize);
-            for (let row = 0; row < rowCount * 0.7; row++) {
-                const rowY = toothBaseY - (row + 1) * pixelSize;
-                if (rowY < y) break;
-                
-                const progress = row / rowCount;
-                const rowWidth = toothWidth * (1 - progress * 0.95);
-                const endX = toothCenterX + rowWidth / 2;
-                
-                // Just the rightmost 2 pixels
-                const shadowPixels = Math.min(2, Math.ceil(rowWidth * 0.25 / pixelSize));
-                for (let p = 0; p < shadowPixels; p++) {
-                    ctx.fillRect(endX - (p + 1) * pixelSize, rowY, pixelSize, pixelSize);
-                }
+            // Draw the tinted spike to the main canvas
+            ctx.drawImage(offscreen, x, y);
+        } else {
+            // Fallback: simple triangle spikes if image not loaded
+            const color = this.color;
+            const numTeeth = Math.max(3, Math.min(6, Math.round(w / 12)));
+            const toothWidth = w / numTeeth;
+            const baseHeight = h * 0.17;
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y + h - baseHeight, w, baseHeight);
+            
+            for (let t = 0; t < numTeeth; t++) {
+                const toothX = x + t * toothWidth;
+                ctx.beginPath();
+                ctx.moveTo(toothX, y + h - baseHeight);
+                ctx.lineTo(toothX + toothWidth / 2, y);
+                ctx.lineTo(toothX + toothWidth, y + h - baseHeight);
+                ctx.closePath();
+                ctx.fill();
             }
         }
     }

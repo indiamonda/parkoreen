@@ -9,22 +9,7 @@
     "theme_color": "#2d5a27",
     "icons": [
         {
-            "src": "/parkoreen/assets/png/icons/icon-play-32.png",
-            "sizes": "32x32",
-            "type": "image/png"
-        },
-        {
-            "src": "/parkoreen/assets/png/icons/icon-play-64.png",
-            "sizes": "64x64",
-            "type": "image/png"
-        },
-        {
-            "src": "/parkoreen/assets/png/icons/icon-play-128.png",
-            "sizes": "128x128",
-            "type": "image/png"
-        },
-        {
-            "src": "/parkoreen/assets/png/icons/icon-play-512.png",
+            "src": "/parkoreen/assets/png/logo.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
