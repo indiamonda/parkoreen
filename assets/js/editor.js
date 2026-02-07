@@ -1130,7 +1130,45 @@ class Editor {
         document.getElementById('object-edit-font-trigger').addEventListener('click', (e) => {
             e.stopPropagation();
             const dropdown = document.getElementById('object-edit-font-dropdown');
+            const trigger = document.getElementById('object-edit-font-trigger');
+            const menu = document.getElementById('object-edit-font-menu');
+            
             dropdown.classList.toggle('active');
+            
+            if (dropdown.classList.contains('active')) {
+                // Position the menu to stay on screen
+                const rect = trigger.getBoundingClientRect();
+                const menuHeight = 300; // max-height
+                const menuWidth = 200;
+                
+                // Calculate position
+                let top = rect.bottom + 4;
+                let left = rect.left;
+                
+                // Check if menu would go off bottom of screen
+                if (top + menuHeight > window.innerHeight) {
+                    // Open upwards instead
+                    top = rect.top - menuHeight - 4;
+                }
+                
+                // Check if menu would go off right of screen
+                if (left + menuWidth > window.innerWidth) {
+                    left = window.innerWidth - menuWidth - 10;
+                }
+                
+                // Ensure it's not off the left
+                if (left < 10) left = 10;
+                
+                // Ensure it's not off the top
+                if (top < 10) top = 10;
+                
+                menu.style.top = top + 'px';
+                menu.style.left = left + 'px';
+                
+                // Populate dropdown with current font
+                const currentFont = this.editingObject?.font || 'Parkoreen Game';
+                this.populateObjectEditFontDropdown(currentFont);
+            }
         });
         
         // Close dropdown when clicking outside
