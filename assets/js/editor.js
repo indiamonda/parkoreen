@@ -1062,10 +1062,11 @@ class Editor {
         // Color input change
         document.getElementById('object-edit-color').addEventListener('change', (e) => {
             if (this.editingObject) {
-                let color = this.autoCorrectHexInput(e.target.value);
-                e.target.value = color;
-                this.editingObject.color = color;
-                document.getElementById('object-edit-color-preview').style.background = color;
+                let color = this.autoCorrectHex(e.target.value);
+                const fullColor = '#' + color;
+                e.target.value = fullColor;
+                this.editingObject.color = fullColor;
+                document.getElementById('object-edit-color-preview').style.background = fullColor;
                 this.triggerMapChange();
             }
         });

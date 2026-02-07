@@ -475,7 +475,7 @@ class Player {
         this.resetJumps();
     }
 
-    render(ctx, camera) {
+    render(ctx, camera, showPosition = false) {
         if (this.isDead) return;
 
         const screenX = this.x - camera.x;
@@ -493,6 +493,18 @@ class Player {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.fillRect(screenX, screenY, this.width - 4, 4);
         ctx.fillRect(screenX, screenY, 4, this.height - 4);
+        
+        // Draw position above player (editor/test mode only)
+        if (showPosition) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '11px "Parkoreen Game", monospace';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowBlur = 3;
+            const posText = `(${Math.round(this.x)}, ${Math.round(this.y)})`;
+            ctx.fillText(posText, screenX + this.width / 2, screenY - 6);
+            ctx.shadowBlur = 0;
+        }
         
         // Draw name
         ctx.fillStyle = 'white';
@@ -1834,14 +1846,17 @@ class GameEngine {
         
         // Render players
         if (this.state === GameState.PLAYING || this.state === GameState.TESTING || this.state === GameState.EDITOR) {
+            // Show position in editor and test mode
+            const showPosition = this.state === GameState.EDITOR || this.state === GameState.TESTING;
+            
             // Remote players
             for (const player of this.remotePlayers.values()) {
-                player.render(this.ctx, this.camera);
+                player.render(this.ctx, this.camera, showPosition);
             }
             
             // Local player on top
             if (this.localPlayer) {
-                this.localPlayer.render(this.ctx, this.camera);
+                this.localPlayer.render(this.ctx, this.camera, showPosition);
             }
         }
         
