@@ -68,6 +68,7 @@ class Editor {
         this.selectedObject = null;
         this.movingObject = null;
         this.isDragging = false;
+        this.highlightedLayerObject = null; // Object highlighted from layers panel hover
         
         // Placement settings
         this.placementSettings = {
@@ -778,7 +779,10 @@ class Editor {
             <input type="range" class="color-picker-hue" id="color-picker-hue" min="0" max="360" value="0">
             <div class="color-picker-preview">
                 <div class="color-picker-preview-box" id="color-picker-preview-box"></div>
-                <input type="text" class="form-input" id="color-picker-hex" value="#FF0000">
+                <div class="hex-input-wrapper">
+                    <span class="hex-prefix">#</span>
+                    <input type="text" class="form-input hex-input" id="color-picker-hex" value="FF0000" maxlength="6">
+                </div>
             </div>
         `;
         document.body.appendChild(popup);
@@ -787,7 +791,7 @@ class Editor {
         this.colorPickerState = {
             hue: 0,
             saturation: 100,
-            lightness: 50,
+            value: 100,
             target: null
         };
     }
@@ -1140,7 +1144,7 @@ class Editor {
             const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
             
             this.colorPickerState.saturation = (x / rect.width) * 100;
-            this.colorPickerState.lightness = 100 - (y / rect.height) * 100;
+            this.colorPickerState.value = 100 - (y / rect.height) * 100;
             
             cursor.style.left = x + 'px';
             cursor.style.top = y + 'px';
@@ -1170,12 +1174,65 @@ class Editor {
             this.updateColorPickerPreview();
         });
 
-        hexInput.addEventListener('change', (e) => {
-            const hex = e.target.value;
-            if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-                this.applyColorPickerColor(hex);
+        // Auto-correct and apply hex input on change or enter
+        const handleHexInput = () => {
+            const corrected = this.autoCorrectHex(hexInput.value);
+            hexInput.value = corrected;
+            this.setColorPickerFromHex('#' + corrected);
+            this.applyColorPickerColor('#' + corrected);
+        };
+        
+        hexInput.addEventListener('change', handleHexInput);
+        
+        hexInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleHexInput();
+                hexInput.blur();
             }
         });
+    }
+    
+    // Auto-correct hex input
+    // f → F, F → FFFFFF, FF0 → FFFF00, abc → AABBCC
+    autoCorrectHex(input) {
+        // Remove # if present and trim
+        let hex = input.replace(/^#/, '').trim().toUpperCase();
+        
+        // Remove any non-hex characters
+        hex = hex.replace(/[^0-9A-F]/gi, '');
+        
+        if (hex.length === 0) {
+            return '000000';
+        }
+        
+        if (hex.length === 1) {
+            // Single char: F → FFFFFF
+            return hex.repeat(6);
+        }
+        
+        if (hex.length === 2) {
+            // Two chars: FF → FFFFFF (repeat 3 times)
+            return hex.repeat(3);
+        }
+        
+        if (hex.length === 3) {
+            // Three chars: RGB → RRGGBB (expand each)
+            return hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        
+        if (hex.length === 4) {
+            // Four chars: take first 3 and expand
+            return hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        
+        if (hex.length === 5) {
+            // Five chars: pad with last char
+            return hex + hex[4];
+        }
+        
+        // Six or more: take first 6
+        return hex.substring(0, 6);
     }
 
     attachSettingsListeners() {
@@ -1854,9 +1911,40 @@ class Editor {
                 const groupIndicator = group.length > 1 ? 
                     `<span class="layer-group-indicator" title="Overlapping with ${group.length - 1} other object(s)">●</span>` : '';
                 
+                // Create preview element based on object type
+                const opacityText = Math.round(obj.opacity * 100) + '%';
+                let previewStyle = `background: ${obj.color}; width: 24px; height: 24px; border-radius: 4px; position: relative; flex-shrink: 0;`;
+                let previewContent = '';
+                
+                if (obj.appearanceType === 'spike') {
+                    // Triangle for spikes
+                    previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0;`;
+                    previewContent = `<div style="width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 20px solid ${obj.color};"></div>`;
+                } else if (obj.appearanceType === 'checkpoint') {
+                    previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center;`;
+                    previewContent = `<span class="material-symbols-outlined" style="font-size: 20px; color: ${obj.color};">flag</span>`;
+                } else if (obj.appearanceType === 'spawnpoint') {
+                    previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center;`;
+                    previewContent = `<span class="material-symbols-outlined" style="font-size: 20px; color: #4CAF50;">person_pin_circle</span>`;
+                } else if (obj.appearanceType === 'endpoint') {
+                    previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center;`;
+                    previewContent = `<span class="material-symbols-outlined" style="font-size: 20px; color: #FFD700;">star</span>`;
+                } else if (obj.type === 'text') {
+                    previewStyle = `width: 24px; height: 24px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: ${obj.color}; font-size: 14px;`;
+                    previewContent = 'T';
+                } else {
+                    // Block/ground - square
+                    previewContent = '';
+                }
+                
+                // Opacity label overlay
+                const opacityLabel = obj.opacity < 1 ? 
+                    `<span class="layer-opacity-label">${opacityText}</span>` : '';
+                
                 item.innerHTML = `
                     <span class="material-symbols-outlined" style="cursor: grab; color: var(--text-muted);">drag_indicator</span>
                     ${groupIndicator}
+                    <div class="layer-item-preview" style="${previewStyle}">${previewContent}${opacityLabel}</div>
                     <span class="layer-item-name">${obj.name}</span>
                     <div class="layer-item-actions">
                         <button class="layer-btn layer-delete" data-delete="${obj.id}" title="Delete">
@@ -1921,6 +2009,17 @@ class Editor {
                         this.triggerMapChange();
                     }
                 });
+                
+                // Hover to highlight object in editor
+                item.addEventListener('mouseenter', () => {
+                    this.highlightedLayerObject = obj;
+                });
+                
+                item.addEventListener('mouseleave', () => {
+                    if (this.highlightedLayerObject === obj) {
+                        this.highlightedLayerObject = null;
+                    }
+                });
 
                 list.appendChild(item);
             }
@@ -1955,34 +2054,34 @@ class Editor {
     }
 
     setColorPickerFromHex(hex) {
-        // Convert hex to HSL
+        // Convert hex to HSV (not HSL - the gradient is HSV style)
         const r = parseInt(hex.slice(1, 3), 16) / 255;
         const g = parseInt(hex.slice(3, 5), 16) / 255;
         const b = parseInt(hex.slice(5, 7), 16) / 255;
         
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
-        let h, s, l = (max + min) / 2;
-
-        if (max === min) {
-            h = s = 0;
-        } else {
-            const d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        const d = max - min;
+        
+        let h = 0;
+        if (d !== 0) {
             switch (max) {
                 case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
                 case g: h = ((b - r) / d + 2) / 6; break;
                 case b: h = ((r - g) / d + 4) / 6; break;
             }
         }
+        
+        const s = max === 0 ? 0 : d / max; // HSV saturation
+        const v = max; // HSV value/brightness
 
         this.colorPickerState.hue = Math.round(h * 360);
         this.colorPickerState.saturation = Math.round(s * 100);
-        this.colorPickerState.lightness = Math.round(l * 100);
+        this.colorPickerState.value = Math.round(v * 100);
 
         // Update UI
         document.getElementById('color-picker-hue').value = this.colorPickerState.hue;
-        document.getElementById('color-picker-hex').value = hex;
+        document.getElementById('color-picker-hex').value = hex.replace(/^#/, '').toUpperCase();
         document.getElementById('color-picker-preview-box').style.background = hex;
         
         const gradient = document.getElementById('color-picker-gradient');
@@ -1991,20 +2090,20 @@ class Editor {
             linear-gradient(to right, white, hsl(${this.colorPickerState.hue}, 100%, 50%))
         `;
 
-        // Position cursor
+        // Position cursor - X is saturation, Y is value (inverted)
         const cursor = document.getElementById('color-picker-cursor');
         cursor.style.left = `${this.colorPickerState.saturation}%`;
-        cursor.style.top = `${100 - this.colorPickerState.lightness}%`;
+        cursor.style.top = `${100 - this.colorPickerState.value}%`;
     }
 
     updateColorPickerPreview() {
-        const hex = this.hslToHex(
+        const hex = this.hsvToHex(
             this.colorPickerState.hue,
             this.colorPickerState.saturation,
-            this.colorPickerState.lightness
+            this.colorPickerState.value
         );
         
-        document.getElementById('color-picker-hex').value = hex;
+        document.getElementById('color-picker-hex').value = hex.replace(/^#/, '').toUpperCase();
         document.getElementById('color-picker-preview-box').style.background = hex;
         
         this.applyColorPickerColor(hex);
@@ -2042,6 +2141,29 @@ class Editor {
             return Math.round(255 * color).toString(16).padStart(2, '0');
         };
         return `#${f(0)}${f(8)}${f(4)}`;
+    }
+    
+    hsvToHex(h, s, v) {
+        s /= 100;
+        v /= 100;
+        
+        const c = v * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = v - c;
+        
+        let r, g, b;
+        if (h < 60) { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else { r = c; g = 0; b = x; }
+        
+        r = Math.round((r + m) * 255).toString(16).padStart(2, '0');
+        g = Math.round((g + m) * 255).toString(16).padStart(2, '0');
+        b = Math.round((b + m) * 255).toString(16).padStart(2, '0');
+        
+        return `#${r}${g}${b}`;
     }
 
     // ========================================
@@ -2963,7 +3085,7 @@ class Editor {
             this.renderDieLine(ctx, camera);
         }
 
-        // Hover highlight
+        // Hover highlight (from canvas hover)
         if (this.hoveredObject && this.engine.state === GameState.EDITOR) {
             const screenX = (this.hoveredObject.x - camera.x) * camera.zoom;
             const screenY = (this.hoveredObject.y - camera.y) * camera.zoom;
@@ -2975,6 +3097,27 @@ class Editor {
             ctx.setLineDash([5, 5]);
             ctx.strokeRect(screenX, screenY, width, height);
             ctx.setLineDash([]);
+        }
+        
+        // Layer panel hover highlight - inverse color box
+        if (this.highlightedLayerObject && this.engine.state === GameState.EDITOR) {
+            const obj = this.highlightedLayerObject;
+            const screenX = (obj.x - camera.x) * camera.zoom;
+            const screenY = (obj.y - camera.y) * camera.zoom;
+            const width = obj.width * camera.zoom;
+            const height = obj.height * camera.zoom;
+            
+            // Draw inverse color highlight box
+            ctx.save();
+            ctx.globalCompositeOperation = 'difference';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(screenX - 4, screenY - 4, width + 8, height + 8);
+            ctx.restore();
+            
+            // Also draw a bright border for visibility
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(screenX - 2, screenY - 2, width + 4, height + 4);
         }
 
         // Placement preview

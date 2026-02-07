@@ -1179,7 +1179,25 @@ class GameEngine {
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
+    isTypingInInput() {
+        const activeEl = document.activeElement;
+        return activeEl && (
+            activeEl.tagName === 'INPUT' || 
+            activeEl.tagName === 'TEXTAREA' || 
+            activeEl.contentEditable === 'true'
+        );
+    }
+
     onKeyDown(e) {
+        // Don't capture keyboard for player/game when typing in input
+        if (this.isTypingInInput()) {
+            // Still emit for editor shortcuts (they have their own input check)
+            if (this.onKeyPress) {
+                this.onKeyPress(e);
+            }
+            return;
+        }
+        
         this.keys[e.code] = true;
         
         // Update player input in all active modes (including editor)
@@ -1194,6 +1212,11 @@ class GameEngine {
     }
 
     onKeyUp(e) {
+        // Don't capture keyboard for player/game when typing in input
+        if (this.isTypingInInput()) {
+            return;
+        }
+        
         this.keys[e.code] = false;
         
         if (this.localPlayer) {
