@@ -1314,7 +1314,7 @@ class Editor {
         // Teleportal: Add Send button
         document.getElementById('teleportal-add-send').addEventListener('click', () => {
             if (this.editingObject && this.editingObject.type === 'teleportal') {
-                this.editingObject.sendTo.push('');
+                this.editingObject.sendTo.push({ name: '', enabled: true });
                 this.updateTeleportalConnectionLists();
                 this.triggerMapChange();
             }
@@ -1323,7 +1323,7 @@ class Editor {
         // Teleportal: Add Receive button
         document.getElementById('teleportal-add-receive').addEventListener('click', () => {
             if (this.editingObject && this.editingObject.type === 'teleportal') {
-                this.editingObject.receiveFrom.push('');
+                this.editingObject.receiveFrom.push({ name: '', enabled: true });
                 this.updateTeleportalConnectionLists();
                 this.triggerMapChange();
             }
@@ -1385,11 +1385,13 @@ class Editor {
         if (!toPortal) return false;
         
         if (direction === 'send') {
-            // fromPortal sends to toPortal - check if toPortal receives from fromPortal
-            return toPortal.receiveFrom.includes(fromPortal.teleportalName);
+            // fromPortal sends to toPortal - check if toPortal receives from fromPortal (and is enabled)
+            const conn = toPortal.receiveFrom.find(c => (c?.name || c) === fromPortal.teleportalName);
+            return conn && conn?.enabled !== false;
         } else {
-            // fromPortal receives from toPortal - check if toPortal sends to fromPortal
-            return toPortal.sendTo.includes(fromPortal.teleportalName);
+            // fromPortal receives from toPortal - check if toPortal sends to fromPortal (and is enabled)
+            const conn = toPortal.sendTo.find(c => (c?.name || c) === fromPortal.teleportalName);
+            return conn && conn?.enabled !== false;
         }
     }
     
@@ -1404,15 +1406,20 @@ class Editor {
         if (this.editingObject.sendTo.length === 0) {
             sendList.innerHTML = '<div class="teleportal-connection-empty">No outgoing connections</div>';
         } else {
-            sendList.innerHTML = this.editingObject.sendTo.map((targetName, index) => {
+            sendList.innerHTML = this.editingObject.sendTo.map((conn, index) => {
+                const targetName = conn?.name || conn;
+                const isEnabled = conn?.enabled !== false;
                 const isConnected = this.isTeleportalConnectionValid(this.editingObject, targetName, 'send');
                 const optionsHtml = otherPortals.map(p => 
                     `<option value="${p.teleportalName}" ${p.teleportalName === targetName ? 'selected' : ''}>${p.teleportalName}</option>`
                 ).join('');
                 
                 return `
-                    <div class="teleportal-connection-item ${isConnected ? 'connected' : ''}" data-index="${index}" data-type="send">
-                        <select>
+                    <div class="teleportal-connection-item ${isConnected && isEnabled ? 'connected' : ''} ${!isEnabled ? 'disabled' : ''}" data-index="${index}" data-type="send">
+                        <button class="toggle-connection ${isEnabled ? 'enabled' : ''}" title="${isEnabled ? 'Disable' : 'Enable'}">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">${isEnabled ? 'toggle_on' : 'toggle_off'}</span>
+                        </button>
+                        <select ${!isEnabled ? 'disabled' : ''}>
                             <option value="">Select portal...</option>
                             ${optionsHtml}
                         </select>
@@ -1428,15 +1435,20 @@ class Editor {
         if (this.editingObject.receiveFrom.length === 0) {
             receiveList.innerHTML = '<div class="teleportal-connection-empty">No incoming connections</div>';
         } else {
-            receiveList.innerHTML = this.editingObject.receiveFrom.map((sourceName, index) => {
+            receiveList.innerHTML = this.editingObject.receiveFrom.map((conn, index) => {
+                const sourceName = conn?.name || conn;
+                const isEnabled = conn?.enabled !== false;
                 const isConnected = this.isTeleportalConnectionValid(this.editingObject, sourceName, 'receive');
                 const optionsHtml = otherPortals.map(p => 
                     `<option value="${p.teleportalName}" ${p.teleportalName === sourceName ? 'selected' : ''}>${p.teleportalName}</option>`
                 ).join('');
                 
                 return `
-                    <div class="teleportal-connection-item ${isConnected ? 'connected' : ''}" data-index="${index}" data-type="receive">
-                        <select>
+                    <div class="teleportal-connection-item ${isConnected && isEnabled ? 'connected' : ''} ${!isEnabled ? 'disabled' : ''}" data-index="${index}" data-type="receive">
+                        <button class="toggle-connection ${isEnabled ? 'enabled' : ''}" title="${isEnabled ? 'Disable' : 'Enable'}">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">${isEnabled ? 'toggle_on' : 'toggle_off'}</span>
+                        </button>
+                        <select ${!isEnabled ? 'disabled' : ''}>
                             <option value="">Select portal...</option>
                             ${optionsHtml}
                         </select>
@@ -1458,7 +1470,12 @@ class Editor {
             select.addEventListener('change', (e) => {
                 const item = e.target.closest('.teleportal-connection-item');
                 const index = parseInt(item.dataset.index);
-                this.editingObject.sendTo[index] = e.target.value;
+                const conn = this.editingObject.sendTo[index];
+                if (typeof conn === 'object') {
+                    conn.name = e.target.value;
+                } else {
+                    this.editingObject.sendTo[index] = { name: e.target.value, enabled: true };
+                }
                 this.updateTeleportalConnectionLists();
                 this.triggerMapChange();
             });
@@ -1468,7 +1485,43 @@ class Editor {
             select.addEventListener('change', (e) => {
                 const item = e.target.closest('.teleportal-connection-item');
                 const index = parseInt(item.dataset.index);
-                this.editingObject.receiveFrom[index] = e.target.value;
+                const conn = this.editingObject.receiveFrom[index];
+                if (typeof conn === 'object') {
+                    conn.name = e.target.value;
+                } else {
+                    this.editingObject.receiveFrom[index] = { name: e.target.value, enabled: true };
+                }
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            });
+        });
+        
+        // Toggle button listeners
+        document.querySelectorAll('#teleportal-send-list .toggle-connection').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const item = e.target.closest('.teleportal-connection-item');
+                const index = parseInt(item.dataset.index);
+                const conn = this.editingObject.sendTo[index];
+                if (typeof conn === 'object') {
+                    conn.enabled = !conn.enabled;
+                } else {
+                    this.editingObject.sendTo[index] = { name: conn, enabled: false };
+                }
+                this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            });
+        });
+        
+        document.querySelectorAll('#teleportal-receive-list .toggle-connection').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const item = e.target.closest('.teleportal-connection-item');
+                const index = parseInt(item.dataset.index);
+                const conn = this.editingObject.receiveFrom[index];
+                if (typeof conn === 'object') {
+                    conn.enabled = !conn.enabled;
+                } else {
+                    this.editingObject.receiveFrom[index] = { name: conn, enabled: false };
+                }
                 this.updateTeleportalConnectionLists();
                 this.triggerMapChange();
             });
@@ -4204,7 +4257,17 @@ class Editor {
     }
 
     handleMouseMove(e) {
-        if (this.engine.state !== GameState.EDITOR) return;
+        const isTestMode = this.engine.state === GameState.TESTING;
+        const isEditorMode = this.engine.state === GameState.EDITOR;
+        
+        // Update inspect box in test mode
+        if (isTestMode) {
+            const hoveredObj = this.getObjectUnderMouse();
+            this.updateInspectBox(hoveredObj);
+            return;
+        }
+        
+        if (!isEditorMode) return;
 
         const worldPos = this.engine.getMouseWorldPos();
         const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
@@ -4551,6 +4614,129 @@ class Editor {
     }
 
     // ========================================
+    // INSPECT BOX (Test Mode)
+    // ========================================
+    createInspectBox() {
+        if (this.inspectBox) return;
+        
+        const container = document.createElement('div');
+        container.className = 'inspect-box-container';
+        container.id = 'inspect-box-container';
+        container.innerHTML = `
+            <div class="inspect-box">
+                <div class="inspect-box-title">Object Inspector</div>
+                <div class="inspect-box-content" id="inspect-box-content">
+                    <div class="inspect-box-empty">(Hover over an object)</div>
+                </div>
+            </div>
+            <button class="inspect-toggle-btn" id="inspect-toggle-btn" title="Hide Inspector">
+                <span class="material-symbols-outlined" style="font-size: 18px;">keyboard_double_arrow_left</span>
+            </button>
+        `;
+        document.body.appendChild(container);
+        
+        this.inspectBox = container;
+        this.inspectBoxContent = document.getElementById('inspect-box-content');
+        
+        // Toggle button
+        document.getElementById('inspect-toggle-btn').addEventListener('click', () => {
+            container.classList.toggle('hidden');
+        });
+    }
+    
+    showInspectBox() {
+        if (!this.inspectBox) this.createInspectBox();
+        this.inspectBox.style.display = 'block';
+    }
+    
+    hideInspectBox() {
+        if (this.inspectBox) {
+            this.inspectBox.style.display = 'none';
+        }
+    }
+    
+    updateInspectBox(obj) {
+        if (!this.inspectBoxContent) return;
+        
+        if (!obj) {
+            this.inspectBoxContent.innerHTML = '<div class="inspect-box-empty">(Hover over an object)</div>';
+            return;
+        }
+        
+        const data = {
+            'Type': obj.type || 'unknown',
+            'Appearance': obj.appearanceType || '-',
+            'Acting As': obj.actingType || '-',
+            'Name': obj.name || '-',
+            'Position': `(${Math.round(obj.x)}, ${Math.round(obj.y)})`,
+            'Size': `${obj.width} × ${obj.height}`,
+            'Color': obj.color || '-',
+            'Opacity': obj.opacity !== undefined ? Math.round(obj.opacity * 100) + '%' : '-',
+            'Collision': obj.collision ? 'Yes' : 'No',
+            'Rotation': obj.rotation ? obj.rotation + '°' : '0°',
+            'Layer': obj.layer || 1
+        };
+        
+        // Add type-specific data
+        if (obj.type === 'teleportal') {
+            data['Portal Name'] = obj.teleportalName || '-';
+            const sendCount = (obj.sendTo || []).filter(c => c?.enabled !== false).length;
+            const receiveCount = (obj.receiveFrom || []).filter(c => c?.enabled !== false).length;
+            data['Send To'] = sendCount > 0 ? `${sendCount} connection(s)` : 'None';
+            data['Receive From'] = receiveCount > 0 ? `${receiveCount} connection(s)` : 'None';
+        }
+        
+        if (obj.type === 'text') {
+            data['Content'] = obj.content || '-';
+            data['Font'] = obj.font || 'Default';
+            data['Font Size'] = obj.fontSize || 24;
+        }
+        
+        if (obj.appearanceType === 'zone') {
+            data['Zone Name'] = obj.zoneName || '-';
+        }
+        
+        if (obj.appearanceType === 'spike' || obj.actingType === 'spike') {
+            data['Touchbox'] = obj.spikeTouchbox || 'default';
+            data['Drop Hurt Only'] = obj.dropHurtOnly === true ? 'Yes' : (obj.dropHurtOnly === false ? 'No' : 'World Default');
+        }
+        
+        if (obj.flipHorizontal) {
+            data['Flipped'] = 'Yes';
+        }
+        
+        // Build HTML
+        let html = '';
+        for (const [key, value] of Object.entries(data)) {
+            if (value && value !== '-') {
+                html += `<div class="inspect-box-row"><span class="inspect-box-key">${key}:</span><span class="inspect-box-value">${value}</span></div>`;
+            }
+        }
+        
+        if (!html) {
+            html = '<div class="inspect-box-empty">(Data empty)</div>';
+        }
+        
+        this.inspectBoxContent.innerHTML = html;
+    }
+    
+    getObjectUnderMouse() {
+        const worldPos = this.engine.getMouseWorldPos();
+        if (!worldPos) return null;
+        
+        // Check from top layer to bottom
+        const sortedObjects = [...this.world.objects].sort((a, b) => (b.layer || 1) - (a.layer || 1));
+        
+        for (const obj of sortedObjects) {
+            if (worldPos.x >= obj.x && worldPos.x <= obj.x + obj.width &&
+                worldPos.y >= obj.y && worldPos.y <= obj.y + obj.height) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    // ========================================
     // TEST MODE
     // ========================================
     async startTest() {
@@ -4609,6 +4795,9 @@ class Editor {
         this.closePanel('layers');
         this.closeAddMenu();
         this.stopPlacement();
+        
+        // Show inspect box
+        this.showInspectBox();
     }
 
     stopTest() {
@@ -4616,6 +4805,9 @@ class Editor {
         
         // Stop music playback
         this.stopMusicPlayback();
+        
+        // Hide inspect box
+        this.hideInspectBox();
         
         // Restore UI
         this.ui.btnConfig.classList.remove('hidden');
@@ -5370,13 +5562,16 @@ class Editor {
                     
                     // Update engine input based on joystick position
                     const threshold = 0.3;
-                    const isFlying = this.isFlying || (this.engine.localPlayer && this.engine.localPlayer.isFlying);
+                    
+                    // Only allow fly mode in editor/test mode, never in play mode
+                    const isPlayMode = this.engine.state === GameState.PLAYING;
+                    const isFlying = !isPlayMode && (this.isFlying || (this.engine.localPlayer && this.engine.localPlayer.isFlying));
                     
                     // Horizontal movement (always available)
                     this.engine.setTouchInput('left', this.joystickState.x < -threshold);
                     this.engine.setTouchInput('right', this.joystickState.x > threshold);
                     
-                    // Vertical movement (only in fly mode)
+                    // Vertical movement (only in fly mode, and never in play mode)
                     if (isFlying) {
                         this.engine.setTouchInput('up', this.joystickState.y < -threshold);
                         this.engine.setTouchInput('down', this.joystickState.y > threshold);

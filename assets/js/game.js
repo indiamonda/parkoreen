@@ -747,8 +747,13 @@ class WorldObject {
         
         // Teleportal-specific properties
         this.teleportalName = config.teleportalName || null;
-        this.sendTo = config.sendTo || []; // Array of teleportal names this portal sends to
-        this.receiveFrom = config.receiveFrom || []; // Array of teleportal names this portal receives from
+        // sendTo/receiveFrom: Array of {name, enabled} objects (backward compatible with string arrays)
+        this.sendTo = (config.sendTo || []).map(item => 
+            typeof item === 'string' ? { name: item, enabled: true } : item
+        );
+        this.receiveFrom = (config.receiveFrom || []).map(item => 
+            typeof item === 'string' ? { name: item, enabled: true } : item
+        );
         
         this.name = config.name || this.getDefaultName();
     }
@@ -1433,8 +1438,10 @@ class World {
             const portalCenterY = portal.y + portal.height / 2 - camera.y;
             
             // Process sendTo connections
-            for (const targetName of portal.sendTo) {
-                if (!targetName) continue;
+            for (const conn of portal.sendTo) {
+                const targetName = conn?.name || conn;
+                const isEnabled = conn?.enabled !== false;
+                if (!targetName || !isEnabled) continue;
                 
                 const targetPortal = teleportals.find(p => p.teleportalName === targetName);
                 if (!targetPortal) continue;
@@ -1442,8 +1449,9 @@ class World {
                 const targetCenterX = targetPortal.x + targetPortal.width / 2 - camera.x;
                 const targetCenterY = targetPortal.y + targetPortal.height / 2 - camera.y;
                 
-                // Check if this is a valid two-way connection
-                const isValid = targetPortal.receiveFrom.includes(portal.teleportalName);
+                // Check if this is a valid two-way connection (target receives from this portal and is enabled)
+                const receiveConn = targetPortal.receiveFrom.find(c => (c?.name || c) === portal.teleportalName);
+                const isValid = receiveConn && receiveConn?.enabled !== false;
                 
                 if (isValid) {
                     // Valid connection: Green glowing line with animated arrows
@@ -1455,14 +1463,17 @@ class World {
             }
             
             // Process receiveFrom connections (only render invalid ones - valid ones already rendered from sender)
-            for (const sourceName of portal.receiveFrom) {
-                if (!sourceName) continue;
+            for (const conn of portal.receiveFrom) {
+                const sourceName = conn?.name || conn;
+                const isEnabled = conn?.enabled !== false;
+                if (!sourceName || !isEnabled) continue;
                 
                 const sourcePortal = teleportals.find(p => p.teleportalName === sourceName);
                 if (!sourcePortal) continue;
                 
-                // Check if source portal sends to this one
-                const isValid = sourcePortal.sendTo.includes(portal.teleportalName);
+                // Check if source portal sends to this one (and is enabled)
+                const sendConn = sourcePortal.sendTo.find(c => (c?.name || c) === portal.teleportalName);
+                const isValid = sendConn && sendConn?.enabled !== false;
                 
                 if (!isValid) {
                     // Invalid receive: Red arrows coming IN to this portal
@@ -2022,6 +2033,9 @@ class GameEngine {
         
         this.isRunning = true;
         this.lastTime = performance.now();
+        this.accumulator = 0;
+        // Fixed timestep: 60 ticks per second
+        this.fixedDeltaTime = 1 / 60;
         // Bind once to avoid creating new functions every frame
         this._boundGameLoop = this._boundGameLoop || this.gameLoop.bind(this);
         requestAnimationFrame(this._boundGameLoop);
@@ -2037,10 +2051,21 @@ class GameEngine {
         // Use performance.now() if not provided (first call)
         currentTime = currentTime || performance.now();
         
-        const deltaTime = (currentTime - this.lastTime) / 1000;
+        let deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
         
-        this.update(deltaTime);
+        // Cap deltaTime to prevent spiral of death on slow frames
+        if (deltaTime > 0.25) deltaTime = 0.25;
+        
+        // Accumulate time for fixed timestep physics
+        this.accumulator += deltaTime;
+        
+        // Run physics at fixed 60Hz
+        while (this.accumulator >= this.fixedDeltaTime) {
+            this.update(this.fixedDeltaTime);
+            this.accumulator -= this.fixedDeltaTime;
+        }
+        
         this.render();
         
         requestAnimationFrame(this._boundGameLoop);
@@ -2174,8 +2199,10 @@ class GameEngine {
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
             // Check if this portal has valid send connections
-            for (const targetName of obj.sendTo) {
-                if (!targetName) continue;
+            for (const conn of obj.sendTo) {
+                const targetName = conn?.name || conn;
+                const isEnabled = conn?.enabled !== false;
+                if (!targetName || !isEnabled) continue;
                 
                 // Find the target portal (must also be acting as portal)
                 const targetPortal = this.world.objects.find(p => 
@@ -2186,8 +2213,9 @@ class GameEngine {
                 
                 if (!targetPortal) continue;
                 
-                // Check if it's a valid two-way connection
-                const isValid = targetPortal.receiveFrom.includes(obj.teleportalName);
+                // Check if it's a valid two-way connection (target receives from this portal and is enabled)
+                const receiveConn = targetPortal.receiveFrom.find(c => (c?.name || c) === obj.teleportalName);
+                const isValid = receiveConn && receiveConn?.enabled !== false;
                 
                 if (isValid) {
                     // Teleport the player to the target portal

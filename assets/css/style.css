@@ -552,19 +552,19 @@ a:hover {
 .teleportal-connection-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    max-height: 150px;
+    gap: 8px;
+    max-height: 200px;
     overflow-y: auto;
 }
 
 .teleportal-connection-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
+    gap: 10px;
+    padding: 10px 12px;
     border-radius: var(--border-radius);
     background: var(--surface);
-    border-left: 3px solid #f87171;
+    border-left: 4px solid #f87171;
     transition: border-color var(--transition), background var(--transition);
 }
 
@@ -574,8 +574,8 @@ a:hover {
 
 .teleportal-connection-item select {
     flex: 1;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 8px 10px;
+    font-size: 13px;
     background: var(--bg-medium);
     border: 1px solid var(--surface-light);
     border-radius: var(--border-radius);
@@ -583,8 +583,8 @@ a:hover {
 }
 
 .teleportal-connection-item .remove-connection {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     display: flex;
     align-items: center;
@@ -608,6 +608,131 @@ a:hover {
     color: var(--text-muted);
     font-size: 12px;
     font-style: italic;
+}
+
+.teleportal-connection-item .toggle-connection {
+    width: 28px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #f87171;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    transition: background var(--transition), color var(--transition);
+}
+
+.teleportal-connection-item .toggle-connection.enabled {
+    color: #4ade80;
+}
+
+.teleportal-connection-item .toggle-connection:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.teleportal-connection-item.disabled {
+    opacity: 0.5;
+    border-left-color: #666 !important;
+}
+
+.teleportal-connection-item.disabled select {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* ====================================
+   INSPECT BOX (Test Mode)
+   ==================================== */
+.inspect-box-container {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.inspect-box-container.hidden {
+    transform: translateX(calc(-100% - 32px));
+}
+
+.inspect-box {
+    background: rgba(20, 20, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 200px;
+    max-width: 350px;
+    font-size: 12px;
+    color: #e0e0e0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+}
+
+.inspect-box-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #4ade80;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.inspect-box-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.inspect-box-row {
+    display: flex;
+    gap: 8px;
+}
+
+.inspect-box-key {
+    color: #888;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.inspect-box-value {
+    color: #fff;
+    word-break: break-word;
+}
+
+.inspect-box-empty {
+    color: #666;
+    font-style: italic;
+}
+
+.inspect-toggle-btn {
+    position: absolute;
+    top: 8px;
+    right: -36px;
+    width: 28px;
+    height: 28px;
+    background: rgba(20, 20, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #aaa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, background 0.2s ease;
+}
+
+.inspect-toggle-btn:hover {
+    background: rgba(40, 40, 50, 0.95);
+    color: #fff;
+}
+
+.inspect-box-container.hidden .inspect-toggle-btn {
+    transform: rotate(180deg);
 }
 
 /* ====================================
