@@ -2798,12 +2798,12 @@ class Editor {
         // Touchscreen listener
         touchscreen.addEventListener('change', (e) => {
             this.engine.touchscreenMode = e.target.checked;
-            localStorage.setItem('parkoreen_touchscreen', e.target.checked);
+            Settings.set('touchscreenMode', e.target.checked);
             this.updateTouchControls();
         });
 
         // Load saved settings
-        const savedTouchscreen = localStorage.getItem('parkoreen_touchscreen') === 'true';
+        const savedTouchscreen = Settings.get('touchscreenMode');
         touchscreen.checked = savedTouchscreen;
         this.engine.touchscreenMode = savedTouchscreen;
 

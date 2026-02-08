@@ -78,6 +78,82 @@
         </div>
     </div>
 
+    <!-- Loading Screen -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <img src="assets/png/logo.png" alt="Parkoreen" style="width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+            </div>
+            <h2 class="loading-title">Loading Parkoreen</h2>
+            <div class="loading-progress-container">
+                <div class="loading-progress-bar" id="loading-progress-bar"></div>
+            </div>
+            <div class="loading-status" id="loading-status">Initializing...</div>
+            <div class="loading-size" id="loading-size"></div>
+        </div>
+    </div>
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            transition: opacity 0.5s ease;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+        .loading-logo {
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .loading-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #4ade80;
+        }
+        .loading-progress-container {
+            width: 300px;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 auto 16px;
+        }
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .loading-status {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 8px;
+        }
+        .loading-size {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+        }
+    </style>
+
     <!-- End Game Screen -->
     <div class="end-game-overlay hidden" id="end-game-overlay">
         <div class="end-game-modal">
@@ -249,6 +325,129 @@
             if (favicon64) favicon64.href = `assets/png/icons/icon-${type}-64.png`;
         }
 
+        // Resource Loader
+        class ResourceLoader {
+            constructor() {
+                this.totalBytes = 0;
+                this.loadedBytes = 0;
+                this.resources = [];
+            }
+            
+            updateProgress(status) {
+                const progressBar = document.getElementById('loading-progress-bar');
+                const statusEl = document.getElementById('loading-status');
+                const sizeEl = document.getElementById('loading-size');
+                
+                if (progressBar && this.resources.length > 0) {
+                    const percent = Math.min(100, (this.loadedBytes / Math.max(1, this.totalBytes)) * 100);
+                    progressBar.style.width = percent + '%';
+                }
+                if (statusEl && status) {
+                    statusEl.textContent = status;
+                }
+                if (sizeEl && this.totalBytes > 0) {
+                    const loaded = this.formatBytes(this.loadedBytes);
+                    const total = this.formatBytes(this.totalBytes);
+                    sizeEl.textContent = `${loaded} / ${total}`;
+                }
+            }
+            
+            formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+            
+            async preloadImage(src) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.loadedBytes += 50000; // Estimate ~50KB per image
+                        this.updateProgress('Loading images...');
+                        resolve(img);
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = src;
+                });
+            }
+            
+            async preloadAudio(src) {
+                return new Promise((resolve) => {
+                    const audio = new Audio();
+                    audio.oncanplaythrough = () => {
+                        this.loadedBytes += 500000; // Estimate ~500KB per audio
+                        this.updateProgress('Loading audio...');
+                        resolve(audio);
+                    };
+                    audio.onerror = () => resolve(null);
+                    audio.src = src;
+                });
+            }
+            
+            async preloadScript(src) {
+                return new Promise((resolve) => {
+                    // Scripts are already loaded, just track
+                    this.loadedBytes += 100000; // Estimate ~100KB per script
+                    this.updateProgress('Loading scripts...');
+                    resolve();
+                });
+            }
+            
+            async loadAll() {
+                this.updateProgress('Preparing resources...');
+                
+                // List of resources to preload
+                const images = [
+                    'assets/png/logo.png',
+                    'assets/png/spike-64x.svg',
+                    'assets/png/spike-512x.svg',
+                    'assets/png/icons/icon-play-512.png'
+                ];
+                
+                const audio = [
+                    'assets/mp3/jump.mp3',
+                    'assets/mp3/death.mp3',
+                    'assets/mp3/checkpoint.mp3',
+                    'assets/mp3/finish.mp3',
+                    'assets/mp3/maccary-bay.mp3',
+                    'assets/mp3/reggae-party.mp3'
+                ];
+                
+                // Estimate total size
+                this.totalBytes = (images.length * 50000) + (audio.length * 500000) + 400000; // +400KB for scripts
+                this.updateProgress('Loading resources...');
+                
+                // Preload images
+                for (const src of images) {
+                    await this.preloadImage(src);
+                }
+                
+                // Preload audio (in parallel for speed)
+                this.updateProgress('Loading audio...');
+                await Promise.all(audio.map(src => this.preloadAudio(src)));
+                
+                // Mark scripts as loaded
+                this.loadedBytes += 400000;
+                this.updateProgress('Finalizing...');
+                
+                return true;
+            }
+            
+            hide() {
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.classList.add('hidden');
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 500);
+                }
+            }
+        }
+        
+        const resourceLoader = new ResourceLoader();
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Check auth
             if (!Auth.requireAuth()) return;
@@ -258,12 +457,18 @@
             currentMapId = params.get('map');
             currentMode = params.get('mode') || 'edit';
             const roomCode = params.get('room');
+            
+            // Preload resources first
+            resourceLoader.updateProgress('Loading resources...');
+            await resourceLoader.loadAll();
 
             // Initialize game engine
+            resourceLoader.updateProgress('Initializing game engine...');
             engine = new GameEngine('game-canvas');
             engine.start();
 
             // Initialize editor
+            resourceLoader.updateProgress('Setting up editor...');
             editor = new Editor(engine);
             editor.initUI();
             editor.updateBackground();
@@ -281,9 +486,11 @@
             // Load map or game data
             if (currentMode === 'play' && roomCode) {
                 // Join existing game
+                resourceLoader.updateProgress('Joining game...');
                 await initializePlayMode(roomCode);
             } else if (currentMapId) {
                 // Load map for editing or hosting
+                resourceLoader.updateProgress('Loading map data...');
                 await loadMap(currentMapId);
                 
                 if (currentMode === 'host') {
@@ -331,6 +538,12 @@
                     await saveMapSilent();
                 };
             }
+            
+            // Hide loading screen after everything is ready
+            resourceLoader.updateProgress('Ready!');
+            setTimeout(() => {
+                resourceLoader.hide();
+            }, 300);
         });
         
         // Silent save (no toast) for auto-save on change

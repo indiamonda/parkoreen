@@ -197,7 +197,6 @@ class Player {
 
         // Handle jump - infinite jumps in editor mode
         // Check coyote time - if within grace period, the jump counts as a ground jump
-        const now = Date.now();
         const inCoyoteTime = this.coyoteTimeStart !== null && (now - this.coyoteTimeStart) <= this.COYOTE_TIME;
         const canJumpNow = editorMode ? true : (this.jumpsRemaining > 0 || inCoyoteTime);
         
