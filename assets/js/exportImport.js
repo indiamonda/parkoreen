@@ -318,7 +318,7 @@ class ExportManager {
                 const binary = BinaryUtils.encode(data);
                 zip.file('data.dat', binary);
             } else {
-                const json = JSON.stringify(data, null, 2);
+        const json = JSON.stringify(data, null, 2);
                 zip.file('data.json', json);
             }
             
@@ -336,19 +336,19 @@ class ExportManager {
             });
             
             // Download
-            const url = URL.createObjectURL(blob);
-            const name = filename || world.mapName || 'untitled_map';
-            const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${safeName}.pkrn`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            return true;
+        const url = URL.createObjectURL(blob);
+        const name = filename || world.mapName || 'untitled_map';
+        const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeName}.pkrn`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        return true;
         } catch (err) {
             console.error('Export failed:', err);
             throw new Error('Failed to export: ' + err.message);
@@ -496,7 +496,7 @@ class ImportManager {
      * @returns {Promise<Object>} Parsed data
      */
     async importFromFile(file) {
-        if (!file.name.endsWith('.pkrn')) {
+            if (!file.name.endsWith('.pkrn')) {
             throw new Error('Invalid file type. Please select a .pkrn file.');
         }
 
@@ -567,15 +567,15 @@ class ImportManager {
             const json = decoder.decode(buffer);
             const data = JSON.parse(json);
             
-            const result = this.validate(data);
-            if (result.valid) {
+                    const result = this.validate(data);
+                    if (result.valid) {
                 return this.deserialize(data);
-            } else {
+                    } else {
                 throw new Error(result.error);
-            }
-        } catch (err) {
+                    }
+                } catch (err) {
             throw new Error('Failed to parse legacy format: ' + err.message);
-        }
+                }
     }
     
     /**
@@ -893,7 +893,7 @@ class CloudSyncManager {
                 'Authorization': `Bearer ${token}`
             }
         });
-
+        
         if (!response.ok) {
             throw new Error('Failed to list maps');
         }
@@ -916,14 +916,14 @@ class CloudSyncManager {
         });
 
         return response.ok;
+        }
     }
-}
 
 // Export for use
 if (typeof window !== 'undefined') {
-    window.ExportManager = ExportManager;
-    window.ImportManager = ImportManager;
-    window.CloudSyncManager = CloudSyncManager;
+window.ExportManager = ExportManager;
+window.ImportManager = ImportManager;
+window.CloudSyncManager = CloudSyncManager;
     window.PKRN_VERSION = PKRN_VERSION;
     window.PKRN_DEFAULTS = PKRN_DEFAULTS;
 }
