@@ -665,6 +665,10 @@ class MultiplayerManager {
             case 'player_position':
                 this.emit('playerPosition', data);
                 break;
+            
+            case 'position_ack':
+                this.emit('positionAck', data);
+                break;
                 
             case 'player_kicked':
                 this.emit('kicked', data);
@@ -750,13 +754,14 @@ class MultiplayerManager {
         this.players.clear();
     }
 
-    sendPosition(x, y, vx = 0, vy = 0) {
+    sendPosition(x, y, vx = 0, vy = 0, jumps = 1) {
         this.send({
             type: 'position',
             x,
             y,
             vx,
-            vy
+            vy,
+            jumps
         });
     }
 

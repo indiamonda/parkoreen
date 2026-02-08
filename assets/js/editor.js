@@ -126,7 +126,9 @@ class Editor {
         
         // Erase settings
         this.eraseSettings = {
-            eraseType: 'all' // 'all', 'top', 'bottom'
+            eraseType: 'all', // 'all', 'top', 'bottom'
+            width: 1,  // Width in grid units
+            height: 1  // Height in grid units
         };
         
         // Teleportal settings
@@ -878,10 +880,13 @@ class Editor {
     }
     
     createEraseToolbar() {
-        const eraseToolbar = document.createElement('div');
-        eraseToolbar.className = 'erase-toolbar';
-        eraseToolbar.id = 'erase-toolbar';
-        eraseToolbar.innerHTML = `
+        // Erase options are now part of the placement toolbar
+        // This creates a container that will be shown inside placement toolbar when erasing
+        const eraseOptions = document.createElement('div');
+        eraseOptions.id = 'erase-options';
+        eraseOptions.className = 'erase-options';
+        eraseOptions.style.display = 'none';
+        eraseOptions.innerHTML = `
             <div class="placement-option">
                 <span class="placement-option-label">Erase Type</span>
                 <div class="placement-option-btns">
@@ -890,9 +895,19 @@ class Editor {
                     <button class="placement-opt-btn" data-erase-type="bottom">Bottom Layer</button>
                 </div>
             </div>
+            <div class="placement-option">
+                <span class="placement-option-label">Eraser Size</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 12px; color: var(--text-muted);">W:</label>
+                    <input type="number" id="erase-width" class="form-input" style="width: 60px;" value="1" min="1" max="20">
+                    <label style="font-size: 12px; color: var(--text-muted);">H:</label>
+                    <input type="number" id="erase-height" class="form-input" style="width: 60px;" value="1" min="1" max="20">
+                </div>
+            </div>
         `;
-        document.body.appendChild(eraseToolbar);
-        this.ui.eraseToolbar = eraseToolbar;
+        // Append to placement toolbar instead of body
+        this.ui.placementToolbar.appendChild(eraseOptions);
+        this.ui.eraseOptions = eraseOptions;
     }
 
     createSettingsPanel() {
@@ -1968,7 +1983,7 @@ class Editor {
         this.closeZoneEditPopup();
         
         // Hide all UI except the stop button
-        document.querySelectorAll('.toolbar, .panel, .add-menu, .placement-toolbar, .erase-toolbar, .editor-btn-corner').forEach(el => {
+        document.querySelectorAll('.toolbar, .panel, .add-menu, .placement-toolbar, .editor-btn-corner').forEach(el => {
             el.style.display = 'none';
         });
         
@@ -2193,8 +2208,12 @@ class Editor {
         
         this.ui.btnAdd.addEventListener('click', (e) => {
             e.stopPropagation();
-            // If in placement mode, stop it; otherwise toggle add menu
-            if (this.placementMode !== PlacementMode.NONE) {
+            // If in erase mode, stop it
+            if (this.isErasing) {
+                this.setTool(EditorTool.ERASE); // Toggle off
+            }
+            // If in placement mode, stop it
+            else if (this.placementMode !== PlacementMode.NONE) {
                 this.stopPlacement();
             } else {
                 this.toggleAddMenu();
@@ -2316,7 +2335,15 @@ class Editor {
         document.getElementById('placement-color-input').addEventListener('change', (e) => {
             const color = e.target.value;
             if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                if (this.placementMode === PlacementMode.TEXT) {
+                    this.textSettings.color = color;
+                } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+                    this.teleportalSettings.color = color;
+                } else if (this.placementMode === PlacementMode.KOREEN) {
+                    this.koreenSettings.color = color;
+                } else {
                 this.placementSettings.color = color;
+                }
                 document.getElementById('placement-color-preview').style.background = color;
             }
         });
@@ -2331,6 +2358,8 @@ class Editor {
                 this.koreenSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.TEXT) {
                 this.textSettings.opacity = opacity / 100;
+            } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+                this.teleportalSettings.opacity = opacity / 100;
             }
         });
 
@@ -2385,6 +2414,24 @@ class Editor {
                 this.eraseSettings.eraseType = btn.dataset.eraseType;
             });
         });
+        
+        // Eraser size
+        const widthInput = document.getElementById('erase-width');
+        const heightInput = document.getElementById('erase-height');
+        
+        if (widthInput) {
+            widthInput.addEventListener('change', (e) => {
+                this.eraseSettings.width = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
+                e.target.value = this.eraseSettings.width;
+            });
+        }
+        
+        if (heightInput) {
+            heightInput.addEventListener('change', (e) => {
+                this.eraseSettings.height = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
+                e.target.value = this.eraseSettings.height;
+            });
+        }
     }
 
     attachConfigListeners() {
@@ -3173,6 +3220,7 @@ class Editor {
         if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
         if (this.currentTool === EditorTool.ERASE) {
             this.isErasing = false;
+                this.hideEraseMode();
             }
         }
 
@@ -3186,8 +3234,10 @@ class Editor {
         if (tool === this.currentTool) {
             // Toggle off
             this.currentTool = EditorTool.NONE;
-            // Hide erase toolbar
-            this.ui.eraseToolbar?.classList.remove('active');
+            if (this.isErasing) {
+                this.isErasing = false;
+                this.hideEraseMode();
+            }
         } else {
             this.currentTool = tool;
             const btn = this.ui.toolbar.querySelector(`[data-tool="${tool}"]`);
@@ -3196,13 +3246,68 @@ class Editor {
             // Activate tool
             if (tool === EditorTool.ERASE) {
                 this.isErasing = true;
-                // Show erase toolbar
-                this.ui.eraseToolbar?.classList.add('active');
+                this.showEraseMode();
             } else {
-                // Hide erase toolbar for other tools
-                this.ui.eraseToolbar?.classList.remove('active');
+                // Hide erase mode for other tools
+                this.hideEraseMode();
             }
         }
+    }
+    
+    showEraseMode() {
+        // Show placement toolbar with erase options
+        this.ui.placementToolbar.classList.add('active');
+        
+        // Hide all placement options
+        this.ui.placementToolbar.querySelectorAll('.placement-option').forEach(opt => {
+            if (!opt.closest('#erase-options')) {
+                opt.style.display = 'none';
+            }
+        });
+        
+        // Show erase options
+        if (this.ui.eraseOptions) {
+            this.ui.eraseOptions.style.display = 'block';
+        }
+        
+        // Change Add button to Close button
+        const addBtnIcon = this.ui.btnAdd.querySelector('.material-symbols-outlined');
+        if (addBtnIcon) {
+            addBtnIcon.textContent = 'close';
+        }
+        this.ui.btnAdd.title = 'Stop Erasing (Q or Esc)';
+        
+        // Hide toolbar and layers button
+        this.ui.toolbar.classList.add('hidden');
+        this.ui.btnLayers.classList.add('hidden');
+    }
+    
+    hideEraseMode() {
+        // Hide erase options
+        if (this.ui.eraseOptions) {
+            this.ui.eraseOptions.style.display = 'none';
+        }
+        
+        // Show all placement options again
+        this.ui.placementToolbar.querySelectorAll('.placement-option').forEach(opt => {
+            opt.style.display = '';
+        });
+        
+        // Hide placement toolbar if not in placement mode
+        if (this.placementMode === PlacementMode.NONE) {
+            this.ui.placementToolbar.classList.remove('active');
+        }
+        
+        // Restore Add button
+        const addBtnIcon = this.ui.btnAdd.querySelector('.material-symbols-outlined');
+        if (addBtnIcon) {
+            addBtnIcon.textContent = 'add';
+        }
+        this.ui.btnAdd.title = 'Add';
+        
+        // Show toolbar and layers button
+        this.ui.toolbar.classList.remove('hidden');
+        this.ui.btnLayers.classList.remove('hidden');
     }
     
     toggleFlyMode() {
@@ -3231,8 +3336,7 @@ class Editor {
         if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
             if (this.currentTool === EditorTool.ERASE) {
                 this.isErasing = false;
-                // Hide erase toolbar
-                this.ui.eraseToolbar?.classList.remove('active');
+                this.hideEraseMode();
             }
             this.currentTool = EditorTool.NONE;
             
@@ -3499,7 +3603,7 @@ class Editor {
                 colorInput.value = this.textSettings.color || '#000000';
             }
         } else if (this.placementMode === PlacementMode.TELEPORTAL) {
-            // Teleportal has minimal options - just acting type
+            // Teleportal options - acting type, color, and opacity
             options.acting.classList.remove('hidden');
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
@@ -3516,6 +3620,15 @@ class Editor {
                 <button class="placement-opt-btn ${this.teleportalSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
             `;
             this.reattachActingListeners();
+            
+            // Sync color picker with teleportal settings
+            const teleportalColor = this.teleportalSettings.color || '#9C27B0';
+            document.getElementById('placement-color-preview').style.background = teleportalColor;
+            document.getElementById('placement-color-input').value = teleportalColor;
+            
+            // Sync opacity
+            const teleportalOpacity = Math.round((this.teleportalSettings.opacity || 1) * 100);
+            document.getElementById('placement-opacity-input').value = teleportalOpacity;
         }
     }
     
@@ -3939,6 +4052,10 @@ class Editor {
         if (target === 'placement') {
             if (this.placementMode === PlacementMode.TEXT) {
                 this.textSettings.color = hex;
+            } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+                this.teleportalSettings.color = hex;
+            } else if (this.placementMode === PlacementMode.KOREEN) {
+                this.koreenSettings.color = hex;
             } else {
                 this.placementSettings.color = hex;
             }
@@ -4037,6 +4154,10 @@ class Editor {
         if (e.ctrlKey || e.metaKey) return;
         
         switch (e.code) {
+            case 'KeyQ':
+                e.preventDefault();
+                this.setTool(EditorTool.ERASE);
+                break;
             case 'KeyM':
                 e.preventDefault();
                 this.setTool(EditorTool.MOVE);
@@ -4044,6 +4165,10 @@ class Editor {
             case 'KeyC':
                 e.preventDefault();
                 this.setTool(EditorTool.DUPLICATE);
+                break;
+            case 'KeyR':
+                e.preventDefault();
+                this.setTool(EditorTool.ROTATE);
                 break;
         }
     }
@@ -4141,10 +4266,16 @@ class Editor {
 
         // Quick eraser
         if (this.isErasing && this.engine.mouse.down && !this.isOverUI(e)) {
-            const obj = this.getObjectToErase(worldPos.x, worldPos.y);
-            if (obj) {
+            const objOrObjs = this.getObjectToErase(worldPos.x, worldPos.y);
+            if (objOrObjs) {
+                // Handle array (all mode) or single object
+                const objects = Array.isArray(objOrObjs) ? objOrObjs : [objOrObjs];
+                for (const obj of objects) {
                 this.world.removeObject(obj.id);
+                }
+                if (objects.length > 0) {
                 this.triggerMapChange();
+                }
             }
         }
 
@@ -4215,10 +4346,16 @@ class Editor {
                 break;
             
             case EditorTool.ERASE:
-                const objToErase = this.getObjectToErase(worldPos.x, worldPos.y);
-                if (objToErase) {
-                    this.world.removeObject(objToErase.id);
+                const objOrObjsToErase = this.getObjectToErase(worldPos.x, worldPos.y);
+                if (objOrObjsToErase) {
+                    // Handle array (all mode) or single object
+                    const objectsToErase = Array.isArray(objOrObjsToErase) ? objOrObjsToErase : [objOrObjsToErase];
+                    for (const obj of objectsToErase) {
+                        this.world.removeObject(obj.id);
+                    }
+                    if (objectsToErase.length > 0) {
                     this.triggerMapChange();
+                    }
                 }
                 break;
             
@@ -4289,15 +4426,38 @@ class Editor {
     // ========================================
     // OBJECT ERASING
     // ========================================
-    getObjectToErase(x, y) {
-        // Get all objects at this position
-        const objectsAtPos = this.world.getObjectsAt(x, y);
+    getObjectsInEraserArea(x, y) {
+        // Get eraser dimensions in pixels
+        const eraserWidth = this.eraseSettings.width * GRID_SIZE;
+        const eraserHeight = this.eraseSettings.height * GRID_SIZE;
         
-        if (objectsAtPos.length === 0) return null;
-        if (objectsAtPos.length === 1) return objectsAtPos[0];
+        // Center the eraser on the mouse position (grid-aligned)
+        const gridPos = this.engine.getGridAlignedPos(x, y);
+        const halfW = Math.floor(this.eraseSettings.width / 2) * GRID_SIZE;
+        const halfH = Math.floor(this.eraseSettings.height / 2) * GRID_SIZE;
+        const eraserX = gridPos.x - halfW;
+        const eraserY = gridPos.y - halfH;
+        
+        // Get all objects that intersect with the eraser area
+        const objectsInArea = this.world.objects.filter(obj => {
+            return obj.x < eraserX + eraserWidth &&
+                   obj.x + obj.width > eraserX &&
+                   obj.y < eraserY + eraserHeight &&
+                   obj.y + obj.height > eraserY;
+        });
+        
+        return objectsInArea;
+    }
+    
+    getObjectToErase(x, y) {
+        // Get all objects in eraser area
+        const objectsInArea = this.getObjectsInEraserArea(x, y);
+        
+        if (objectsInArea.length === 0) return null;
+        if (objectsInArea.length === 1) return objectsInArea[0];
         
         // Sort by array index (layer order in world.objects)
-        objectsAtPos.sort((a, b) => {
+        objectsInArea.sort((a, b) => {
             const indexA = this.world.objects.indexOf(a);
             const indexB = this.world.objects.indexOf(b);
             return indexA - indexB;
@@ -4305,16 +4465,16 @@ class Editor {
         
         switch (this.eraseSettings.eraseType) {
             case 'all':
-                // Return the topmost (last in array = rendered on top)
-                return objectsAtPos[objectsAtPos.length - 1];
+                // Return ALL objects in the area for bulk erase
+                return objectsInArea;
             case 'top':
                 // Return the topmost object (highest index)
-                return objectsAtPos[objectsAtPos.length - 1];
+                return objectsInArea[objectsInArea.length - 1];
             case 'bottom':
                 // Return the bottommost object (lowest index)
-                return objectsAtPos[0];
+                return objectsInArea[0];
             default:
-                return objectsAtPos[objectsAtPos.length - 1];
+                return objectsInArea[objectsInArea.length - 1];
         }
     }
 
@@ -5326,6 +5486,32 @@ class Editor {
             ctx.lineWidth = 3 / camera.zoom;
             const pad2 = 2 / camera.zoom;
             ctx.strokeRect(screenX - pad2, screenY - pad2, width + pad2 * 2, height + pad2 * 2);
+        }
+        
+        // Eraser size indicator
+        if (this.isErasing && this.engine.state === GameState.EDITOR) {
+            const worldPos = this.engine.getMouseWorldPos();
+            const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+            
+            // Calculate eraser rectangle (centered on grid position)
+            const eraserWidth = this.eraseSettings.width * GRID_SIZE;
+            const eraserHeight = this.eraseSettings.height * GRID_SIZE;
+            const halfW = Math.floor(this.eraseSettings.width / 2) * GRID_SIZE;
+            const halfH = Math.floor(this.eraseSettings.height / 2) * GRID_SIZE;
+            const eraserX = gridPos.x - halfW;
+            const eraserY = gridPos.y - halfH;
+            
+            const screenX = eraserX - camera.x;
+            const screenY = eraserY - camera.y;
+            
+            // Draw eraser area
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+            ctx.fillRect(screenX, screenY, eraserWidth, eraserHeight);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2 / camera.zoom;
+            ctx.setLineDash([6 / camera.zoom, 3 / camera.zoom]);
+            ctx.strokeRect(screenX, screenY, eraserWidth, eraserHeight);
+            ctx.setLineDash([]);
         }
 
         // Placement preview

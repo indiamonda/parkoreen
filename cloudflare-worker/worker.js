@@ -924,14 +924,34 @@ class GameRoom {
     handlePosition(session, data) {
         if (!session.roomCode) return;
 
+        // Store server-authoritative position
+        session.x = data.x;
+        session.y = data.y;
+        session.vx = data.vx || 0;
+        session.vy = data.vy || 0;
+        session.jumps = data.jumps ?? 1;
+
+        // Broadcast to other players
         this.broadcastToRoom(session.roomCode, {
             type: 'player_position',
             playerId: session.id,
             x: data.x,
             y: data.y,
             vx: data.vx || 0,
-            vy: data.vy || 0
+            vy: data.vy || 0,
+            jumps: data.jumps ?? 1
         }, session.id);
+
+        // Echo back to sender for reconciliation
+        this.send(session, {
+            type: 'position_ack',
+            x: data.x,
+            y: data.y,
+            vx: data.vx || 0,
+            vy: data.vy || 0,
+            jumps: data.jumps ?? 1,
+            timestamp: Date.now()
+        });
     }
 
     handleKickPlayer(session, data) {

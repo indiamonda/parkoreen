@@ -96,8 +96,8 @@ class Player {
         };
         
         // Touchboxes - positioned lower on the player sprite
-        // Ground touchbox: used for ground collision (slightly smaller, lower)
-        this.groundTouchbox = { x: 4, y: 8, width: PLAYER_SIZE - 8, height: PLAYER_SIZE - 8 };
+        // Ground touchbox: used for ground collision (full width for partial ground contact)
+        this.groundTouchbox = { x: 0, y: 8, width: PLAYER_SIZE, height: PLAYER_SIZE - 8 };
         // Hurt touchbox: used for spike damage detection (smaller, even lower)
         this.hurtTouchbox = { x: 8, y: 12, width: PLAYER_SIZE - 16, height: PLAYER_SIZE - 14 };
         
@@ -112,7 +112,7 @@ class Player {
         
         // Coyote time - grace period after leaving ground where ground jump still counts
         this.coyoteTimeStart = null;
-        this.COYOTE_TIME = 170; // 0.17 seconds in milliseconds
+        this.COYOTE_TIME = 250; // 0.25 seconds in milliseconds
     }
 
     generateRandomColor() {
@@ -297,6 +297,9 @@ class Player {
             
             // Skip text objects (actingType 'text' means no touchbox)
             if (obj.actingType === 'text') continue;
+            
+            // Skip teleportals - they don't act as ground, only trigger teleportation
+            if (obj.type === 'teleportal') continue;
             
             // Handle spike ground collision based on mode
             if (obj.actingType === 'spike') {
@@ -673,7 +676,7 @@ class Camera {
 }
 
 // ============================================
-// SPIKE IMAGE LOADER
+// IMAGE LOADERS
 // ============================================
 const SpikeImage = {
     image: null,
@@ -682,11 +685,24 @@ const SpikeImage = {
         if (this.image) return;
         this.image = new Image();
         this.image.onload = () => { this.loaded = true; };
-        this.image.src = '/parkoreen/assets/png/spike-64x.svg';
+        this.image.src = '/parkoreen/assets/svg/spike-64x.svg';
     }
 };
-// Load spike image immediately
+
+const PortalImage = {
+    image: null,
+    loaded: false,
+    load() {
+        if (this.image) return;
+        this.image = new Image();
+        this.image.onload = () => { this.loaded = true; };
+        this.image.src = '/parkoreen/assets/svg/portal-64x.svg';
+    }
+};
+
+// Load images immediately
 SpikeImage.load();
+PortalImage.load();
 
 // ============================================
 // WORLD OBJECT CLASS
@@ -969,44 +985,65 @@ class WorldObject {
     }
     
     renderTeleportal(ctx, x, y, w, h) {
-        // Main body - circular portal appearance
         const centerX = x + w / 2;
         const centerY = y + h / 2;
-        const radius = Math.min(w, h) * 0.4;
         
-        // Outer glow
-        const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.3, centerX, centerY, radius);
-        gradient.addColorStop(0, this.color);
-        gradient.addColorStop(0.7, this.color + '80');
-        gradient.addColorStop(1, this.color + '00');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Inner swirl effect
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < 3; i++) {
-            const startAngle = (i * Math.PI * 2 / 3);
-            ctx.arc(centerX, centerY, radius * 0.6, startAngle, startAngle + Math.PI * 0.6);
+        // Use the SVG portal image if loaded
+        if (PortalImage.loaded && PortalImage.image) {
+            // Create an offscreen canvas to tint the portal with the object's color
+            const offscreen = document.createElement('canvas');
+            offscreen.width = w;
+            offscreen.height = h;
+            const offCtx = offscreen.getContext('2d');
+            
+            // Draw the portal image scaled to fit
+            offCtx.drawImage(PortalImage.image, 0, 0, w, h);
+            
+            // Tint the portal with the object's color using source-in blend
+            offCtx.globalCompositeOperation = 'source-in';
+            offCtx.fillStyle = this.color;
+            offCtx.fillRect(0, 0, w, h);
+            
+            // Draw the tinted portal to the main canvas
+            ctx.drawImage(offscreen, x, y);
+        } else {
+            // Fallback: circular portal appearance if image not loaded
+            const radius = Math.min(w, h) * 0.4;
+            
+            // Outer glow
+            const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.3, centerX, centerY, radius);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(0.7, this.color + '80');
+            gradient.addColorStop(1, this.color + '00');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Inner swirl effect
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 3; i++) {
+                const startAngle = (i * Math.PI * 2 / 3);
+                ctx.arc(centerX, centerY, radius * 0.6, startAngle, startAngle + Math.PI * 0.6);
+            }
+            ctx.stroke();
+            
+            // Center dot
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Portal border
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
         }
-        ctx.stroke();
-        
-        // Center dot
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Portal border
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.stroke();
         
         // Teleportal name label
         if (this.teleportalName) {
@@ -1443,17 +1480,14 @@ class World {
         const dist = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         
-        // Glowing green line
+        // Green line (no shadow for performance)
         ctx.save();
         ctx.strokeStyle = '#4ade80';
         ctx.lineWidth = 3;
-        ctx.shadowColor = '#4ade80';
-        ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
-        ctx.shadowBlur = 0;
         
         // Animated arrows along the line
         const arrowCount = Math.max(2, Math.floor(dist / 60));
@@ -1988,15 +2022,20 @@ class GameEngine {
         
         this.isRunning = true;
         this.lastTime = performance.now();
-        this.gameLoop();
+        // Bind once to avoid creating new functions every frame
+        this._boundGameLoop = this._boundGameLoop || this.gameLoop.bind(this);
+        requestAnimationFrame(this._boundGameLoop);
     }
 
     stop() {
         this.isRunning = false;
     }
 
-    gameLoop(currentTime = performance.now()) {
+    gameLoop(currentTime) {
         if (!this.isRunning) return;
+        
+        // Use performance.now() if not provided (first call)
+        currentTime = currentTime || performance.now();
         
         const deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
@@ -2004,7 +2043,7 @@ class GameEngine {
         this.update(deltaTime);
         this.render();
         
-        requestAnimationFrame((t) => this.gameLoop(t));
+        requestAnimationFrame(this._boundGameLoop);
     }
 
     update(deltaTime) {
@@ -2125,7 +2164,8 @@ class GameEngine {
         const now = Date.now();
         if (this.lastTeleportTime && now - this.lastTeleportTime < 500) return;
         
-        const playerBox = this.localPlayer.getGroundTouchbox();
+        // Use smaller hurt touchbox for teleportation detection
+        const playerBox = this.localPlayer.getHurtTouchbox();
         
         for (const obj of this.world.objects) {
             if (obj.type !== 'teleportal') continue;

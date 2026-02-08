@@ -130,18 +130,27 @@
         }
         .loading-progress-container {
             width: 300px;
-            height: 8px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
             overflow: hidden;
             margin: 0 auto 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         .loading-progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #4ade80, #22c55e);
-            border-radius: 4px;
+            background: linear-gradient(90deg, #22c55e, #4ade80, #22c55e);
+            background-size: 200% 100%;
+            border-radius: 5px;
             width: 0%;
             transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3);
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
         .loading-status {
             font-size: 0.9rem;
@@ -325,128 +334,150 @@
             if (favicon64) favicon64.href = `assets/png/icons/icon-${type}-64.png`;
         }
 
-        // Resource Loader
-        class ResourceLoader {
-            constructor() {
-                this.totalBytes = 0;
-                this.loadedBytes = 0;
-                this.resources = [];
-            }
+        // Resource Loading Manager with accurate progress tracking
+        const resourceLoader = {
+            loaded: 0,
+            total: 0,
             
-            updateProgress(status) {
+            updateUI(status) {
                 const progressBar = document.getElementById('loading-progress-bar');
                 const statusEl = document.getElementById('loading-status');
                 const sizeEl = document.getElementById('loading-size');
                 
-                if (progressBar && this.resources.length > 0) {
-                    const percent = Math.min(100, (this.loadedBytes / Math.max(1, this.totalBytes)) * 100);
+                if (statusEl) statusEl.textContent = status;
+                
+                const percent = this.total > 0 ? Math.min(100, (this.loaded / this.total) * 100) : 0;
+                if (progressBar) {
                     progressBar.style.width = percent + '%';
                 }
-                if (statusEl && status) {
-                    statusEl.textContent = status;
+                
+                if (sizeEl) {
+                    const loadedMB = (this.loaded / 1024 / 1024).toFixed(2);
+                    const totalMB = (this.total / 1024 / 1024).toFixed(2);
+                    sizeEl.textContent = `${loadedMB} MB / ${totalMB} MB`;
                 }
-                if (sizeEl && this.totalBytes > 0) {
-                    const loaded = this.formatBytes(this.loadedBytes);
-                    const total = this.formatBytes(this.totalBytes);
-                    sizeEl.textContent = `${loaded} / ${total}`;
-                }
-            }
-            
-            formatBytes(bytes) {
-                if (bytes === 0) return '0 B';
-                const k = 1024;
-                const sizes = ['B', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-            }
+            },
             
             async preloadImage(src) {
                 return new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        this.loadedBytes += 50000; // Estimate ~50KB per image
-                        this.updateProgress('Loading images...');
+                    let resolved = false;
+                    const markLoaded = (size, img) => {
+                        if (resolved) return;
+                        resolved = true;
+                        this.loaded += size;
+                        this.updateUI('Loading images...');
                         resolve(img);
                     };
-                    img.onerror = () => resolve(null);
-                    img.src = src;
+                    
+                    // First get the file size via HEAD request
+                    fetch(src, { method: 'HEAD' })
+                        .then(res => {
+                            const size = parseInt(res.headers.get('content-length') || '50000');
+                            this.total += size;
+                            this.updateUI('Loading images...');
+                            
+                            const img = new Image();
+                            img.onload = () => markLoaded(size, img);
+                            img.onerror = () => markLoaded(size, null);
+                            img.src = src;
+                        })
+                        .catch(() => {
+                            // Fallback: estimate size
+                            const size = 50000;
+                            this.total += size;
+                            markLoaded(size, null);
+                        });
                 });
-            }
+            },
             
             async preloadAudio(src) {
                 return new Promise((resolve) => {
-                    const audio = new Audio();
-                    audio.oncanplaythrough = () => {
-                        this.loadedBytes += 500000; // Estimate ~500KB per audio
-                        this.updateProgress('Loading audio...');
+                    let resolved = false;
+                    const markLoaded = (size, audio) => {
+                        if (resolved) return;
+                        resolved = true;
+                        this.loaded += size;
+                        this.updateUI('Loading audio...');
                         resolve(audio);
                     };
-                    audio.onerror = () => resolve(null);
-                    audio.src = src;
+                    
+                    fetch(src, { method: 'HEAD' })
+                        .then(res => {
+                            const size = parseInt(res.headers.get('content-length') || '500000');
+                            this.total += size;
+                            this.updateUI('Loading audio...');
+                            
+                            const audio = new Audio();
+                            audio.addEventListener('canplaythrough', () => markLoaded(size, audio), { once: true });
+                            audio.onerror = () => markLoaded(size, null);
+                            // Timeout in case canplaythrough never fires
+                            setTimeout(() => markLoaded(size, audio), 5000);
+                            audio.src = src;
+                            audio.load();
+                        })
+                        .catch(() => {
+                            const size = 500000;
+                            this.total += size;
+                            markLoaded(size, null);
+                        });
                 });
-            }
-            
-            async preloadScript(src) {
-                return new Promise((resolve) => {
-                    // Scripts are already loaded, just track
-                    this.loadedBytes += 100000; // Estimate ~100KB per script
-                    this.updateProgress('Loading scripts...');
-                    resolve();
-                });
-            }
+            },
             
             async loadAll() {
-                this.updateProgress('Preparing resources...');
+                this.loaded = 0;
+                this.total = 0;
+                this.updateUI('Preparing...');
                 
-                // List of resources to preload
+                // Define resources to preload
                 const images = [
                     'assets/png/logo.png',
-                    'assets/png/spike-64x.svg',
-                    'assets/png/spike-512x.svg',
-                    'assets/png/icons/icon-play-512.png'
+                    'assets/svg/spike-64x.svg',
+                    'assets/svg/portal-64x.svg',
+                    'assets/png/cover.png'
                 ];
                 
                 const audio = [
                     'assets/mp3/jump.mp3',
-                    'assets/mp3/death.mp3',
-                    'assets/mp3/checkpoint.mp3',
-                    'assets/mp3/finish.mp3',
                     'assets/mp3/maccary-bay.mp3',
                     'assets/mp3/reggae-party.mp3'
                 ];
                 
-                // Estimate total size
-                this.totalBytes = (images.length * 50000) + (audio.length * 500000) + 400000; // +400KB for scripts
-                this.updateProgress('Loading resources...');
-                
-                // Preload images
+                // Load images first
+                this.updateUI('Loading images...');
                 for (const src of images) {
                     await this.preloadImage(src);
                 }
                 
-                // Preload audio (in parallel for speed)
-                this.updateProgress('Loading audio...');
-                await Promise.all(audio.map(src => this.preloadAudio(src)));
+                // Load audio
+                this.updateUI('Loading audio...');
+                for (const src of audio) {
+                    await this.preloadAudio(src);
+                }
                 
-                // Mark scripts as loaded
-                this.loadedBytes += 400000;
-                this.updateProgress('Finalizing...');
+                // Ensure we show 100%
+                this.loaded = this.total;
+                this.updateUI('Ready!');
                 
                 return true;
-            }
+            },
+            
+            // Simple status update (for post-resource loading phases)
+            updateProgress(status) {
+                const statusEl = document.getElementById('loading-status');
+                if (statusEl) statusEl.textContent = status;
+                // Keep progress bar at current level (resources already loaded)
+            },
             
             hide() {
                 const overlay = document.getElementById('loading-overlay');
                 if (overlay) {
                     overlay.classList.add('hidden');
                     setTimeout(() => {
-                        overlay.style.display = 'none';
+                        overlay.remove();
                     }, 500);
                 }
             }
-        }
-        
-        const resourceLoader = new ResourceLoader();
+        };
 
         document.addEventListener('DOMContentLoaded', async () => {
             // Check auth
@@ -714,18 +745,42 @@
             }
         }
         
+        // Server reconciliation threshold (1.5 blocks = 48 pixels)
+        const RECONCILIATION_THRESHOLD = 1.5 * 32; // 48 pixels
+        
+        // Track last sent position to avoid sending redundant updates
+        let lastSentPosition = { x: 0, y: 0, vx: 0, vy: 0, jumps: 1 };
+        
         function startPositionUpdates() {
             setInterval(() => {
                 const mp = window.MultiplayerManager;
                 if (engine.localPlayer && mp && mp.sendPosition && currentMode === 'play') {
-                    mp.sendPosition(
-                        engine.localPlayer.x, 
-                        engine.localPlayer.y,
-                        engine.localPlayer.vx || 0,
-                        engine.localPlayer.vy || 0
-                    );
+                    const player = engine.localPlayer;
+                    
+                    // Only send if position or velocity changed significantly
+                    const posChanged = Math.abs(player.x - lastSentPosition.x) > 1 ||
+                                       Math.abs(player.y - lastSentPosition.y) > 1 ||
+                                       Math.abs((player.vx || 0) - lastSentPosition.vx) > 0.5 ||
+                                       Math.abs((player.vy || 0) - lastSentPosition.vy) > 0.5 ||
+                                       player.jumpsRemaining !== lastSentPosition.jumps;
+                    
+                    if (posChanged) {
+                        lastSentPosition.x = player.x;
+                        lastSentPosition.y = player.y;
+                        lastSentPosition.vx = player.vx || 0;
+                        lastSentPosition.vy = player.vy || 0;
+                        lastSentPosition.jumps = player.jumpsRemaining || 1;
+                        
+                        mp.sendPosition(
+                            player.x, 
+                            player.y,
+                            player.vx || 0,
+                            player.vy || 0,
+                            player.jumpsRemaining || 1
+                        );
+                    }
                 }
-            }, 50); // 20 updates per second
+            }, 100); // 10 updates per second (reduced from 20)
         }
 
         function setupGameHUD() {
@@ -870,6 +925,31 @@
             // Player position update
             mp.on('playerPosition', (data) => {
                 engine.updateRemotePlayer(data.playerId, data.x, data.y, data.vx || 0, data.vy || 0);
+            });
+            
+            // Position acknowledgment from server (for reconciliation)
+            mp.on('positionAck', (data) => {
+                if (!engine.localPlayer) return;
+                
+                const player = engine.localPlayer;
+                const dx = player.x - data.x;
+                const dy = player.y - data.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // If position differs by more than 1.5 blocks (48 pixels), correct position
+                if (distance > RECONCILIATION_THRESHOLD) {
+                    console.log(`[Reconciliation] Position mismatch: ${distance.toFixed(1)}px`);
+                    // Lerp towards server position for smoother correction (70% towards server)
+                    player.x = player.x + (data.x - player.x) * 0.7;
+                    player.y = player.y + (data.y - player.y) * 0.7;
+                    player.vx = data.vx;
+                    player.vy = data.vy;
+                }
+                
+                // Sync jumps from server if different
+                if (data.jumps !== undefined && player.jumpsRemaining !== data.jumps) {
+                    player.jumpsRemaining = data.jumps;
+                }
             });
 
             // Chat message
