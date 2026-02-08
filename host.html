@@ -99,6 +99,9 @@
                 <div class="loading-progress-bar loading-progress-orange" id="loading-progress-part"></div>
             </div>
             <div class="loading-size" id="loading-size-part"></div>
+            
+            <!-- Hints -->
+            <div class="loading-hint" id="loading-hint"></div>
         </div>
     </div>
     <style>
@@ -177,6 +180,24 @@
             font-size: 0.75rem;
             color: rgba(255,255,255,0.5);
             margin-bottom: 4px;
+        }
+        .loading-hint {
+            margin-top: 28px;
+            padding: 16px 24px;
+            max-width: 340px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.7);
+            font-style: italic;
+            line-height: 1.5;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border-left: 3px solid #4ade80;
+            text-align: left;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        .loading-hint.fade-out {
+            opacity: 0;
         }
     </style>
 
@@ -351,6 +372,105 @@
             if (favicon64) favicon64.href = `assets/png/icons/icon-${type}-64.png`;
         }
 
+        // Loading hints
+        const loadingHints = [
+            "Did you know that if you spam left and right on a checkpoint, you get more jumps?",
+            "Don't name yourself JimmyQrg, I dare you.",
+            "I hate the 5 Pantheon. What? I'm not in Hollow Knight? Ah..",
+            "If you set the spike touchbox to Tip Spike, you can walk through them. Don't fall on them though.",
+            "Press R to activate the rotate tool. Click and drag to spin objects!",
+            "Teleportals only work when both ends are connected. Check your Send To and Receive From settings!",
+            "Coyote time gives you 0.25 seconds to jump after walking off a platform. Use it wisely!",
+            "You can flip objects horizontally in the config panel. Great for symmetrical designs!",
+            "Hold Shift while placing to snap objects to the grid.",
+            "The eraser tool (Q) can have custom width and height. Big eraser = big destruction.",
+            "Checkpoints save your position AND refill your jumps. Strategic placement is key!",
+            "Custom backgrounds can really set the mood. Try uploading your own!",
+            "Drop Hurt Only spikes are perfect for one-way passages.",
+            "Zones are invisible during gameplay. Use them for kill zones or special effects!",
+            "Press M to switch to the move tool. Drag objects to reposition them.",
+            "You can adjust the font size in settings. Squint no more!",
+            "The inspect box in test mode shows all object properties. Debug like a pro!",
+            "Music keeps playing between editor and test mode. Vibe while you build!",
+            "Ctrl+Scroll to zoom in editor mode. Ctrl+Shift+Scroll to reset zoom.",
+            "Text objects pass right through players. Use them for signs and decorations!",
+            "The loading screen has hints. Oh wait, you're reading one right now...",
+            "Hosting a game? Share the room code with friends to play together!",
+            "Your player color is unique to your account. Stand out in multiplayer!",
+            "Auto-save runs every 30 seconds. Your progress is protected!",
+            "Export your map as a .pkrn file to share with others.",
+            "Import maps from files to play community creations!",
+            "The spawn point is where players start. Don't forget to place one!",
+            "Finish zones end the level. Place them at the end of your parkour course!",
+            "Gravity can be adjusted in config. Try negative gravity for ceiling runners!",
+            "Jump height and movement speed are customizable per map.",
+            "Additional airjump lets you jump even when not touching the ground.",
+            "Touch controls include a virtual joystick. Great for mobile play!",
+            "The chat panel lets you talk with other players in multiplayer.",
+            "As the host, you can kick players who aren't playing nice.",
+            "Your best times are displayed when you complete a level. Speed run!",
+            "Layers help organize complex maps. Use them wisely!",
+            "The toolbar has all the tools you need. Hover for tooltips!",
+            "Press Escape to cancel placement mode or close panels.",
+            "Custom music supports MP3 files. Add your favorite tunes!",
+            "Teleportal connections show as glowing lines in the editor.",
+            "Invalid teleportal connections appear red. Fix them to enable teleportation!",
+            "The player's position is shown above them in editor and test mode.",
+            "Server reconciliation keeps multiplayer fair. No teleport hacks here!",
+            "60 ticks per second ensures smooth, consistent gameplay.",
+            "The joystick only allows vertical movement in fly mode.",
+            "Fly mode in test mode lets you explore without restrictions.",
+            "Ground jumps vs air jumps matter when additional airjump is disabled.",
+            "Spikes have adjustable touchboxes. Flat, Danger, or Tip - choose wisely!",
+            "Portal colors can be customized. Color-code your teleport network!",
+            "This game was made with love, caffeine, and questionable sleep schedules."
+        ];
+        
+        let hintInterval = null;
+        let currentHintIndex = -1;
+        
+        function getRandomHint() {
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * loadingHints.length);
+            } while (newIndex === currentHintIndex && loadingHints.length > 1);
+            currentHintIndex = newIndex;
+            return loadingHints[newIndex];
+        }
+        
+        function showHint() {
+            const hintEl = document.getElementById('loading-hint');
+            if (!hintEl) return;
+            
+            // Fade out
+            hintEl.classList.add('fade-out');
+            
+            setTimeout(() => {
+                // Change text
+                hintEl.textContent = '💡 ' + getRandomHint();
+                // Fade in
+                hintEl.classList.remove('fade-out');
+            }, 500);
+        }
+        
+        function startHintCycle() {
+            const hintEl = document.getElementById('loading-hint');
+            if (!hintEl) return;
+            
+            // Show first hint immediately (no fade)
+            hintEl.textContent = '💡 ' + getRandomHint();
+            
+            // Cycle every 8 seconds
+            hintInterval = setInterval(showHint, 8000);
+        }
+        
+        function stopHintCycle() {
+            if (hintInterval) {
+                clearInterval(hintInterval);
+                hintInterval = null;
+            }
+        }
+
         // Resource Loading Manager with accurate progress tracking (dual progress bars)
         const resourceLoader = {
             // Total progress (green bar)
@@ -481,6 +601,9 @@
                 this.updateTotalUI();
                 this.updatePartUI();
                 
+                // Start hint cycle
+                startHintCycle();
+                
                 // Define resources to preload
                 const images = [
                     'assets/png/logo.png',
@@ -531,6 +654,9 @@
             },
             
             hide() {
+                // Stop hint cycle
+                stopHintCycle();
+                
                 const overlay = document.getElementById('loading-overlay');
                 if (overlay) {
                     overlay.classList.add('hidden');

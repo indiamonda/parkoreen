@@ -607,6 +607,27 @@ async function handleDeleteMap(mapId, env, userId) {
 }
 
 // ============================================
+// FLAG HANDLERS (EASTER EGGS)
+// ============================================
+async function handleGetFlag(flagName, env, userId) {
+    const flagData = await env.USERS.get(`flag:${userId}:${flagName}`);
+    if (!flagData) {
+        return jsonResponse({ value: false });
+    }
+    return jsonResponse({ value: true });
+}
+
+async function handleSetFlag(flagName, env, userId) {
+    await env.USERS.put(`flag:${userId}:${flagName}`, 'true');
+    return jsonResponse({ success: true });
+}
+
+async function handleDeleteFlag(flagName, env, userId) {
+    await env.USERS.delete(`flag:${userId}:${flagName}`);
+    return jsonResponse({ success: true });
+}
+
+// ============================================
 // WEBSOCKET HANDLER (MULTIPLAYER)
 // ============================================
 class GameRoom {
@@ -1089,6 +1110,21 @@ export default {
             }
             if (path === '/auth/password' && method === 'PUT') {
                 return handleChangePassword(request, env, userId);
+            }
+
+            // Flag routes (for easter eggs)
+            const flagMatch = path.match(/^\/flag\/([a-zA-Z0-9_]+)$/);
+            if (flagMatch) {
+                const flagName = flagMatch[1];
+                if (method === 'GET') {
+                    return handleGetFlag(flagName, env, userId);
+                }
+                if (method === 'PUT') {
+                    return handleSetFlag(flagName, env, userId);
+                }
+                if (method === 'DELETE') {
+                    return handleDeleteFlag(flagName, env, userId);
+                }
             }
 
             // Map routes

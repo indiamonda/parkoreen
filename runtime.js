@@ -105,6 +105,12 @@ class AuthManager {
     }
 
     async signup(name, username, password) {
+        // Check for reserved name easter egg
+        if (window.JimmyQrgManager?.isReservedName(name)) {
+            window.JimmyQrgManager.triggerForReservedName();
+            throw new Error('Nice try! ;)');
+        }
+
         // Local mode - store in local storage
         if (USE_LOCAL_MODE) {
             return this.localSignup(name, username, password);
@@ -165,6 +171,12 @@ class AuthManager {
     }
 
     localSignup(name, username, password) {
+        // Check for reserved name easter egg
+        if (window.JimmyQrgManager?.isReservedName(name)) {
+            window.JimmyQrgManager.triggerForReservedName();
+            throw new Error('Nice try! ;)');
+        }
+
         try {
             const usersStr = localStorage.getItem('parkoreen_local_users');
             const users = JSON.parse(usersStr || '{}');
@@ -202,6 +214,12 @@ class AuthManager {
     }
 
     async updateProfile(updates) {
+        // Check for reserved name easter egg
+        if (updates.name && window.JimmyQrgManager?.isReservedName(updates.name)) {
+            window.JimmyQrgManager.triggerForReservedName();
+            throw new Error('Nice try! ;)');
+        }
+
         if (USE_LOCAL_MODE) {
             return this.localUpdateProfile(updates);
         }
@@ -250,6 +268,12 @@ class AuthManager {
     }
 
     localUpdateProfile(updates) {
+        // Check for reserved name easter egg
+        if (updates.name && window.JimmyQrgManager?.isReservedName(updates.name)) {
+            window.JimmyQrgManager.triggerForReservedName();
+            throw new Error('Nice try! ;)');
+        }
+
         const users = JSON.parse(localStorage.getItem('parkoreen_local_users') || '{}');
         const userKey = this.user.username.toLowerCase();
         
@@ -789,6 +813,389 @@ class MultiplayerManager {
         return this.roomCode;
     }
 }
+
+// ============================================
+// JIMMYQRG EASTER EGG MANAGER
+// ============================================
+const RESERVED_DISPLAY_NAMES = ['jimmyqrg'];
+
+class JimmyQrgManager {
+    constructor() {
+        this.DB_NAME = 'ParkoreenEasterEgg';
+        this.DB_STORE = 'flags';
+        this.FLAG_KEY = 'JIMMYQRG';
+        this.popupElement = null;
+        this.isPhase2 = false;
+    }
+
+    // Check if name is reserved
+    isReservedName(name) {
+        if (!name) return false;
+        return RESERVED_DISPLAY_NAMES.includes(name.toLowerCase().trim());
+    }
+
+    // ========== LOCAL STORAGE ==========
+    getLocalStorage() {
+        return localStorage.getItem(this.FLAG_KEY) === 'true';
+    }
+
+    setLocalStorage(value) {
+        if (value) {
+            localStorage.setItem(this.FLAG_KEY, 'true');
+        } else {
+            localStorage.removeItem(this.FLAG_KEY);
+        }
+    }
+
+    // ========== INDEXED DB ==========
+    async openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.DB_NAME, 1);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(this.DB_STORE)) {
+                    db.createObjectStore(this.DB_STORE, { keyPath: 'key' });
+                }
+            };
+        });
+    }
+
+    async getIndexedDB() {
+        try {
+            const db = await this.openDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(this.DB_STORE, 'readonly');
+                const store = tx.objectStore(this.DB_STORE);
+                const request = store.get(this.FLAG_KEY);
+                request.onsuccess = () => resolve(request.result?.value === true);
+                request.onerror = () => resolve(false);
+            });
+        } catch {
+            return false;
+        }
+    }
+
+    async setIndexedDB(value) {
+        try {
+            const db = await this.openDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(this.DB_STORE, 'readwrite');
+                const store = tx.objectStore(this.DB_STORE);
+                if (value) {
+                    store.put({ key: this.FLAG_KEY, value: true });
+                } else {
+                    store.delete(this.FLAG_KEY);
+                }
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => resolve(false);
+            });
+        } catch {
+            return false;
+        }
+    }
+
+    // ========== SERVER STORAGE ==========
+    async getServer() {
+        try {
+            const token = window.Auth?.getToken();
+            if (!token) return false;
+            
+            const response = await fetch(`${API_URL}/flag/${this.FLAG_KEY}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            return data.value === true;
+        } catch {
+            return false;
+        }
+    }
+
+    async setServer(value) {
+        try {
+            const token = window.Auth?.getToken();
+            if (!token) return false;
+            
+            await fetch(`${API_URL}/flag/${this.FLAG_KEY}`, {
+                method: value ? 'PUT' : 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ value: true })
+            });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    // ========== COMBINED OPERATIONS ==========
+    async checkFlagExists() {
+        const [local, indexed, server] = await Promise.all([
+            this.getLocalStorage(),
+            this.getIndexedDB(),
+            this.getServer()
+        ]);
+        return local || indexed || server;
+    }
+
+    async setAllFlags(value) {
+        await Promise.all([
+            this.setLocalStorage(value),
+            this.setIndexedDB(value),
+            this.setServer(value)
+        ]);
+    }
+
+    async clearAllFlags() {
+        await this.setAllFlags(false);
+    }
+
+    // ========== POPUP MANAGEMENT ==========
+    createPopup() {
+        // Remove existing popup if any
+        this.removePopup();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'jimmyqrg-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            font-family: 'Parkoreen UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        `;
+
+        const popup = document.createElement('div');
+        popup.id = 'jimmyqrg-popup';
+        popup.style.cssText = `
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #4ade80;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(74, 222, 128, 0.3);
+        `;
+
+        this.updatePopupContent(popup);
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+        this.popupElement = overlay;
+
+        // Prevent closing via escape or clicking outside
+        overlay.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('keydown', this.blockEscape);
+
+        // Anti-adblocker: Re-create if removed
+        this.startAntiRemovalCheck();
+    }
+
+    updatePopupContent(popup) {
+        if (!popup) popup = document.getElementById('jimmyqrg-popup');
+        if (!popup) return;
+
+        const title = this.isPhase2 ? ':):):):):):):):):)' : ':):):):):)';
+        const content = this.isPhase2 
+            ? "Come on, you can't avoid this."
+            : "If you really love me that much, why don't you go ahead and create a fan club?";
+        
+        const buttonLabels = this.isPhase2
+            ? ['YES I DID', 'YES I DID', 'YES I DID', 'YES I DID', 'No one would do that']
+            : ['YES I DID', 'Yes I did', 'Yes I did', 'Yes I did', 'No one would do that'];
+
+        popup.innerHTML = `
+            <h1 style="color: #4ade80; font-size: 2.5rem; margin: 0 0 20px 0; letter-spacing: 4px;">${title}</h1>
+            <p style="color: #e0e0e0; font-size: 1.1rem; line-height: 1.6; margin: 0 0 28px 0;">${content}</p>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                ${buttonLabels.map((label, index) => {
+                    const isDisabled = this.isPhase2 && index === 4;
+                    const isDefault = index === 0;
+                    return `
+                        <button 
+                            class="jimmyqrg-btn" 
+                            data-index="${index}"
+                            style="
+                                padding: 14px 24px;
+                                font-size: 1rem;
+                                font-weight: ${isDefault ? '600' : '500'};
+                                border-radius: 8px;
+                                cursor: ${isDisabled ? 'not-allowed' : 'pointer'};
+                                transition: all 0.2s ease;
+                                font-family: inherit;
+                                ${isDefault ? `
+                                    background: linear-gradient(135deg, #22c55e, #16a34a);
+                                    border: none;
+                                    color: white;
+                                    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+                                ` : isDisabled ? `
+                                    background: #333;
+                                    border: 1px solid #444;
+                                    color: #666;
+                                ` : `
+                                    background: rgba(255,255,255,0.1);
+                                    border: 1px solid rgba(255,255,255,0.2);
+                                    color: #ccc;
+                                `}
+                            "
+                            ${isDisabled ? 'disabled' : ''}
+                        >${label}</button>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        // Attach button handlers
+        popup.querySelectorAll('.jimmyqrg-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleButtonClick(e));
+            btn.addEventListener('mouseenter', (e) => {
+                if (!e.target.disabled) {
+                    e.target.style.transform = 'scale(1.02)';
+                }
+            });
+            btn.addEventListener('mouseleave', (e) => {
+                e.target.style.transform = 'scale(1)';
+            });
+        });
+    }
+
+    async handleButtonClick(e) {
+        const index = parseInt(e.target.dataset.index);
+        
+        if (index === 4) {
+            // "No one would do that" button
+            if (!this.isPhase2) {
+                this.isPhase2 = true;
+                this.updatePopupContent();
+            }
+            return;
+        }
+
+        // Any "YES I DID" / "Yes I did" button
+        this.removePopup();
+        await this.clearAllFlags();
+        this.showGoodBoyPopup();
+    }
+
+    showGoodBoyPopup() {
+        const message = this.isPhase2 ? 'GOOOOOOOOD BOOOOOYY :)' : 'Good Boy';
+        
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            font-family: 'Parkoreen UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        `;
+
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #4ade80;
+            border-radius: 16px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(74, 222, 128, 0.4);
+        `;
+
+        popup.innerHTML = `
+            <h1 style="color: #4ade80; font-size: ${this.isPhase2 ? '2rem' : '2.5rem'}; margin: 0 0 24px 0;">${message}</h1>
+            <button id="goodboy-ok" style="
+                padding: 14px 48px;
+                font-size: 1.1rem;
+                font-weight: 600;
+                background: linear-gradient(135deg, #22c55e, #16a34a);
+                border: none;
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                font-family: inherit;
+                box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+            ">OK</button>
+        `;
+
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        document.getElementById('goodboy-ok').addEventListener('click', () => {
+            overlay.remove();
+            document.removeEventListener('keydown', this.blockEscape);
+        });
+    }
+
+    blockEscape = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
+    removePopup() {
+        if (this.popupElement) {
+            this.popupElement.remove();
+            this.popupElement = null;
+        }
+        const existing = document.getElementById('jimmyqrg-overlay');
+        if (existing) existing.remove();
+        this.stopAntiRemovalCheck();
+    }
+
+    // Anti-removal check (in case popup is removed by extensions)
+    startAntiRemovalCheck() {
+        this.antiRemovalInterval = setInterval(() => {
+            if (!document.getElementById('jimmyqrg-overlay')) {
+                this.createPopup();
+            }
+        }, 100);
+    }
+
+    stopAntiRemovalCheck() {
+        if (this.antiRemovalInterval) {
+            clearInterval(this.antiRemovalInterval);
+            this.antiRemovalInterval = null;
+        }
+    }
+
+    // ========== MAIN TRIGGER ==========
+    async triggerForReservedName() {
+        await this.setAllFlags(true);
+        this.isPhase2 = false;
+        this.createPopup();
+    }
+
+    // Check on page load
+    async checkOnLoad() {
+        const flagExists = await this.checkFlagExists();
+        if (flagExists) {
+            this.isPhase2 = false;
+            this.createPopup();
+        }
+    }
+}
+
+// Global instance
+window.JimmyQrgManager = new JimmyQrgManager();
+
+// Check on page load
+document.addEventListener('DOMContentLoaded', () => {
+    window.JimmyQrgManager.checkOnLoad();
+});
 
 // ============================================
 // SETTINGS MANAGER
