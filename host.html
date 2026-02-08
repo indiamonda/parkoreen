@@ -969,7 +969,7 @@
                         lastSentPosition.vy = player.vy || 0;
                         lastSentPosition.jumps = player.jumpsRemaining || 1;
                         
-                        mp.sendPosition(
+                    mp.sendPosition(
                             player.x, 
                             player.y,
                             player.vx || 0,
@@ -989,9 +989,9 @@
                     try {
                         if (window.ModalManager && typeof window.ModalManager.confirm === 'function') {
                             confirmed = await window.ModalManager.confirm(
-                                'Leave Room',
-                                'Are you sure you want to kick everybody in the room?'
-                            );
+                        'Leave Room',
+                        'Are you sure you want to kick everybody in the room?'
+                    );
                         } else {
                             confirmed = confirm('Are you sure you want to kick everybody in the room?');
                         }
@@ -1125,30 +1125,7 @@
                 engine.updateRemotePlayer(data.playerId, data.x, data.y, data.vx || 0, data.vy || 0);
             });
             
-            // Position acknowledgment from server (for reconciliation)
-            mp.on('positionAck', (data) => {
-                if (!engine.localPlayer) return;
-                
-                const player = engine.localPlayer;
-                const dx = player.x - data.x;
-                const dy = player.y - data.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                // If position differs by more than 1.5 blocks (48 pixels), correct position
-                if (distance > RECONCILIATION_THRESHOLD) {
-                    console.log(`[Reconciliation] Position mismatch: ${distance.toFixed(1)}px`);
-                    // Lerp towards server position for smoother correction (70% towards server)
-                    player.x = player.x + (data.x - player.x) * 0.7;
-                    player.y = player.y + (data.y - player.y) * 0.7;
-                    player.vx = data.vx;
-                    player.vy = data.vy;
-                }
-                
-                // Sync jumps from server if different
-                if (data.jumps !== undefined && player.jumpsRemaining !== data.jumps) {
-                    player.jumpsRemaining = data.jumps;
-                }
-            });
+            // Position acknowledgment disabled - was causing lag
 
             // Chat message
             mp.on('chatMessage', (data) => {

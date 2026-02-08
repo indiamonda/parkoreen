@@ -208,7 +208,7 @@ class Player {
                     // Restore to max jumps minus 1 (the ground jump we're using now)
                     this.jumpsRemaining = Math.max(0, this.maxJumps - 1);
                 } else {
-                this.jumpsRemaining--;
+                    this.jumpsRemaining--;
                 }
                 // Clear coyote time after jumping
                 this.coyoteTimeStart = null;
@@ -536,7 +536,7 @@ class Player {
     resetJumps() {
         // When landing on ground, reset to full jumps
         // (The walk-off-ledge penalty is handled in moveWithCollision)
-            this.jumpsRemaining = this.maxJumps;
+        this.jumpsRemaining = this.maxJumps;
         // Clear coyote time when landing
         this.coyoteTimeStart = null;
     }
