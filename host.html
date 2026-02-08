@@ -380,15 +380,11 @@
             "If you set the spike touchbox to Tip Spike, you can walk through them. Don't fall on them though.",
             "Press R to activate the rotate tool. Click and drag to spin objects!",
             "Teleportals only work when both ends are connected. Check your Send To and Receive From settings!",
-            "Coyote time gives you 0.25 seconds to jump after walking off a platform. Use it wisely!",
             "You can flip objects horizontally in the config panel. Great for symmetrical designs!",
-            "Hold Shift while placing to snap objects to the grid.",
             "The eraser tool (Q) can have custom width and height. Big eraser = big destruction.",
-            "Checkpoints save your position AND refill your jumps. Strategic placement is key!",
             "Custom backgrounds can really set the mood. Try uploading your own!",
             "Drop Hurt Only spikes are perfect for one-way passages.",
             "Zones are invisible during gameplay. Use them for kill zones or special effects!",
-            "Press M to switch to the move tool. Drag objects to reposition them.",
             "You can adjust the font size in settings. Squint no more!",
             "The inspect box in test mode shows all object properties. Debug like a pro!",
             "Music keeps playing between editor and test mode. Vibe while you build!",
@@ -397,33 +393,32 @@
             "The loading screen has hints. Oh wait, you're reading one right now...",
             "Hosting a game? Share the room code with friends to play together!",
             "Your player color is unique to your account. Stand out in multiplayer!",
-            "Auto-save runs every 30 seconds. Your progress is protected!",
             "Export your map as a .pkrn file to share with others.",
             "Import maps from files to play community creations!",
-            "The spawn point is where players start. Don't forget to place one!",
-            "Finish zones end the level. Place them at the end of your parkour course!",
             "Gravity can be adjusted in config. Try negative gravity for ceiling runners!",
             "Jump height and movement speed are customizable per map.",
             "Additional airjump lets you jump even when not touching the ground.",
             "Touch controls include a virtual joystick. Great for mobile play!",
-            "The chat panel lets you talk with other players in multiplayer.",
             "As the host, you can kick players who aren't playing nice.",
             "Your best times are displayed when you complete a level. Speed run!",
             "Layers help organize complex maps. Use them wisely!",
-            "The toolbar has all the tools you need. Hover for tooltips!",
-            "Press Escape to cancel placement mode or close panels.",
             "Custom music supports MP3 files. Add your favorite tunes!",
-            "Teleportal connections show as glowing lines in the editor.",
             "Invalid teleportal connections appear red. Fix them to enable teleportation!",
-            "The player's position is shown above them in editor and test mode.",
-            "Server reconciliation keeps multiplayer fair. No teleport hacks here!",
-            "60 ticks per second ensures smooth, consistent gameplay.",
-            "The joystick only allows vertical movement in fly mode.",
             "Fly mode in test mode lets you explore without restrictions.",
             "Ground jumps vs air jumps matter when additional airjump is disabled.",
             "Spikes have adjustable touchboxes. Flat, Danger, or Tip - choose wisely!",
             "Portal colors can be customized. Color-code your teleport network!",
-            "This game was made with love, caffeine, and questionable sleep schedules."
+            "This game was made with love, caffeine, and questionable sleep schedules.",
+            "Sometimes the best parkour is knowing when NOT to jump.",
+            "Every great map starts with a terrible first draft.",
+            "If you're stuck, try looking at the problem from a different angle. Literally.",
+            "The best speedrunners know every pixel. Do you?",
+            "Fun fact: The developer tested this loading screen way too many times.",
+            "Remember: Frustration is just delayed satisfaction.",
+            "Pro tip: Blame the spikes, not yourself.",
+            "Have you tried turning the gravity off and on again?",
+            "Your map could be someone's favorite. Keep building!",
+            "The finish line is just the beginning of another run."
         ];
         
         let hintInterval = null;
@@ -473,13 +468,15 @@
 
         // Resource Loading Manager with accurate progress tracking (dual progress bars)
         const resourceLoader = {
-            // Total progress (green bar)
+            // Total progress (green bar) - tracks ALL resources
             totalLoaded: 0,
             totalSize: 0,
-            // Part progress (orange bar)
+            // Part progress (orange bar) - tracks current category
             partLoaded: 0,
             partSize: 0,
             currentPart: '',
+            // Resource sizes cache (calculated upfront)
+            resourceSizes: {},
             
             updateTotalUI() {
                 const progressBar = document.getElementById('loading-progress-total');
@@ -518,10 +515,11 @@
                 }
             },
             
-            startPart(name) {
+            startPart(name, resources) {
                 this.currentPart = name;
                 this.partLoaded = 0;
-                this.partSize = 0;
+                // Calculate part size from pre-fetched sizes
+                this.partSize = resources.reduce((sum, src) => sum + (this.resourceSizes[src] || 0), 0);
                 this.updatePartUI();
             },
             
@@ -534,16 +532,28 @@
                 }
             },
             
+            // Pre-fetch all file sizes to know total upfront
+            async calculateAllSizes(allResources) {
+                this.currentPart = 'Calculating...';
+                this.updatePartUI();
+                
+                const sizes = await Promise.all(
+                    allResources.map(async (src) => {
+                        const size = await this.getFileSize(src);
+                        this.resourceSizes[src] = size;
+                        return size;
+                    })
+                );
+                
+                this.totalSize = sizes.reduce((sum, size) => sum + size, 0);
+                this.updateTotalUI();
+            },
+            
             async preloadImage(src) {
-                return new Promise(async (resolve) => {
+                const size = this.resourceSizes[src] || 50000;
+                
+                return new Promise((resolve) => {
                     let resolved = false;
-                    const size = await this.getFileSize(src);
-                    
-                    // Add to part and total sizes
-                    this.partSize += size;
-                    this.totalSize += size;
-                    this.updatePartUI();
-                    this.updateTotalUI();
                     
                     const markLoaded = (img) => {
                         if (resolved) return;
@@ -563,15 +573,10 @@
             },
             
             async preloadAudio(src) {
-                return new Promise(async (resolve) => {
+                const size = this.resourceSizes[src] || 50000;
+                
+                return new Promise((resolve) => {
                     let resolved = false;
-                    const size = await this.getFileSize(src);
-                    
-                    // Add to part and total sizes
-                    this.partSize += size;
-                    this.totalSize += size;
-                    this.updatePartUI();
-                    this.updateTotalUI();
                     
                     const markLoaded = (audio) => {
                         if (resolved) return;
@@ -598,6 +603,7 @@
                 this.totalSize = 0;
                 this.partLoaded = 0;
                 this.partSize = 0;
+                this.resourceSizes = {};
                 this.updateTotalUI();
                 this.updatePartUI();
                 
@@ -618,14 +624,18 @@
                     'assets/mp3/reggae-party.mp3'
                 ];
                 
-                // Load images
-                this.startPart('Loading Images...');
+                // Step 1: Calculate ALL sizes upfront so we know the true total
+                const allResources = [...images, ...audio];
+                await this.calculateAllSizes(allResources);
+                
+                // Step 2: Load images (part progress tracks just images)
+                this.startPart('Loading Images...', images);
                 for (const src of images) {
                     await this.preloadImage(src);
                 }
                 
-                // Load audio
-                this.startPart('Loading Audio...');
+                // Step 3: Load audio (part progress tracks just audio)
+                this.startPart('Loading Audio...', audio);
                 for (const src of audio) {
                     await this.preloadAudio(src);
                 }
