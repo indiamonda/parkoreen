@@ -1,0 +1,78 @@
+{
+    "id": "hollowknight",
+    "name": "Hollow Knight",
+    "version": "1.0.0",
+    "description": "Adds Hollow Knight-style mechanics: Soul system, nail attacks, Monarch Wings (double jump), Mothwing Cloak (dash), Crystal Heart (super dash), and Focus healing.",
+    "author": "Parkoreen",
+    "icon": "🦋",
+    "color": "#667eea",
+    "dependencies": ["hp"],
+    "scripts": {
+        "globals": "js/globals.js",
+        "inject": "js/inject.js",
+        "script": "js/script.js"
+    },
+    "sounds": {
+        "dash": "mp3/dash.mp3",
+        "monarchWings": "mp3/monarch-wings.mp3",
+        "healCharging": "mp3/heal-charging.mp3",
+        "healComplete": "mp3/heal-complete.mp3",
+        "hitSoulStatus": "mp3/hit-soul-status.mp3",
+        "superdashCharge1": "mp3/superdash-charge1.mp3",
+        "superdashCharge2": "mp3/superdash-charge2.mp3",
+        "superdashBurst": "mp3/superdash-burst.mp3",
+        "superdashFlying": "mp3/superdash-flying-loop.mp3",
+        "superdashHitwallstop": "mp3/superdash-hitwallstop.mp3",
+        "superdashTriggerstop": "mp3/superdash-triggerstop.mp3",
+        "getSoul": ["mp3/get-soul1.mp3", "mp3/get-soul2.mp3", "mp3/get-soul3.mp3", "mp3/get-soul4.mp3", "mp3/get-soul5.mp3", "mp3/get-soul6.mp3", "mp3/get-soul7.mp3"]
+    },
+    "config": {
+        "defaultHP": {
+            "type": "number",
+            "label": "Default HP",
+            "default": 3,
+            "min": 1,
+            "max": 12
+        },
+        "maxSoul": {
+            "type": "number",
+            "label": "Max Soul",
+            "description": "33 = one heal, 99 = three heals",
+            "default": 99,
+            "min": 33,
+            "max": 198
+        },
+        "monarchWing": {
+            "type": "boolean",
+            "label": "Monarch Wings",
+            "description": "Double jump ability",
+            "default": false
+        },
+        "monarchWingAmount": {
+            "type": "number",
+            "label": "Monarch Wing Amount",
+            "default": 1,
+            "min": 1,
+            "max": 99,
+            "showIf": "monarchWing"
+        },
+        "dash": {
+            "type": "boolean",
+            "label": "Mothwing Cloak (Dash)",
+            "description": "Press comma (,) to dash",
+            "default": false
+        },
+        "superDash": {
+            "type": "boolean",
+            "label": "Crystal Heart (Super Dash)",
+            "description": "Hold period (.) to charge",
+            "default": false
+        }
+    },
+    "controls": {
+        "attack": { "key": "KeyX", "label": "Attack", "description": "+ ↑/↓ for direction" },
+        "dash": { "key": "Comma", "label": "Dash" },
+        "superDash": { "key": "Period", "label": "Super Dash (hold)" },
+        "heal": { "key": "KeyF", "label": "Focus/Heal (hold)" }
+    }
+}

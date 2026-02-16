@@ -683,10 +683,155 @@ class Editor {
                     </button>
                     </div>
                 </div>
+                
+                <!-- Plugins -->
+                <div class="config-section" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--surface-light);">
+                    <button class="btn btn-secondary" id="btn-plugins" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white;">
+                        <span class="material-symbols-outlined">extension</span>
+                        Plugins
+                    </button>
+                </div>
+                
+                <!-- HP Section (hidden by default, shown when HP plugin enabled) -->
+                <div class="config-section collapsible hidden" id="config-section-hp">
+                    <div class="config-section-header">
+                        <span class="config-section-title">❤️ HP Settings</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Default HP</label>
+                            <input type="number" class="form-input" id="config-hp-default" min="1" max="99" value="3">
+                            <small style="color: #888; font-size: 11px;">Starting health points for players</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hollow Knight Section (hidden by default, shown when HK plugin enabled) -->
+                <div class="config-section collapsible hidden" id="config-section-hollowknight">
+                    <div class="config-section-header">
+                        <span class="config-section-title">🦋 Hollow Knight</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Default HP</label>
+                            <input type="number" class="form-input" id="config-hk-hp" min="1" max="12" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Soul</label>
+                            <input type="number" class="form-input" id="config-hk-maxsoul" min="33" max="198" value="99">
+                            <small style="color: #888; font-size: 11px;">33 = one heal, 99 = three heals</small>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-size: 13px;">Monarch Wings</span>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Double jump ability</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-hk-monarchwing">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="config-hk-monarchwing-amount-group">
+                            <label class="form-label">Monarch Wing Amount</label>
+                            <input type="number" class="form-input" id="config-hk-monarchwing-amount" min="1" max="99" value="1">
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-size: 13px;">Mothwing Cloak (Dash)</span>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Press comma (,) to dash</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-hk-dash">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-size: 13px;">Crystal Heart (Super Dash)</span>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Hold period (.) to charge</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-hk-superdash">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
         document.body.appendChild(configPanel);
         this.ui.configPanel = configPanel;
+        
+        // Plugins Library Popup
+        const pluginsPopup = document.createElement('div');
+        pluginsPopup.className = 'modal-overlay';
+        pluginsPopup.id = 'plugins-popup';
+        pluginsPopup.innerHTML = `
+            <div class="modal" style="max-width: 700px; width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--surface-light);">
+                    <h2 class="modal-title" style="margin: 0;">🧩 Plugins Library</h2>
+                    <button class="btn btn-icon btn-ghost" id="close-plugins-popup">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div style="overflow-y: auto; padding: 16px 0; flex: 1;">
+                    <!-- HP Plugin -->
+                    <div class="plugin-card" data-plugin="hp" style="background: var(--bg-light); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 8px 0; color: #FF6B6B; display: flex; align-items: center; gap: 8px;">
+                                    ❤️ HP (Health Points)
+                                </h3>
+                                <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+                                    Adds a health system to the game. Players start with configurable HP. 
+                                    Touching spikes removes 1 HP and teleports player to the last safe ground they stood on.
+                                    When HP reaches 0, the player dies and respawns at checkpoint.
+                                </p>
+                                <div style="font-size: 12px; color: var(--text-muted);">
+                                    <strong>Features:</strong> HP display, damage system, safe ground respawn
+                                </div>
+                            </div>
+                            <button class="btn plugin-toggle-btn" data-plugin="hp" style="min-width: 80px;">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Hollow Knight Plugin -->
+                    <div class="plugin-card" data-plugin="hollowknight" style="background: var(--bg-light); border-radius: 12px; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 8px 0; color: #667eea; display: flex; align-items: center; gap: 8px;">
+                                    🦋 Hollow Knight
+                                    <span style="font-size: 11px; background: rgba(255,107,107,0.2); color: #FF6B6B; padding: 2px 8px; border-radius: 4px;">Requires HP</span>
+                                </h3>
+                                <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+                                    Adds Hollow Knight-style mechanics: Soul system, nail attacks (X key), 
+                                    Monarch Wings (double jump), Mothwing Cloak (dash), Crystal Heart (super dash), 
+                                    and Focus healing. Attack spikes to gain soul, use soul to heal!
+                                </p>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                                    <strong>Controls:</strong>
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                    <span>X - Attack (+ ↑/↓ for direction)</span>
+                                    <span>, (comma) - Dash</span>
+                                    <span>. (period) - Super Dash (hold)</span>
+                                    <span>F - Focus/Heal (hold)</span>
+                                </div>
+                            </div>
+                            <button class="btn plugin-toggle-btn" data-plugin="hollowknight" style="min-width: 80px;">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(pluginsPopup);
+        this.ui.pluginsPopup = pluginsPopup;
         
         // Setup collapsible sections
         this.setupCollapsibleSections();
@@ -2750,6 +2895,149 @@ class Editor {
 
         // Host game
         document.getElementById('btn-host-game').addEventListener('click', () => this.hostGame());
+        
+        // Plugins button
+        document.getElementById('btn-plugins').addEventListener('click', () => this.openPluginsPopup());
+        document.getElementById('close-plugins-popup').addEventListener('click', () => this.closePluginsPopup());
+        document.getElementById('plugins-popup').addEventListener('click', (e) => {
+            if (e.target.id === 'plugins-popup') this.closePluginsPopup();
+        });
+        
+        // Plugin toggle buttons
+        document.querySelectorAll('.plugin-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const pluginId = e.target.dataset.plugin;
+                this.togglePlugin(pluginId);
+            });
+        });
+        
+        // HP settings
+        document.getElementById('config-hp-default')?.addEventListener('change', (e) => {
+            this.world.plugins.hp.defaultHP = Math.max(1, Math.min(99, parseInt(e.target.value) || 3));
+            e.target.value = this.world.plugins.hp.defaultHP;
+            this.triggerMapChange();
+        });
+        
+        // Hollow Knight settings
+        document.getElementById('config-hk-hp')?.addEventListener('change', (e) => {
+            this.world.plugins.hollowknight.defaultHP = Math.max(1, Math.min(12, parseInt(e.target.value) || 3));
+            e.target.value = this.world.plugins.hollowknight.defaultHP;
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-maxsoul')?.addEventListener('change', (e) => {
+            this.world.plugins.hollowknight.maxSoul = Math.max(33, Math.min(198, parseInt(e.target.value) || 99));
+            e.target.value = this.world.plugins.hollowknight.maxSoul;
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-monarchwing')?.addEventListener('change', (e) => {
+            this.world.plugins.hollowknight.monarchWing = e.target.checked;
+            document.getElementById('config-hk-monarchwing-amount-group').classList.toggle('hidden', !e.target.checked);
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-monarchwing-amount')?.addEventListener('change', (e) => {
+            this.world.plugins.hollowknight.monarchWingAmount = Math.max(1, Math.min(99, parseInt(e.target.value) || 1));
+            e.target.value = this.world.plugins.hollowknight.monarchWingAmount;
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-dash')?.addEventListener('change', (e) => {
+            this.world.plugins.hollowknight.dash = e.target.checked;
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-superdash')?.addEventListener('change', (e) => {
+            this.world.plugins.hollowknight.superDash = e.target.checked;
+            this.triggerMapChange();
+        });
+    }
+    
+    openPluginsPopup() {
+        this.updatePluginsPopupState();
+        document.getElementById('plugins-popup').classList.add('active');
+    }
+    
+    closePluginsPopup() {
+        document.getElementById('plugins-popup').classList.remove('active');
+    }
+    
+    updatePluginsPopupState() {
+        const enabledPlugins = this.world.plugins.enabled;
+        
+        document.querySelectorAll('.plugin-toggle-btn').forEach(btn => {
+            const pluginId = btn.dataset.plugin;
+            const isEnabled = enabledPlugins.includes(pluginId);
+            
+            if (isEnabled) {
+                btn.textContent = 'Remove';
+                btn.style.background = '#dc3545';
+                btn.style.borderColor = '#dc3545';
+                btn.style.color = 'white';
+            } else {
+                btn.textContent = 'Add';
+                btn.style.background = '#28a745';
+                btn.style.borderColor = '#28a745';
+                btn.style.color = 'white';
+            }
+        });
+    }
+    
+    async togglePlugin(pluginId) {
+        const isEnabled = this.world.plugins.enabled.includes(pluginId);
+        
+        if (isEnabled) {
+            // Try to remove plugin
+            // Check for dependencies first
+            if (pluginId === 'hp' && this.world.plugins.enabled.includes('hollowknight')) {
+                this.showPluginError('Cannot remove HP plugin', 'The Hollow Knight plugin depends on HP. Remove Hollow Knight first.');
+                return;
+            }
+            
+            // Check for plugin objects in the map
+            const pluginObjects = this.world.getPluginObjects(pluginId);
+            if (pluginObjects.length > 0) {
+                const locations = pluginObjects.map(o => `${o.section}/${o.name}`).join(', ');
+                this.showPluginError('Cannot remove plugin', `There are still objects using this plugin at: ${locations}. Remove them first.`);
+                return;
+            }
+            
+            this.world.disablePlugin(pluginId);
+        } else {
+            // Enable plugin
+            // Check dependencies
+            if (pluginId === 'hollowknight' && !this.world.plugins.enabled.includes('hp')) {
+                // Auto-enable HP when enabling Hollow Knight
+                await this.world.enablePlugin('hp');
+            }
+            
+            await this.world.enablePlugin(pluginId);
+        }
+        
+        this.updatePluginsPopupState();
+        this.updatePluginConfigSections();
+        this.triggerMapChange();
+    }
+    
+    showPluginError(title, message) {
+        if (window.ModalManager?.alert) {
+            window.ModalManager.alert(title, message);
+        } else {
+            alert(`${title}\n\n${message}`);
+        }
+    }
+    
+    updatePluginConfigSections() {
+        const hpSection = document.getElementById('config-section-hp');
+        const hkSection = document.getElementById('config-section-hollowknight');
+        
+        if (hpSection) {
+            hpSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hp'));
+        }
+        if (hkSection) {
+            hkSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hollowknight'));
+        }
     }
 
     attachColorPickerListeners() {
@@ -5089,8 +5377,40 @@ class Editor {
             musicLoop.checked = this.world.music?.loop !== false;
         }
         
+        // Plugin settings
+        this.syncPluginSettings();
+        
         // Custom background
         this.syncCustomBackgroundUI();
+    }
+    
+    syncPluginSettings() {
+        // Update plugin config sections visibility
+        this.updatePluginConfigSections();
+        
+        // HP settings
+        const hpDefault = document.getElementById('config-hp-default');
+        if (hpDefault) {
+            hpDefault.value = this.world.plugins?.hp?.defaultHP ?? 3;
+        }
+        
+        // Hollow Knight settings
+        const hkHP = document.getElementById('config-hk-hp');
+        const hkMaxSoul = document.getElementById('config-hk-maxsoul');
+        const hkMonarchWing = document.getElementById('config-hk-monarchwing');
+        const hkMonarchWingAmount = document.getElementById('config-hk-monarchwing-amount');
+        const hkMonarchWingAmountGroup = document.getElementById('config-hk-monarchwing-amount-group');
+        const hkDash = document.getElementById('config-hk-dash');
+        const hkSuperDash = document.getElementById('config-hk-superdash');
+        
+        const hk = this.world.plugins?.hollowknight;
+        if (hkHP) hkHP.value = hk?.defaultHP ?? 3;
+        if (hkMaxSoul) hkMaxSoul.value = hk?.maxSoul ?? 99;
+        if (hkMonarchWing) hkMonarchWing.checked = hk?.monarchWing ?? false;
+        if (hkMonarchWingAmount) hkMonarchWingAmount.value = hk?.monarchWingAmount ?? 1;
+        if (hkMonarchWingAmountGroup) hkMonarchWingAmountGroup.classList.toggle('hidden', !(hk?.monarchWing));
+        if (hkDash) hkDash.checked = hk?.dash ?? false;
+        if (hkSuperDash) hkSuperDash.checked = hk?.superDash ?? false;
     }
     
     syncCustomBackgroundUI() {

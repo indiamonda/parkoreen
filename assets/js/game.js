@@ -113,6 +113,9 @@ class Player {
         // Coyote time - grace period after leaving ground where ground jump still counts
         this.coyoteTimeStart = null;
         this.COYOTE_TIME = 250; // 0.25 seconds in milliseconds
+        
+        // Plugin-injectable properties (plugins can add properties dynamically)
+        // These are set by plugins via hooks
     }
 
     generateRandomColor() {
@@ -208,7 +211,7 @@ class Player {
                     // Restore to max jumps minus 1 (the ground jump we're using now)
                     this.jumpsRemaining = Math.max(0, this.maxJumps - 1);
                 } else {
-                    this.jumpsRemaining--;
+                this.jumpsRemaining--;
                 }
                 // Clear coyote time after jumping
                 this.coyoteTimeStart = null;
@@ -364,13 +367,13 @@ class Player {
                     continue;
                 }
                 
+                let gotHit = false;
+                
                 // In 'full' mode, any contact with spike = damage
                 if (spikeMode === 'full') {
-                if (this.boxIntersects(hurtBox, obj)) {
-                    this.die();
-                    return;
-                }
-                    continue;
+                    if (this.boxIntersects(hurtBox, obj)) {
+                        gotHit = true;
+                    }
                 }
                 
                 // In 'normal' mode, flat part is safe, rest damages
@@ -380,20 +383,32 @@ class Player {
                     
                     // Check if touching danger zone (not in flat area)
                     if (this.boxIntersects(hurtBox, dangerBox) && !this.boxIntersects(hurtBox, flatBox)) {
-                        this.die();
-                        return;
+                        gotHit = true;
                     }
-                    continue;
                 }
                 
                 // In 'tip' mode, only the very tip damages
                 if (spikeMode === 'tip') {
                     const tipBox = this.getSpikeTip(obj);
                     if (this.boxIntersects(hurtBox, tipBox)) {
-                        this.die();
-                        return;
+                        gotHit = true;
                     }
-                    continue;
+                }
+                
+                if (gotHit) {
+                    // Let plugins handle damage via hook
+                    if (window.PluginManager) {
+                        const result = window.PluginManager.executeHook('player.damage', { 
+                            player: this, 
+                            source: obj,
+                            world: world
+                        });
+                        if (result.preventDefault) {
+                            return; // Plugin handled the damage
+                        }
+                    }
+                    this.die();
+                    return;
                 }
             }
         }
@@ -536,9 +551,11 @@ class Player {
     resetJumps() {
         // When landing on ground, reset to full jumps
         // (The walk-off-ledge penalty is handled in moveWithCollision)
-        this.jumpsRemaining = this.maxJumps;
+            this.jumpsRemaining = this.maxJumps;
         // Clear coyote time when landing
         this.coyoteTimeStart = null;
+        // Reset monarch wings
+        this.monarchWingsUsed = 0;
     }
 
     die() {
@@ -1267,6 +1284,22 @@ class World {
         // 'json' - Human-readable, larger file size
         // 'dat' - Binary format, smaller file size
         this.storedDataType = 'json';
+        
+        // Plugins system
+        this.plugins = {
+            enabled: [], // Array of enabled plugin IDs: ['hp', 'hollowknight']
+            hp: {
+                defaultHP: 3
+            },
+            hollowknight: {
+                defaultHP: 3,
+                maxSoul: 99,
+                monarchWing: false,
+                monarchWingAmount: 1,
+                dash: false,
+                superDash: false
+            }
+        };
     }
 
     addObject(obj) {
@@ -1612,7 +1645,9 @@ class World {
             // Custom background
             customBackground: this.customBackground,
             // Music
-            music: this.music
+            music: this.music,
+            // Plugins
+            plugins: this.plugins
         };
     }
 
@@ -1695,11 +1730,74 @@ class World {
             };
         }
         
+        // Plugins settings
+        if (data.plugins) {
+            this.plugins = {
+                enabled: Array.isArray(data.plugins.enabled) ? data.plugins.enabled : [],
+                hp: {
+                    defaultHP: data.plugins.hp?.defaultHP ?? 3
+                },
+                hollowknight: {
+                    defaultHP: data.plugins.hollowknight?.defaultHP ?? 3,
+                    maxSoul: data.plugins.hollowknight?.maxSoul ?? 99,
+                    monarchWing: data.plugins.hollowknight?.monarchWing ?? false,
+                    monarchWingAmount: data.plugins.hollowknight?.monarchWingAmount ?? 1,
+                    dash: data.plugins.hollowknight?.dash ?? false,
+                    superDash: data.plugins.hollowknight?.superDash ?? false
+                }
+            };
+        }
+        
         if (data.objects) {
             for (const objData of data.objects) {
                 this.addObject(new WorldObject(objData));
             }
         }
+    }
+    
+    // Check if a plugin is enabled
+    hasPlugin(pluginId) {
+        return this.plugins.enabled.includes(pluginId);
+    }
+    
+    // Enable a plugin (also enables via PluginManager if available)
+    async enablePlugin(pluginId) {
+        if (!this.plugins.enabled.includes(pluginId)) {
+            this.plugins.enabled.push(pluginId);
+        }
+        // Also enable in PluginManager to register hooks
+        if (window.PluginManager && !window.PluginManager.isEnabled(pluginId)) {
+            await window.PluginManager.enablePlugin(pluginId, this);
+        }
+    }
+    
+    // Disable a plugin (also disables via PluginManager if available)
+    disablePlugin(pluginId) {
+        const index = this.plugins.enabled.indexOf(pluginId);
+        if (index !== -1) {
+            this.plugins.enabled.splice(index, 1);
+        }
+        // Also disable in PluginManager
+        if (window.PluginManager) {
+            window.PluginManager.disablePlugin(pluginId, this);
+        }
+    }
+    
+    // Get objects using a specific plugin
+    getPluginObjects(pluginId) {
+        // Returns objects that use features from a specific plugin
+        const pluginObjects = [];
+        
+        if (pluginId === 'hollowknight') {
+            // Check for soul status objects
+            for (const obj of this.objects) {
+                if (obj.actingType === 'soulStatus') {
+                    pluginObjects.push({ section: 'Map', name: 'Soul Status', obj });
+                }
+            }
+        }
+
+        return pluginObjects;
     }
 }
 
@@ -1889,6 +1987,14 @@ class GameEngine {
         
         this.keys[e.code] = true;
         
+        // Let plugins handle keydown
+        if (window.PluginManager && this.localPlayer) {
+            window.PluginManager.executeHook('input.keydown', { 
+                key: e.code, 
+                player: this.localPlayer 
+            });
+        }
+        
         // Update player input in all active modes (including editor)
         if (this.localPlayer) {
             this.updatePlayerInput();
@@ -1908,6 +2014,14 @@ class GameEngine {
         
         this.keys[e.code] = false;
         
+        // Let plugins handle keyup
+        if (window.PluginManager && this.localPlayer) {
+            window.PluginManager.executeHook('input.keyup', { 
+                key: e.code, 
+                player: this.localPlayer 
+            });
+        }
+        
         if (this.localPlayer) {
             this.updatePlayerInput();
         }
@@ -1924,6 +2038,14 @@ class GameEngine {
         
         // Jump: Space always, W/Up also triggers jump in both modes
         this.localPlayer.input.jump = this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'];
+        
+        // Let plugins handle additional input via hooks
+        if (window.PluginManager) {
+            window.PluginManager.executeHook('input.update', { 
+                player: this.localPlayer, 
+                keys: this.keys 
+            });
+        }
     }
 
     onMouseMove(e) {
@@ -2075,7 +2197,22 @@ class GameEngine {
         if (this.state === GameState.PLAYING || this.state === GameState.TESTING) {
             // Update local player
             if (this.localPlayer) {
-                this.localPlayer.update(this.world, this.audioManager);
+                // Let plugins handle pre-update logic via hook
+                if (window.PluginManager) {
+                    const result = window.PluginManager.executeHook('player.update', {
+                        player: this.localPlayer,
+                        world: this.world,
+                        audioManager: this.audioManager,
+                        deltaTime
+                    });
+                    
+                    // Skip normal physics if plugin says so (e.g., during dash)
+                    if (!result.skipPhysics) {
+                        this.localPlayer.update(this.world, this.audioManager);
+                    }
+                } else {
+                    this.localPlayer.update(this.world, this.audioManager);
+                }
                 
                 // Check for die line (void death)
                 const dieLineY = this.world.dieLineY ?? 2000;
@@ -2086,6 +2223,13 @@ class GameEngine {
                 // Check for respawn
                 if (this.localPlayer.isDead) {
                     this.respawnPlayer();
+                    // Let plugins handle post-respawn via hook
+                    if (window.PluginManager) {
+                        window.PluginManager.executeHook('player.respawn', {
+                            player: this.localPlayer,
+                            world: this.world
+                        });
+                    }
                 }
                 
                 // Check for checkpoint/endpoint collision
@@ -2353,6 +2497,27 @@ class GameEngine {
         
         // Render particles (after restore to use screen coordinates)
         this.renderParticles();
+        
+        // Render HUD (HP, Soul) if plugins are enabled
+        if (this.state === GameState.PLAYING || this.state === GameState.TESTING) {
+            this.renderHUD();
+        }
+    }
+    
+    renderHUD() {
+        if (!this.localPlayer) return;
+        
+        // Let plugins render their HUD elements via hook
+        if (window.PluginManager) {
+            window.PluginManager.executeHook('render.hud', {
+                ctx: this.ctx,
+                canvas: this.canvas,
+                player: this.localPlayer,
+                world: this.world,
+                xOffset: 20,
+                yOffset: 20
+            });
+        }
     }
 
     startGame(playerName, playerColor) {
@@ -2376,6 +2541,14 @@ class GameEngine {
         
         this.localPlayer = new Player(spawnX, spawnY, playerName, playerColor);
         this.localPlayer.isLocal = true;
+        
+        // Initialize plugins via hook
+        if (window.PluginManager) {
+            window.PluginManager.executeHook('player.init', { 
+                player: this.localPlayer, 
+                world: this.world 
+            });
+        }
         
         // Apply world settings
         if (this.world.infiniteJumps) {
@@ -2412,6 +2585,14 @@ class GameEngine {
         
         this.localPlayer = new Player(spawnX, spawnY, 'Tester', '#4ECDC4');
         this.localPlayer.isLocal = true;
+        
+        // Initialize plugins via hook
+        if (window.PluginManager) {
+            window.PluginManager.executeHook('player.init', { 
+                player: this.localPlayer, 
+                world: this.world 
+            });
+        }
         
         if (this.world.infiniteJumps) {
             this.localPlayer.setMaxJumps(999, true);

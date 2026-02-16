@@ -277,7 +277,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="runtime.js?v=19"></script>
     <script src="assets/js/style.js?v=11"></script>
-    <script src="assets/js/game.js?v=12"></script>
+    <script src="assets/js/plugins.js?v=1"></script>
+    <script src="assets/js/game.js?v=13"></script>
     <script src="assets/js/editor.js?v=14"></script>
     <script src="assets/js/exportImport.js?v=12"></script>
     <script>
@@ -847,6 +848,12 @@
                 }
                 engine.world.mapName = mapData?.name || 'Untitled Map';
                 
+                // Initialize plugins from world data
+                if (window.PluginManager) {
+                    await window.PluginManager.discoverPlugins();
+                    await window.PluginManager.initFromWorld(engine.world);
+                }
+                
                 // Recreate editor player at spawn point
                 engine.createEditorPlayer();
                 
@@ -895,6 +902,12 @@
                     engine.world.fromJSON(data.mapData);
                     // Update background based on map theme
                     editor.updateBackground();
+                    
+                    // Initialize plugins from world data
+                    if (window.PluginManager) {
+                        await window.PluginManager.discoverPlugins();
+                        await window.PluginManager.initFromWorld(engine.world);
+                    }
                 }
                 isHost = data.isHost || false;
             }
