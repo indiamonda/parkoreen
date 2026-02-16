@@ -50,44 +50,22 @@
         player.isHealing = false;
         player.healStartTime = 0;
         
-        // HK input state
-        player.hkInput = {
-            attack: false,
-            dash: false,
-            superDash: false,
-            heal: false
-        };
-        
         return data;
     }, pluginId, 5); // Run before HP plugin
     
     // ============================================
     // INPUT HANDLING
     // ============================================
+    // Input is now handled by the game engine's keyboard layout system
+    // The game sets player.input.attack, player.input.heal, etc.
+    // We just need to update facing direction
     pluginManager.registerHook('input.keydown', (data) => {
         const { key, player } = data;
         if (!player) return data;
         
-        if (key === 'KeyX') player.hkInput.attack = true;
-        if (key === 'Comma') player.hkInput.dash = true;
-        if (key === 'Period') player.hkInput.superDash = true;
-        if (key === 'KeyF') player.hkInput.heal = true;
-        
         // Update facing direction
         if (key === 'KeyA' || key === 'ArrowLeft') player.facingDirection = -1;
         if (key === 'KeyD' || key === 'ArrowRight') player.facingDirection = 1;
-        
-        return data;
-    }, pluginId);
-    
-    pluginManager.registerHook('input.keyup', (data) => {
-        const { key, player } = data;
-        if (!player) return data;
-        
-        if (key === 'KeyX') player.hkInput.attack = false;
-        if (key === 'Comma') player.hkInput.dash = false;
-        if (key === 'Period') player.hkInput.superDash = false;
-        if (key === 'KeyF') player.hkInput.heal = false;
         
         return data;
     }, pluginId);
@@ -104,7 +82,7 @@
         if (player.input?.right && !player.input?.left) player.facingDirection = 1;
         
         // ===== ATTACK =====
-        if (player.hkInput?.attack && !player.isAttacking && now > player.attackCooldown) {
+        if (player.input?.attack && !player.isAttacking && now > player.attackCooldown) {
             let direction = 'forward';
             if (player.input?.up) direction = 'up';
             else if (player.input?.down && !player.isOnGround) direction = 'down';
@@ -142,7 +120,7 @@
         }
         
         // ===== DASH =====
-        if (player.hkInput?.dash && player.hasDash && !player.isDashing && now > player.dashCooldown) {
+        if (player.input?.dash && player.hasDash && !player.isDashing && now > player.dashCooldown) {
             player.isDashing = true;
             player.dashStartTime = now;
             player.dashDirection = player.facingDirection;
@@ -162,7 +140,7 @@
         }
         
         // ===== SUPER DASH =====
-        if (player.hkInput?.superDash && player.hasSuperDash && !player.isSuperDashing && !player.superDashCharging) {
+        if (player.input?.superDash && player.hasSuperDash && !player.isSuperDashing && !player.superDashCharging) {
             player.superDashCharging = true;
             player.superDashChargeStart = now;
             player.superDashDirection = player.facingDirection;
@@ -180,7 +158,7 @@
             }
             
             // Release check
-            if (!player.hkInput?.superDash) {
+            if (!player.input?.superDash) {
                 player.superDashCharging = false;
                 if (elapsed >= 800) {
                     // Fully charged - burst!
@@ -202,7 +180,7 @@
             }
             
             // Jump cancels super dash
-            if (player.hkInput?.attack || (player.input?.jump && player.canJump)) {
+            if (player.input?.attack || (player.input?.jump && player.canJump)) {
                 stopSuperDash(player, 'manual');
             }
             
@@ -210,7 +188,7 @@
         }
         
         // ===== HEAL =====
-        if (player.hkInput?.heal && !player.isHealing && !player.isDashing && !player.isSuperDashing) {
+        if (player.input?.heal && !player.isHealing && !player.isDashing && !player.isSuperDashing) {
             if (player.soul >= 33 && player.hp < player.maxHP) {
                 player.isHealing = true;
                 player.healStartTime = now;
@@ -219,7 +197,7 @@
         }
         
         if (player.isHealing) {
-            if (!player.hkInput?.heal) {
+            if (!player.input?.heal) {
                 // Cancelled
                 player.isHealing = false;
                 pluginManager.stopSound(pluginId, 'healCharging');

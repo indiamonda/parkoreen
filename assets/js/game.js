@@ -92,7 +92,12 @@ class Player {
             up: false,
             down: false,
             jump: false,
-            shift: false
+            shift: false,
+            // Plugin inputs (HK controls)
+            attack: false,
+            heal: false,
+            dash: false,
+            superDash: false
         };
         
         // Touchboxes - positioned lower on the player sprite
@@ -224,6 +229,12 @@ class Player {
         // Expire coyote time if not used
         if (this.coyoteTimeStart !== null && (now - this.coyoteTimeStart) > this.COYOTE_TIME) {
             this.coyoteTimeStart = null;
+        }
+        
+        // Variable jump height - release jump key while ascending to cut jump short
+        if (!this.input.jump && this.vy < 0 && !this.isOnGround) {
+            // Cut the upward velocity to start falling
+            this.vy = Math.max(this.vy, -2);
         }
 
         if (!this.input.jump) {
@@ -1077,10 +1088,6 @@ class WorldObject {
             const textWidth = ctx.measureText(this.teleportalName).width;
             const padding = 3;
             
-            // Background for label
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(centerX - textWidth / 2 - padding, y + h - 14, textWidth + padding * 2, 14);
-            
             // Text
             ctx.fillStyle = this.color;
             ctx.fillText(this.teleportalName, centerX, y + h - 12);
@@ -1300,6 +1307,12 @@ class World {
                 superDash: false
             }
         };
+        
+        // Keyboard layout (applies in test/play mode only)
+        // 'default' - Standard Parkoreen controls
+        // 'hollowknight' - Hollow Knight style controls
+        // 'jimmyqrg' - Custom JimmyQrg layout
+        this.keyboardLayout = 'default';
     }
 
     addObject(obj) {
@@ -1647,7 +1660,9 @@ class World {
             // Music
             music: this.music,
             // Plugins
-            plugins: this.plugins
+            plugins: this.plugins,
+            // Keyboard layout
+            keyboardLayout: this.keyboardLayout
         };
     }
 
@@ -1747,6 +1762,10 @@ class World {
                 }
             };
         }
+        
+        // Keyboard layout
+        const validLayouts = ['default', 'hollowknight', 'jimmyqrg'];
+        this.keyboardLayout = validLayouts.includes(data.keyboardLayout) ? data.keyboardLayout : 'default';
         
         if (data.objects) {
             for (const objData of data.objects) {
@@ -2030,20 +2049,76 @@ class GameEngine {
     updatePlayerInput() {
         if (!this.localPlayer) return;
         
-        this.localPlayer.input.left = this.keys['KeyA'] || this.keys['ArrowLeft'];
-        this.localPlayer.input.right = this.keys['KeyD'] || this.keys['ArrowRight'];
-        this.localPlayer.input.up = this.keys['KeyW'] || this.keys['ArrowUp'];
-        this.localPlayer.input.down = this.keys['KeyS'] || this.keys['ArrowDown'];
-        this.localPlayer.input.shift = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
+        // Get keyboard layout (only applies in play/test mode)
+        const inGameMode = this.state === GameState.PLAYING || this.state === GameState.TESTING;
+        const layout = inGameMode ? (this.world?.keyboardLayout || 'default') : 'default';
         
-        // Jump: Space always, W/Up also triggers jump in both modes
-        this.localPlayer.input.jump = this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'];
+        // Define keyboard layouts
+        const layouts = {
+            default: {
+                left: this.keys['KeyA'] || this.keys['ArrowLeft'],
+                right: this.keys['KeyD'] || this.keys['ArrowRight'],
+                up: this.keys['KeyW'] || this.keys['ArrowUp'],
+                down: this.keys['KeyS'] || this.keys['ArrowDown'],
+                jump: this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'],
+                shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
+                // Plugin inputs (use HK defaults when available)
+                attack: this.keys['KeyX'],
+                heal: this.keys['KeyA'],
+                dash: this.keys['KeyC'],
+                superDash: this.keys['KeyS']
+            },
+            hollowknight: {
+                // Hollow Knight Default layout
+                left: this.keys['ArrowLeft'],
+                right: this.keys['ArrowRight'],
+                up: this.keys['ArrowUp'],
+                down: this.keys['ArrowDown'],
+                jump: this.keys['KeyZ'],
+                shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
+                // Plugin inputs
+                attack: this.keys['KeyX'],
+                heal: this.keys['KeyA'],
+                dash: this.keys['KeyC'],
+                superDash: this.keys['KeyS']
+            },
+            jimmyqrg: {
+                // JimmyQrg custom layout
+                left: this.keys['KeyA'],
+                right: this.keys['KeyD'],
+                up: this.keys['ArrowUp'],
+                down: this.keys['ArrowDown'],
+                jump: this.keys['KeyW'],
+                shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
+                // Plugin inputs
+                attack: this.keys['KeyN'],
+                heal: this.keys['ShiftLeft'],
+                dash: this.keys['Comma'],
+                superDash: this.keys['KeyF']
+            }
+        };
+        
+        const keymap = layouts[layout] || layouts.default;
+        
+        this.localPlayer.input.left = keymap.left;
+        this.localPlayer.input.right = keymap.right;
+        this.localPlayer.input.up = keymap.up;
+        this.localPlayer.input.down = keymap.down;
+        this.localPlayer.input.jump = keymap.jump;
+        this.localPlayer.input.shift = keymap.shift;
+        
+        // Store plugin inputs for plugins to use
+        this.localPlayer.input.attack = keymap.attack;
+        this.localPlayer.input.heal = keymap.heal;
+        this.localPlayer.input.dash = keymap.dash;
+        this.localPlayer.input.superDash = keymap.superDash;
         
         // Let plugins handle additional input via hooks
         if (window.PluginManager) {
             window.PluginManager.executeHook('input.update', { 
                 player: this.localPlayer, 
-                keys: this.keys 
+                keys: this.keys,
+                layout: layout
             });
         }
     }

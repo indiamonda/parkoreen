@@ -567,6 +567,53 @@ class Editor {
                     </div>
                 </div>
                 
+                <!-- Keyboard -->
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Keyboard</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                    <div class="form-group">
+                            <label class="form-label">Layout</label>
+                            <select class="form-select" id="config-keyboard-layout">
+                                <option value="default">Default (Parkoreen)</option>
+                                <option value="hollowknight">Hollow Knight Default</option>
+                                <option value="jimmyqrg">JimmyQrg</option>
+                            </select>
+                            <small style="color: #888; font-size: 11px;">Applies in test mode & room play only</small>
+                        </div>
+                        <div id="keyboard-layout-info" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px; color: #aaa; line-height: 1.6;">
+                            <div id="keyboard-info-default">
+                                <strong style="color: #fff;">Default (Parkoreen):</strong><br>
+                                Move: A/D or ←/→<br>
+                                Jump: Space or W or ↑<br>
+                                Up/Down: W/S or ↑/↓
+                            </div>
+                            <div id="keyboard-info-hollowknight" style="display: none;">
+                                <strong style="color: #fff;">Hollow Knight Default:</strong><br>
+                                Move: ←/→<br>
+                                Jump: Z<br>
+                                Attack: X<br>
+                                Heal: A<br>
+                                Dash: C<br>
+                                Super Dash: S<br>
+                                Up/Down: ↑/↓
+                            </div>
+                            <div id="keyboard-info-jimmyqrg" style="display: none;">
+                                <strong style="color: #fff;">JimmyQrg:</strong><br>
+                                Move: A/D<br>
+                                Jump: W<br>
+                                Attack: N<br>
+                                Heal: LeftShift<br>
+                                Dash: , (comma)<br>
+                                Super Dash: F<br>
+                                Up/Down: ↑/↓
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- World -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
@@ -2725,6 +2772,13 @@ class Editor {
 
         document.getElementById('config-collide').addEventListener('change', (e) => {
             this.world.collideWithEachOther = e.target.checked;
+            this.triggerMapChange();
+        });
+        
+        // Keyboard layout
+        document.getElementById('config-keyboard-layout').addEventListener('change', (e) => {
+            this.world.keyboardLayout = e.target.value;
+            this.updateKeyboardLayoutInfo(e.target.value);
             this.triggerMapChange();
         });
 
@@ -5334,6 +5388,13 @@ class Editor {
             this.updateStoredDataTypeDescription(this.world.storedDataType || 'json');
         }
         
+        // Keyboard layout
+        const keyboardLayout = document.getElementById('config-keyboard-layout');
+        if (keyboardLayout) {
+            keyboardLayout.value = this.world.keyboardLayout || 'default';
+            this.updateKeyboardLayoutInfo(this.world.keyboardLayout || 'default');
+        }
+        
         // Music settings
         const musicSelect = document.getElementById('config-music');
         const customMusicOptions = document.getElementById('custom-music-options');
@@ -5526,6 +5587,16 @@ class Editor {
         };
         
         descEl.innerHTML = descriptions[type] || descriptions['json'];
+    }
+    
+    updateKeyboardLayoutInfo(layout) {
+        const layouts = ['default', 'hollowknight', 'jimmyqrg'];
+        layouts.forEach(l => {
+            const el = document.getElementById(`keyboard-info-${l}`);
+            if (el) {
+                el.style.display = l === layout ? 'block' : 'none';
+            }
+        });
     }
     
     handleMusicUpload(file) {
