@@ -11,7 +11,7 @@ const DEFAULT_GRAVITY = 0.8;
 const DEFAULT_JUMP_FORCE = -14;
 const DEFAULT_MOVE_SPEED = 5;
 const FLY_SPEED = 8;
-const CAMERA_LERP = 0.08;
+const CAMERA_LERP = 0.12;
 const PLAYER_SIZE = 32;
 
 // ============================================

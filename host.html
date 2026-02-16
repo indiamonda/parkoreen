@@ -610,33 +610,51 @@
                 // Start hint cycle
                 startHintCycle();
                 
-                // Define resources to preload
-                const images = [
+                // Define resources to preload - split into more granular categories
+                const uiImages = [
                     'assets/png/logo.png',
-                    'assets/svg/spike-64x.svg',
-                    'assets/svg/portal-64x.svg',
                     'assets/png/cover.png'
                 ];
                 
-                const audio = [
-                    'assets/mp3/jump.mp3',
+                const gameSprites = [
+                    'assets/svg/spike-64x.svg',
+                    'assets/svg/portal-64x.svg'
+                ];
+                
+                const sfx = [
+                    'assets/mp3/jump.mp3'
+                ];
+                
+                const music = [
                     'assets/mp3/maccary-bay.mp3',
                     'assets/mp3/reggae-party.mp3'
                 ];
                 
                 // Step 1: Calculate ALL sizes upfront so we know the true total
-                const allResources = [...images, ...audio];
+                const allResources = [...uiImages, ...gameSprites, ...sfx, ...music];
                 await this.calculateAllSizes(allResources);
                 
-                // Step 2: Load images (part progress tracks just images)
-                this.startPart('Loading Images...', images);
-                for (const src of images) {
+                // Step 2: Load UI images
+                this.startPart('Loading UI...', uiImages);
+                for (const src of uiImages) {
                     await this.preloadImage(src);
                 }
                 
-                // Step 3: Load audio (part progress tracks just audio)
-                this.startPart('Loading Audio...', audio);
-                for (const src of audio) {
+                // Step 3: Load game sprites
+                this.startPart('Loading Sprites...', gameSprites);
+                for (const src of gameSprites) {
+                    await this.preloadImage(src);
+                }
+                
+                // Step 4: Load sound effects
+                this.startPart('Loading SFX...', sfx);
+                for (const src of sfx) {
+                    await this.preloadAudio(src);
+                }
+                
+                // Step 5: Load music
+                this.startPart('Loading Music...', music);
+                for (const src of music) {
                     await this.preloadAudio(src);
                 }
                 

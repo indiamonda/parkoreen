@@ -344,7 +344,7 @@
         }
 
         async function renameMap(id, currentName) {
-            var newName = await modalPrompt('Rename Map', 'Enter new name for "' + currentName + '"');
+            var newName = await modalPrompt('Rename Map', 'Enter a new name for "' + currentName + '"');
             if (!newName || !newName.trim() || newName.trim() === currentName) return;
 
             try {

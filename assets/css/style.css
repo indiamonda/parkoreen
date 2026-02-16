@@ -1171,7 +1171,7 @@ a:hover {
     position: fixed;
     left: var(--spacing-md);
     top: 80px;
-    width: 400px;
+    width: 480px;
     max-height: calc(100vh - 120px);
     background: var(--bg-medium);
     border-radius: var(--border-radius-lg);

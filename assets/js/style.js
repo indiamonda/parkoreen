@@ -154,20 +154,21 @@ class ModalManager {
     /**
      * Show prompt dialog
      * @param {string} title - Title text
-     * @param {string} placeholder - Input placeholder
+     * @param {string} message - Message to display above input
      * @param {string} defaultValue - Default input value
      * @returns {Promise<string|null>} Resolves with input value or null
      */
-    prompt(title, placeholder = '', defaultValue = '') {
+    prompt(title, message = '', defaultValue = '') {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay active';
             overlay.innerHTML = `
                 <div class="modal">
                     <h2 class="modal-title">${title}</h2>
+                    ${message ? `<p class="modal-message" style="margin-bottom: 12px; color: #ccc;">${message}</p>` : ''}
                     <div class="form-group">
                         <input type="text" class="form-input" id="prompt-input" 
-                               placeholder="${placeholder}" value="${defaultValue}">
+                               placeholder="" value="${defaultValue}">
                     </div>
                     <div class="modal-actions">
                         <button class="btn btn-secondary" data-action="cancel">Cancel</button>
