@@ -1315,10 +1315,10 @@ class World {
         };
         
         // Keyboard layout (applies in test/play mode only)
+        // 'jimmyqrg' - Default JimmyQrg layout
         // 'default' - Standard Parkoreen controls
         // 'hk' - Hollow Knight style controls
-        // 'jimmyqrg' - Custom JimmyQrg layout
-        this.keyboardLayout = 'default';
+        this.keyboardLayout = 'jimmyqrg';
     }
 
     addObject(obj) {
@@ -1768,7 +1768,7 @@ class World {
         
         // Keyboard layout
         const validLayouts = ['default', 'hk', 'jimmyqrg'];
-        this.keyboardLayout = validLayouts.includes(data.keyboardLayout) ? data.keyboardLayout : 'default';
+        this.keyboardLayout = validLayouts.includes(data.keyboardLayout) ? data.keyboardLayout : 'jimmyqrg';
         
         if (data.objects) {
             for (const objData of data.objects) {
@@ -2062,7 +2062,7 @@ class GameEngine {
         
         // Get keyboard layout (only applies in play/test mode)
         const inGameMode = this.state === GameState.PLAYING || this.state === GameState.TESTING;
-        const layout = inGameMode ? (this.world?.keyboardLayout || 'default') : 'default';
+        const layout = inGameMode ? (this.world?.keyboardLayout || 'jimmyqrg') : 'jimmyqrg';
         
         // Define keyboard layouts
         const layouts = {

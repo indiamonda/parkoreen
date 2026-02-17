@@ -577,15 +577,25 @@ class Editor {
                     <div class="form-group">
                             <label class="form-label">Layout</label>
                             <select class="form-select" id="config-keyboard-layout">
-                                <option value="default">Default (Parkoreen)</option>
+                                <option value="jimmyqrg">JimmyQrg (Default)</option>
+                                <option value="default">Parkoreen</option>
                                 <option value="hk">Hollow Knight Original</option>
-                                <option value="jimmyqrg">JimmyQrg</option>
                             </select>
                             <small style="color: #888; font-size: 11px;">Applies in test mode & room play only</small>
                         </div>
                         <div id="keyboard-layout-info" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px; color: #aaa; line-height: 1.6;">
-                            <div id="keyboard-info-default">
-                                <strong style="color: #fff;">Default (Parkoreen):</strong><br>
+                            <div id="keyboard-info-jimmyqrg">
+                                <strong style="color: #fff;">JimmyQrg (Default):</strong><br>
+                                Move: A/D<br>
+                                Jump: W<br>
+                                Attack: N<br>
+                                Heal: LeftShift<br>
+                                Dash: , (comma)<br>
+                                Super Dash: F<br>
+                                Up/Down: ↑/↓
+                            </div>
+                            <div id="keyboard-info-default" style="display: none;">
+                                <strong style="color: #fff;">Parkoreen:</strong><br>
                                 Move: A/D or ←/→<br>
                                 Jump: Space or W or ↑<br>
                                 Up/Down: W/S or ↑/↓<br>
@@ -599,16 +609,6 @@ class Editor {
                                 Heal: A<br>
                                 Dash: C<br>
                                 Super Dash: S<br>
-                                Up/Down: ↑/↓
-                            </div>
-                            <div id="keyboard-info-jimmyqrg" style="display: none;">
-                                <strong style="color: #fff;">JimmyQrg:</strong><br>
-                                Move: A/D<br>
-                                Jump: W<br>
-                                Attack: N<br>
-                                Heal: LeftShift<br>
-                                Dash: , (comma)<br>
-                                Super Dash: F<br>
                                 Up/Down: ↑/↓
                             </div>
                         </div>
@@ -5441,8 +5441,8 @@ class Editor {
         // Keyboard layout
         const keyboardLayout = document.getElementById('config-keyboard-layout');
         if (keyboardLayout) {
-            keyboardLayout.value = this.world.keyboardLayout || 'default';
-            this.updateKeyboardLayoutInfo(this.world.keyboardLayout || 'default');
+            keyboardLayout.value = this.world.keyboardLayout || 'jimmyqrg';
+            this.updateKeyboardLayoutInfo(this.world.keyboardLayout || 'jimmyqrg');
             this.updateKeyboardLayoutOptions();
         }
         

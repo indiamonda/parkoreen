@@ -68,6 +68,11 @@
         player.wallSlideSpeed = 2; // Slower fall when clinging
         player._wallJumpReady = true; // Prevents repeated wall jumps from held key
         
+        // Wall bounce state (horizontal push off wall)
+        player.isWallBouncing = false;
+        player.wallBounceEndTime = 0;
+        player.wallBounceDirection = 0;
+        
         return data;
     }, pluginId, 5); // Run before HP plugin
     
@@ -141,22 +146,47 @@
             player.isWallClinging = false;
         }
         
+        // Handle wall bounce (horizontal push after wall jump)
+        if (player.isWallBouncing) {
+            if (now < player.wallBounceEndTime) {
+                // Force horizontal movement at player speed
+                const playerSpeed = world?.playerSpeed ?? 5;
+                player.vx = player.wallBounceDirection * playerSpeed;
+                
+                // Normal gravity applies during bounce
+                const worldGravity = world?.gravity ?? 0.8;
+                player.vy += worldGravity;
+                
+                // Cap fall speed
+                const maxFallSpeed = 20 * (worldGravity / 0.8);
+                if (player.vy > maxFallSpeed) player.vy = maxFallSpeed;
+                
+                // Apply movement with collision
+                player.moveWithCollision(world);
+                
+                return { ...data, skipPhysics: true };
+            } else {
+                // Bounce ended - return to normal physics
+                player.isWallBouncing = false;
+            }
+        }
+        
         // Handle wall cling physics - use skipPhysics to control fall speed
         if (player.isWallClinging) {
-            const worldJumpForce = world?.jumpForce ?? -14;
             const worldGravity = world?.gravity ?? 0.8;
-            const gravityRatio = worldGravity / 0.8;
+            const playerSpeed = world?.playerSpeed ?? 5;
             
             // Check for wall jump input
             if (player.input?.jump && player._wallJumpReady !== false) {
-                // Wall jump: push away from wall and up
-                const wallJumpForceX = 8; // Horizontal push away from wall
-                const wallJumpForceY = worldJumpForce * 0.9 * Math.sqrt(gravityRatio);
-                
-                player.vx = -player.wallClingDirection * wallJumpForceX;
-                player.vy = wallJumpForceY;
-                player.facingDirection = -player.wallClingDirection;
+                // Wall bounce: horizontal push away from wall
                 player.isWallClinging = false;
+                player.isWallBouncing = true;
+                player.wallBounceDirection = -player.wallClingDirection;
+                player.wallBounceEndTime = now + 120; // Short bounce duration (120ms)
+                
+                player.vx = player.wallBounceDirection * playerSpeed;
+                player.vy = -2; // Small upward nudge to feel responsive
+                player.facingDirection = player.wallBounceDirection;
                 player.monarchWingsUsed = 0; // Reset double jump after wall jump
                 player._wallJumpReady = false; // Prevent repeated jumps from held key
                 
@@ -360,6 +390,7 @@
         const { player } = data;
         player.monarchWingsUsed = 0;
         player.isWallClinging = false;
+        player.isWallBouncing = false;
         return data;
     }, pluginId);
     
@@ -377,6 +408,7 @@
         player.isHealing = false;
         player.monarchWingsUsed = 0;
         player.isWallClinging = false;
+        player.isWallBouncing = false;
         player._wallJumpReady = true;
         
         return data;
@@ -511,9 +543,9 @@
     // ============================================
     
     function getAttackHitbox(player, direction) {
-        const attackRange = 40;
-        const attackWidth = 32;
-        const attackHeight = 24;
+        const attackRange = 52;
+        const attackWidth = 36;
+        const attackHeight = 28;
         
         if (direction === 'up') {
             return {
