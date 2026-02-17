@@ -812,7 +812,7 @@ class Editor {
                         </div>
                         <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <span style="font-size: 13px;">Mantis Claw</span>
+                                <span style="font-size: 13px;">Mantis Claw (Wall Jump)</span>
                                 <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Cling to walls and wall jump</p>
                             </div>
                             <label class="toggle">

@@ -32,23 +32,81 @@
         return data;
     }, pluginId);
     
+    // Grid size for alignment
+    const GRID_SIZE = 32;
+    
+    // Helper: Check if a position is safe (not overlapping any spike)
+    function isPositionSafe(x, y, playerWidth, playerHeight) {
+        const playerBox = { x, y, width: playerWidth, height: playerHeight };
+        const margin = 4; // Extra margin around spikes
+        
+        for (const obj of world.objects) {
+            if (obj.actingType !== 'spike') continue;
+            
+            // Expanded spike box for safety margin
+            const spikeBox = {
+                x: obj.x - margin,
+                y: obj.y - margin,
+                width: obj.width + margin * 2,
+                height: obj.height + margin * 2
+            };
+            
+            // Check overlap
+            if (playerBox.x < spikeBox.x + spikeBox.width &&
+                playerBox.x + playerBox.width > spikeBox.x &&
+                playerBox.y < spikeBox.y + spikeBox.height &&
+                playerBox.y + playerBox.height > spikeBox.y) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    // Helper: Align to grid
+    function alignToGrid(value) {
+        return Math.round(value / GRID_SIZE) * GRID_SIZE;
+    }
+    
     // ============================================
     // PLAYER UPDATE HOOK - Record safe ground
     // ============================================
+    let lastSafeGroundCheck = 0;
+    const SAFE_GROUND_CHECK_INTERVAL = 200; // Only check every 200ms to reduce lag
+    
     pluginManager.registerHook('player.update', (data) => {
         const { player } = data;
         
-        // Record safe ground when player is on ground
+        // Record safe ground when player is on ground (throttled)
         if (player.isOnGround && !player.isDead && player.useHPSystem) {
             const now = Date.now();
-            player.safeGroundHistory.push({
-                x: player.x,
-                y: player.y,
-                time: now
-            });
+            
+            // Throttle the check to reduce performance impact
+            if (now - lastSafeGroundCheck < SAFE_GROUND_CHECK_INTERVAL) {
+                return data;
+            }
+            lastSafeGroundCheck = now;
+            
+            // Grid-align the position
+            const alignedX = alignToGrid(player.x);
+            const alignedY = alignToGrid(player.y);
+            
+            // Avoid duplicate consecutive positions (fast check first)
+            const lastEntry = player.safeGroundHistory[player.safeGroundHistory.length - 1];
+            if (lastEntry && lastEntry.x === alignedX && lastEntry.y === alignedY) {
+                return data;
+            }
+            
+            // Only record if position is safe (not near spikes)
+            if (isPositionSafe(alignedX, alignedY, player.width, player.height)) {
+                player.safeGroundHistory.push({
+                    x: alignedX,
+                    y: alignedY,
+                    time: now
+                });
+            }
             
             // Keep only last N entries
-            if (player.safeGroundHistory.length > 60) {
+            if (player.safeGroundHistory.length > 20) {
                 player.safeGroundHistory.shift();
             }
         }
@@ -80,11 +138,30 @@
             return data;
         }
         
-        // Player survives - teleport to last safe ground
-        if (player.safeGroundHistory.length > 0) {
-            const safeGround = player.safeGroundHistory[player.safeGroundHistory.length - 1];
-            player.x = safeGround.x;
-            player.y = safeGround.y;
+        // Player survives - teleport to a safe ground position
+        // Search backward through history to find a truly safe spot
+        let foundSafe = false;
+        for (let i = player.safeGroundHistory.length - 1; i >= 0; i--) {
+            const safeGround = player.safeGroundHistory[i];
+            
+            // Verify this position is still safe
+            if (isPositionSafe(safeGround.x, safeGround.y, player.width, player.height)) {
+                player.x = safeGround.x;
+                player.y = safeGround.y;
+                player.vx = 0;
+                player.vy = 0;
+                foundSafe = true;
+                
+                // Remove entries after this one (they might be unsafe)
+                player.safeGroundHistory = player.safeGroundHistory.slice(0, i + 1);
+                break;
+            }
+        }
+        
+        // If no safe ground found, try spawn point
+        if (!foundSafe && world.spawnPoint) {
+            player.x = alignToGrid(world.spawnPoint.x);
+            player.y = alignToGrid(world.spawnPoint.y - player.height);
             player.vx = 0;
             player.vy = 0;
         }
