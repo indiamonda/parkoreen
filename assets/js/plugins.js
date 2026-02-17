@@ -178,9 +178,18 @@ class PluginManager {
         
         this.enabled.add(pluginId);
         
-        // Add to world's enabled plugins
-        if (world && !world.plugins.enabled.includes(pluginId)) {
-            world.plugins.enabled.push(pluginId);
+        // Add to world's enabled plugins and initialize config if needed
+        if (world) {
+            if (!world.plugins.enabled.includes(pluginId)) {
+                world.plugins.enabled.push(pluginId);
+            }
+            // Initialize default config for plugin if not exists
+            if (!world.plugins[pluginId] && plugin.config) {
+                world.plugins[pluginId] = {};
+                for (const [key, config] of Object.entries(plugin.config)) {
+                    world.plugins[pluginId][key] = config.default;
+                }
+            }
         }
         
         return { success: true };
@@ -237,7 +246,7 @@ class PluginManager {
     getPluginObjects(pluginId, world) {
         const objects = [];
         
-        if (pluginId === 'hollowknight') {
+        if (pluginId === 'hk') {
             for (const obj of world.objects) {
                 if (obj.actingType === 'soulStatus') {
                     objects.push({ section: 'Map', name: 'Soul Status', obj });

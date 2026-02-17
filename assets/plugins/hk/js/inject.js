@@ -6,14 +6,17 @@
 (function(ctx) {
     const { pluginManager, pluginId, world, hooks, sounds } = ctx;
     
-    // Get config from world or use defaults
-    const config = world?.plugins?.hollowknight || HK_DEFAULTS;
+    // Helper to get current config (reads dynamically so changes are reflected)
+    function getConfig() {
+        return world?.plugins?.hk || HK_DEFAULTS;
+    }
     
     // ============================================
     // PLAYER INITIALIZATION
     // ============================================
     pluginManager.registerHook('player.init', (data) => {
         const { player } = data;
+        const config = getConfig();
         
         // Add HK properties
         player.soul = 0;
@@ -26,7 +29,7 @@
         player.attackStartTime = 0;
         player.attackCooldown = 0;
         
-        // Monarch Wing
+        // Monarch Wing - always set to true initially, reads from config during gameplay
         player.hasMonarchWing = config.monarchWing || false;
         player.monarchWingAmount = config.monarchWingAmount || 1;
         player.monarchWingsUsed = 0;
@@ -76,6 +79,13 @@
     pluginManager.registerHook('player.update', (data) => {
         const { player, world, audioManager } = data;
         const now = Date.now();
+        const config = getConfig();
+        
+        // Sync abilities from config (allows dynamic enable/disable)
+        player.hasMonarchWing = config.monarchWing || false;
+        player.monarchWingAmount = config.monarchWingAmount || 1;
+        player.hasDash = config.dash || false;
+        player.hasSuperDash = config.superDash || false;
         
         // Update facing based on movement
         if (player.input?.left && !player.input?.right) player.facingDirection = -1;
@@ -211,8 +221,12 @@
         }
         
         // ===== VARIABLE JUMP HEIGHT =====
-        if (!player.input?.jump && player.vy < 0) {
-            player.vy = Math.min(player.vy, -2);
+        // When jump is released while ascending, cut the upward velocity
+        if (!player.input?.jump && player.vy < 0 && !player.isOnGround) {
+            // Cap upward velocity to -2 so player starts falling sooner
+            if (player.vy < -2) {
+                player.vy = -2;
+            }
         }
         
         return data;
@@ -229,11 +243,8 @@
             
             player.monarchWingsUsed++;
             
-            // Small drop then wing flap
-            player.vy = 2;
-            setTimeout(() => {
-                player.vy = -14 * 0.9;
-            }, 50);
+            // Apply double jump immediately - similar velocity to normal jump
+            player.vy = -14 * 0.85; // Slightly weaker than normal jump
             
             pluginManager.playSound(pluginId, 'monarchWings');
             
@@ -365,7 +376,11 @@
     
     function checkCollisions(player, world, direction) {
         const collisions = [];
-        const box = { x: player.x, y: player.y, width: player.width, height: player.height };
+        // Check slightly ahead in the direction of movement
+        const lookAhead = direction === 'horizontal' ? 
+            { x: player.x + (player.superDashDirection || player.facingDirection) * 5, y: player.y } :
+            { x: player.x, y: player.y + 5 };
+        const box = { x: lookAhead.x, y: lookAhead.y, width: player.width, height: player.height };
         
         for (const obj of world.objects) {
             if (!obj.collision) continue;

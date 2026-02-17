@@ -224,6 +224,17 @@ class Player {
             this.canJump = false;
             this.isOnGround = false;
             if (audioManager) audioManager.play('jump');
+        } else if (this.input.jump && this.canJump && !canJumpNow && !editorMode) {
+            // Can't jump normally - let plugins handle (e.g., monarch wings)
+            if (window.PluginManager) {
+                const result = window.PluginManager.executeHook('player.jump', {
+                    player: this,
+                    canJump: false
+                });
+                if (result.didJump) {
+                    this.canJump = false;
+                }
+            }
         }
         
         // Expire coyote time if not used
@@ -231,12 +242,6 @@ class Player {
             this.coyoteTimeStart = null;
         }
         
-        // Variable jump height - release jump key while ascending to cut jump short
-        if (!this.input.jump && this.vy < 0 && !this.isOnGround) {
-            // Cut the upward velocity to start falling
-            this.vy = Math.max(this.vy, -2);
-        }
-
         if (!this.input.jump) {
             this.canJump = true;
         }
@@ -562,9 +567,13 @@ class Player {
     resetJumps() {
         // When landing on ground, reset to full jumps
         // (The walk-off-ledge penalty is handled in moveWithCollision)
-            this.jumpsRemaining = this.maxJumps;
+        this.jumpsRemaining = this.maxJumps;
         // Clear coyote time when landing
         this.coyoteTimeStart = null;
+        // Notify plugins of landing
+        if (window.PluginManager) {
+            window.PluginManager.executeHook('player.land', { player: this });
+        }
         // Reset monarch wings
         this.monarchWingsUsed = 0;
     }
@@ -1292,25 +1301,15 @@ class World {
         // 'dat' - Binary format, smaller file size
         this.storedDataType = 'json';
         
-        // Plugins system
+        // Plugins system - configs are dynamically added when plugins are enabled
         this.plugins = {
-            enabled: [], // Array of enabled plugin IDs: ['hp', 'hollowknight']
-            hp: {
-                defaultHP: 3
-            },
-            hollowknight: {
-                defaultHP: 3,
-                maxSoul: 99,
-                monarchWing: false,
-                monarchWingAmount: 1,
-                dash: false,
-                superDash: false
-            }
+            enabled: [] // Array of enabled plugin IDs
+            // Plugin configs are added dynamically: this.plugins[pluginId] = {...}
         };
         
         // Keyboard layout (applies in test/play mode only)
         // 'default' - Standard Parkoreen controls
-        // 'hollowknight' - Hollow Knight style controls
+        // 'hk' - Hollow Knight style controls
         // 'jimmyqrg' - Custom JimmyQrg layout
         this.keyboardLayout = 'default';
     }
@@ -1745,26 +1744,21 @@ class World {
             };
         }
         
-        // Plugins settings
+        // Plugins settings - load dynamically without hardcoded defaults
         if (data.plugins) {
             this.plugins = {
-                enabled: Array.isArray(data.plugins.enabled) ? data.plugins.enabled : [],
-                hp: {
-                    defaultHP: data.plugins.hp?.defaultHP ?? 3
-                },
-                hollowknight: {
-                    defaultHP: data.plugins.hollowknight?.defaultHP ?? 3,
-                    maxSoul: data.plugins.hollowknight?.maxSoul ?? 99,
-                    monarchWing: data.plugins.hollowknight?.monarchWing ?? false,
-                    monarchWingAmount: data.plugins.hollowknight?.monarchWingAmount ?? 1,
-                    dash: data.plugins.hollowknight?.dash ?? false,
-                    superDash: data.plugins.hollowknight?.superDash ?? false
-                }
+                enabled: Array.isArray(data.plugins.enabled) ? data.plugins.enabled : []
             };
+            // Copy all plugin configs dynamically
+            for (const key of Object.keys(data.plugins)) {
+                if (key !== 'enabled' && typeof data.plugins[key] === 'object') {
+                    this.plugins[key] = { ...data.plugins[key] };
+                }
+            }
         }
         
         // Keyboard layout
-        const validLayouts = ['default', 'hollowknight', 'jimmyqrg'];
+        const validLayouts = ['default', 'hk', 'jimmyqrg'];
         this.keyboardLayout = validLayouts.includes(data.keyboardLayout) ? data.keyboardLayout : 'default';
         
         if (data.objects) {
@@ -1807,7 +1801,7 @@ class World {
         // Returns objects that use features from a specific plugin
         const pluginObjects = [];
         
-        if (pluginId === 'hollowknight') {
+        if (pluginId === 'hk') {
             // Check for soul status objects
             for (const obj of this.objects) {
                 if (obj.actingType === 'soulStatus') {
@@ -2062,13 +2056,13 @@ class GameEngine {
                 down: this.keys['KeyS'] || this.keys['ArrowDown'],
                 jump: this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'],
                 shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
-                // Plugin inputs (use HK defaults when available)
+                // Plugin inputs (no conflicts with movement)
                 attack: this.keys['KeyX'],
-                heal: this.keys['KeyA'],
-                dash: this.keys['KeyC'],
-                superDash: this.keys['KeyS']
+                heal: this.keys['KeyF'],
+                dash: this.keys['Comma'],
+                superDash: this.keys['Period']
             },
-            hollowknight: {
+            hk: {
                 // Hollow Knight Default layout
                 left: this.keys['ArrowLeft'],
                 right: this.keys['ArrowRight'],
@@ -2284,6 +2278,9 @@ class GameEngine {
                     // Skip normal physics if plugin says so (e.g., during dash)
                     if (!result.skipPhysics) {
                         this.localPlayer.update(this.world, this.audioManager);
+                    } else {
+                        // Plugin is controlling movement - apply velocity with collision checking
+                        this.localPlayer.moveWithCollision(this.world);
                     }
                 } else {
                     this.localPlayer.update(this.world, this.audioManager);

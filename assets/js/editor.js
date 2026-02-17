@@ -578,7 +578,7 @@ class Editor {
                             <label class="form-label">Layout</label>
                             <select class="form-select" id="config-keyboard-layout">
                                 <option value="default">Default (Parkoreen)</option>
-                                <option value="hollowknight">Hollow Knight Default</option>
+                                <option value="hk">Hollow Knight Default</option>
                                 <option value="jimmyqrg">JimmyQrg</option>
                             </select>
                             <small style="color: #888; font-size: 11px;">Applies in test mode & room play only</small>
@@ -588,9 +588,10 @@ class Editor {
                                 <strong style="color: #fff;">Default (Parkoreen):</strong><br>
                                 Move: A/D or ←/→<br>
                                 Jump: Space or W or ↑<br>
-                                Up/Down: W/S or ↑/↓
+                                Up/Down: W/S or ↑/↓<br>
+                                <span style="color: #667eea;">Plugin:</span> Attack: X, Heal: F, Dash: , (comma), Super Dash: . (period)
                             </div>
-                            <div id="keyboard-info-hollowknight" style="display: none;">
+                            <div id="keyboard-info-hk" style="display: none;">
                                 <strong style="color: #fff;">Hollow Knight Default:</strong><br>
                                 Move: ←/→<br>
                                 Jump: Z<br>
@@ -755,7 +756,7 @@ class Editor {
                 </div>
                 
                 <!-- Hollow Knight Section (hidden by default, shown when HK plugin enabled) -->
-                <div class="config-section collapsible hidden" id="config-section-hollowknight">
+                <div class="config-section collapsible hidden" id="config-section-hk">
                     <div class="config-section-header">
                         <span class="config-section-title">🦋 Hollow Knight</span>
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
@@ -847,7 +848,7 @@ class Editor {
                     </div>
                     
                     <!-- Hollow Knight Plugin -->
-                    <div class="plugin-card" data-plugin="hollowknight" style="background: var(--bg-light); border-radius: 12px; padding: 20px;">
+                    <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; padding: 20px;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div style="flex: 1;">
                                 <h3 style="margin: 0 0 8px 0; color: #667eea; display: flex; align-items: center; gap: 8px;">
@@ -869,7 +870,7 @@ class Editor {
                                     <span>F - Focus/Heal (hold)</span>
                                 </div>
                             </div>
-                            <button class="btn plugin-toggle-btn" data-plugin="hollowknight" style="min-width: 80px;">
+                            <button class="btn plugin-toggle-btn" data-plugin="hk" style="min-width: 80px;">
                                 Add
                             </button>
                         </div>
@@ -2967,6 +2968,7 @@ class Editor {
         
         // HP settings
         document.getElementById('config-hp-default')?.addEventListener('change', (e) => {
+            if (!this.world.plugins.hp) this.world.plugins.hp = { defaultHP: 3 };
             this.world.plugins.hp.defaultHP = Math.max(1, Math.min(99, parseInt(e.target.value) || 3));
             e.target.value = this.world.plugins.hp.defaultHP;
             this.triggerMapChange();
@@ -2974,36 +2976,42 @@ class Editor {
         
         // Hollow Knight settings
         document.getElementById('config-hk-hp')?.addEventListener('change', (e) => {
-            this.world.plugins.hollowknight.defaultHP = Math.max(1, Math.min(12, parseInt(e.target.value) || 3));
-            e.target.value = this.world.plugins.hollowknight.defaultHP;
+            this.ensureHKConfig();
+            this.world.plugins.hk.defaultHP = Math.max(1, Math.min(12, parseInt(e.target.value) || 3));
+            e.target.value = this.world.plugins.hk.defaultHP;
             this.triggerMapChange();
         });
         
         document.getElementById('config-hk-maxsoul')?.addEventListener('change', (e) => {
-            this.world.plugins.hollowknight.maxSoul = Math.max(33, Math.min(198, parseInt(e.target.value) || 99));
-            e.target.value = this.world.plugins.hollowknight.maxSoul;
+            this.ensureHKConfig();
+            this.world.plugins.hk.maxSoul = Math.max(33, Math.min(198, parseInt(e.target.value) || 99));
+            e.target.value = this.world.plugins.hk.maxSoul;
             this.triggerMapChange();
         });
         
         document.getElementById('config-hk-monarchwing')?.addEventListener('change', (e) => {
-            this.world.plugins.hollowknight.monarchWing = e.target.checked;
+            this.ensureHKConfig();
+            this.world.plugins.hk.monarchWing = e.target.checked;
             document.getElementById('config-hk-monarchwing-amount-group').classList.toggle('hidden', !e.target.checked);
             this.triggerMapChange();
         });
         
         document.getElementById('config-hk-monarchwing-amount')?.addEventListener('change', (e) => {
-            this.world.plugins.hollowknight.monarchWingAmount = Math.max(1, Math.min(99, parseInt(e.target.value) || 1));
-            e.target.value = this.world.plugins.hollowknight.monarchWingAmount;
+            this.ensureHKConfig();
+            this.world.plugins.hk.monarchWingAmount = Math.max(1, Math.min(99, parseInt(e.target.value) || 1));
+            e.target.value = this.world.plugins.hk.monarchWingAmount;
             this.triggerMapChange();
         });
         
         document.getElementById('config-hk-dash')?.addEventListener('change', (e) => {
-            this.world.plugins.hollowknight.dash = e.target.checked;
+            this.ensureHKConfig();
+            this.world.plugins.hk.dash = e.target.checked;
             this.triggerMapChange();
         });
         
         document.getElementById('config-hk-superdash')?.addEventListener('change', (e) => {
-            this.world.plugins.hollowknight.superDash = e.target.checked;
+            this.ensureHKConfig();
+            this.world.plugins.hk.superDash = e.target.checked;
             this.triggerMapChange();
         });
     }
@@ -3044,7 +3052,7 @@ class Editor {
         if (isEnabled) {
             // Try to remove plugin
             // Check for dependencies first
-            if (pluginId === 'hp' && this.world.plugins.enabled.includes('hollowknight')) {
+            if (pluginId === 'hp' && this.world.plugins.enabled.includes('hk')) {
                 this.showPluginError('Cannot remove HP plugin', 'The Hollow Knight plugin depends on HP. Remove Hollow Knight first.');
                 return;
             }
@@ -3061,7 +3069,7 @@ class Editor {
         } else {
             // Enable plugin
             // Check dependencies
-            if (pluginId === 'hollowknight' && !this.world.plugins.enabled.includes('hp')) {
+            if (pluginId === 'hk' && !this.world.plugins.enabled.includes('hp')) {
                 // Auto-enable HP when enabling Hollow Knight
                 await this.world.enablePlugin('hp');
             }
@@ -3084,13 +3092,27 @@ class Editor {
     
     updatePluginConfigSections() {
         const hpSection = document.getElementById('config-section-hp');
-        const hkSection = document.getElementById('config-section-hollowknight');
+        const hkSection = document.getElementById('config-section-hk');
         
         if (hpSection) {
             hpSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hp'));
         }
         if (hkSection) {
-            hkSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hollowknight'));
+            hkSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hk'));
+        }
+    }
+    
+    ensureHKConfig() {
+        // Ensure HK config object exists with defaults
+        if (!this.world.plugins.hk) {
+            this.world.plugins.hk = {
+                defaultHP: 3,
+                maxSoul: 99,
+                monarchWing: false,
+                monarchWingAmount: 1,
+                dash: false,
+                superDash: false
+            };
         }
     }
 
@@ -5464,7 +5486,7 @@ class Editor {
         const hkDash = document.getElementById('config-hk-dash');
         const hkSuperDash = document.getElementById('config-hk-superdash');
         
-        const hk = this.world.plugins?.hollowknight;
+        const hk = this.world.plugins?.hk;
         if (hkHP) hkHP.value = hk?.defaultHP ?? 3;
         if (hkMaxSoul) hkMaxSoul.value = hk?.maxSoul ?? 99;
         if (hkMonarchWing) hkMonarchWing.checked = hk?.monarchWing ?? false;
@@ -5590,7 +5612,7 @@ class Editor {
     }
     
     updateKeyboardLayoutInfo(layout) {
-        const layouts = ['default', 'hollowknight', 'jimmyqrg'];
+        const layouts = ['default', 'hk', 'jimmyqrg'];
         layouts.forEach(l => {
             const el = document.getElementById(`keyboard-info-${l}`);
             if (el) {
