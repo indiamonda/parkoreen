@@ -4,14 +4,13 @@
 
 // Default configuration
 const HK_DEFAULTS = {
-    defaultHP: 3,
     maxSoul: 99,
     soulPerHit: 16.5,
     healCost: 33,
     healDuration: 900, // ms
-    dashDuration: 200, // ms
+    dashDuration: 150, // ms
     dashCooldown: 400, // ms
-    dashSpeed: 15,
+    dashSpeed: 12,
     superDashChargeDuration: 800, // ms
     superDashSpeed: 20,
     attackDuration: 200, // ms
@@ -58,7 +57,14 @@ const HK_PLAYER_PROPS = {
     
     // Heal
     isHealing: false,
-    healStartTime: 0
+    healStartTime: 0,
+    
+    // Mantis Claw
+    hasMantisClaw: false,
+    isWallClinging: false,
+    wallClingDirection: 0,
+    wallJumpCooldown: 0,
+    wallSlideSpeed: 2
 };
 
 // Input bindings

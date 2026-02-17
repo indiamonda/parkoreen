@@ -6,6 +6,13 @@
 (function(ctx) {
     const { pluginManager, pluginId, world, hooks, sounds } = ctx;
     
+    // Load soul container SVG images
+    const soulEmptyImg = new Image();
+    soulEmptyImg.src = 'assets/plugins/hk/svg/soulcontainer-empty.svg';
+    
+    const soulFullImg = new Image();
+    soulFullImg.src = 'assets/plugins/hk/svg/soulcontainer-full.svg';
+    
     // Helper to get current config (reads dynamically so changes are reflected)
     function getConfig() {
         return world?.plugins?.hk || HK_DEFAULTS;
@@ -53,6 +60,13 @@
         player.isHealing = false;
         player.healStartTime = 0;
         
+        // Mantis Claw (wall cling + wall jump)
+        player.hasMantisClaw = config.mantisClaw || false;
+        player.isWallClinging = false;
+        player.wallClingDirection = 0; // -1 = left wall, 1 = right wall
+        player.wallJumpCooldown = 0;
+        player.wallSlideSpeed = 2; // Slower fall when clinging
+        
         return data;
     }, pluginId, 5); // Run before HP plugin
     
@@ -86,10 +100,47 @@
         player.monarchWingAmount = config.monarchWingAmount || 1;
         player.hasDash = config.dash || false;
         player.hasSuperDash = config.superDash || false;
+        player.hasMantisClaw = config.mantisClaw || false;
         
         // Update facing based on movement
         if (player.input?.left && !player.input?.right) player.facingDirection = -1;
         if (player.input?.right && !player.input?.left) player.facingDirection = 1;
+        
+        // ===== MANTIS CLAW (Wall Cling) =====
+        if (player.hasMantisClaw && !player.isOnGround && !player.isDashing && !player.isSuperDashing) {
+            const touchingWall = checkWallContact(player, world);
+            
+            if (touchingWall !== 0) {
+                // Player is touching a wall
+                const pressingTowardWall = (touchingWall === -1 && player.input?.left) || 
+                                           (touchingWall === 1 && player.input?.right);
+                
+                if (pressingTowardWall && player.vy >= 0) {
+                    // Start or continue wall cling
+                    if (!player.isWallClinging) {
+                        player.isWallClinging = true;
+                        player.wallClingDirection = touchingWall;
+                        player.monarchWingsUsed = 0; // Reset double jump when grabbing wall
+                    }
+                    
+                    // Slow descent while clinging
+                    player.vy = Math.min(player.vy, player.wallSlideSpeed);
+                } else if (player.isWallClinging && !pressingTowardWall) {
+                    // Released wall
+                    player.isWallClinging = false;
+                }
+            } else {
+                // Not touching any wall
+                player.isWallClinging = false;
+            }
+        } else {
+            player.isWallClinging = false;
+        }
+        
+        // Reset wall cling on ground
+        if (player.isOnGround) {
+            player.isWallClinging = false;
+        }
         
         // ===== ATTACK =====
         if (player.input?.attack && !player.isAttacking && now > player.attackCooldown) {
@@ -139,11 +190,11 @@
         
         if (player.isDashing) {
             const elapsed = now - player.dashStartTime;
-            if (elapsed >= 200) {
+            if (elapsed >= 150) {
                 player.isDashing = false;
                 player.dashCooldown = now + 400;
             } else {
-                player.vx = player.dashDirection * 15;
+                player.vx = player.dashDirection * 12;
                 player.vy = 0;
                 return { ...data, skipPhysics: true };
             }
@@ -233,18 +284,40 @@
     }, pluginId);
     
     // ============================================
-    // MONARCH WING - Extra jump when out of normal jumps
+    // MONARCH WING & MANTIS CLAW JUMP HANDLING
     // ============================================
     pluginManager.registerHook('player.jump', (data) => {
         const { player, canJump } = data;
         
+        const worldJumpForce = world?.jumpForce ?? -14;
+        const worldGravity = world?.gravity ?? 0.8;
+        const gravityRatio = worldGravity / 0.8; // Ratio vs default gravity
+        
+        // MANTIS CLAW - Wall Jump
+        if (player.hasMantisClaw && player.isWallClinging) {
+            // Wall jump: push away from wall and up
+            const wallJumpForceX = 8; // Horizontal push away from wall
+            const wallJumpForceY = worldJumpForce * 0.9 * Math.sqrt(gravityRatio);
+            
+            player.vx = -player.wallClingDirection * wallJumpForceX;
+            player.vy = wallJumpForceY;
+            player.facingDirection = -player.wallClingDirection;
+            player.isWallClinging = false;
+            player.monarchWingsUsed = 0; // Reset double jump after wall jump
+            
+            pluginManager.playSound(pluginId, 'monarchWings'); // Reuse sound for now
+            
+            return { ...data, preventDefault: true, didJump: true };
+        }
+        
+        // MONARCH WING - Double jump when out of normal jumps
         if (!canJump && player.hasMonarchWing && !player.isOnGround && 
             player.monarchWingsUsed < player.monarchWingAmount) {
             
             player.monarchWingsUsed++;
             
-            // Apply double jump immediately - similar velocity to normal jump
-            player.vy = -14 * 0.85; // Slightly weaker than normal jump
+            // Monarch wing is 85% of normal jump, scaled with gravity
+            player.vy = worldJumpForce * 0.85 * Math.sqrt(gravityRatio);
             
             pluginManager.playSound(pluginId, 'monarchWings');
             
@@ -258,6 +331,7 @@
     pluginManager.registerHook('player.land', (data) => {
         const { player } = data;
         player.monarchWingsUsed = 0;
+        player.isWallClinging = false;
         return data;
     }, pluginId);
     
@@ -274,49 +348,44 @@
         player.superDashCharging = false;
         player.isHealing = false;
         player.monarchWingsUsed = 0;
+        player.isWallClinging = false;
         
         return data;
     }, pluginId);
     
     // ============================================
-    // HUD RENDERING - Soul vessel
+    // HUD RENDERING - Soul vessel using SVG icons
     // ============================================
     pluginManager.registerHook('render.hud', (data) => {
         const { ctx, player } = data;
         let xOffset = data.xOffset || 20;
         const yOffset = data.yOffset || 20;
         
-        // Soul vessel background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.beginPath();
-        ctx.arc(xOffset + 30, yOffset + 30, 35, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Soul fill
+        const containerSize = 60;
         const soulPercent = player.soul / player.maxSoul;
-        if (soulPercent > 0) {
+        
+        // Draw empty soul container
+        if (soulEmptyImg.complete) {
+            ctx.drawImage(soulEmptyImg, xOffset, yOffset, containerSize, containerSize);
+        }
+        
+        // Draw filled soul container with clipping based on soul percentage
+        if (soulPercent > 0 && soulFullImg.complete) {
             ctx.save();
+            // Clip from bottom up based on soul percentage
+            const fillHeight = containerSize * soulPercent;
             ctx.beginPath();
-            ctx.arc(xOffset + 30, yOffset + 30, 30, 0, Math.PI * 2);
+            ctx.rect(xOffset, yOffset + containerSize - fillHeight, containerSize, fillHeight);
             ctx.clip();
-            
-            const fillHeight = 60 * soulPercent;
-            const gradient = ctx.createLinearGradient(
-                xOffset + 30, yOffset + 60 - fillHeight,
-                xOffset + 30, yOffset + 60
-            );
-            gradient.addColorStop(0, '#a0d8ef');
-            gradient.addColorStop(1, '#6bb3d9');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(xOffset, yOffset + 60 - fillHeight, 60, fillHeight);
+            ctx.drawImage(soulFullImg, xOffset, yOffset, containerSize, containerSize);
             ctx.restore();
         }
         
         // Soul number
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(Math.floor(player.soul).toString(), xOffset + 30, yOffset + 35);
+        ctx.fillText(Math.floor(player.soul).toString(), xOffset + containerSize / 2, yOffset + containerSize / 2 + 5);
         
         // Heal progress indicator
         if (player.isHealing) {
@@ -326,12 +395,12 @@
             ctx.strokeStyle = '#4CAF50';
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.arc(xOffset + 30, yOffset + 30, 38, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+            ctx.arc(xOffset + containerSize / 2, yOffset + containerSize / 2, containerSize / 2 + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
             ctx.stroke();
         }
         
         // Update xOffset for HP hearts
-        return { ...data, xOffset: xOffset + 80 };
+        return { ...data, xOffset: xOffset + containerSize + 20 };
     }, pluginId, 10); // Priority 10, runs before HP plugin
     
     // ============================================
@@ -372,6 +441,47 @@
                a.x + a.width > b.x &&
                a.y < b.y + b.height &&
                a.y + a.height > b.y;
+    }
+    
+    // Check if player is touching a wall on either side
+    // Returns: -1 = touching left wall, 1 = touching right wall, 0 = no wall contact
+    function checkWallContact(player, world) {
+        const margin = 2; // How close to count as "touching"
+        
+        // Check left side
+        const leftBox = { 
+            x: player.x - margin, 
+            y: player.y + 4, // Slightly inside to avoid corners
+            width: margin, 
+            height: player.height - 8 
+        };
+        
+        // Check right side
+        const rightBox = { 
+            x: player.x + player.width, 
+            y: player.y + 4, 
+            width: margin, 
+            height: player.height - 8 
+        };
+        
+        let touchingLeft = false;
+        let touchingRight = false;
+        
+        for (const obj of world.objects) {
+            if (!obj.collision) continue;
+            if (obj.actingType === 'text' || obj.actingType === 'teleportal') continue;
+            
+            if (boxIntersects(leftBox, obj)) touchingLeft = true;
+            if (boxIntersects(rightBox, obj)) touchingRight = true;
+        }
+        
+        // Prioritize the direction player is facing/moving
+        if (touchingLeft && touchingRight) {
+            return player.facingDirection === -1 ? -1 : 1;
+        }
+        if (touchingLeft) return -1;
+        if (touchingRight) return 1;
+        return 0;
     }
     
     function checkCollisions(player, world, direction) {

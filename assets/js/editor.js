@@ -628,6 +628,15 @@ class Editor {
                             <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall</small>
                     </div>
                         <div class="form-group">
+                            <label class="form-label">Camera Smoothness</label>
+                            <input type="range" class="form-input" id="config-camera-lerp" min="0.05" max="1" step="0.05" value="0.12" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
+                                <span>Smooth</span>
+                                <span id="config-camera-lerp-value">0.12</span>
+                                <span>Snappy</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Death Line Y</label>
                             <input type="number" class="form-input" id="config-die-line-y" value="2000">
                             <small style="color: #888; font-size: 11px;">Players die below this Y position</small>
@@ -758,14 +767,10 @@ class Editor {
                 <!-- Hollow Knight Section (hidden by default, shown when HK plugin enabled) -->
                 <div class="config-section collapsible hidden" id="config-section-hk">
                     <div class="config-section-header">
-                        <span class="config-section-title">🦋 Hollow Knight</span>
+                        <span class="config-section-title">Hollow Knight</span>
                         <span class="material-symbols-outlined config-section-arrow">expand_more</span>
                     </div>
                     <div class="config-section-content">
-                        <div class="form-group">
-                            <label class="form-label">Default HP</label>
-                            <input type="number" class="form-input" id="config-hk-hp" min="1" max="12" value="3">
-                        </div>
                         <div class="form-group">
                             <label class="form-label">Max Soul</label>
                             <input type="number" class="form-input" id="config-hk-maxsoul" min="33" max="198" value="99">
@@ -805,6 +810,16 @@ class Editor {
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-size: 13px;">Mantis Claw</span>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Cling to walls and wall jump</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-hk-mantisclaw">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -826,53 +841,52 @@ class Editor {
                 </div>
                 <div style="overflow-y: auto; padding: 16px 0; flex: 1;">
                     <!-- HP Plugin -->
-                    <div class="plugin-card" data-plugin="hp" style="background: var(--bg-light); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <h3 style="margin: 0 0 8px 0; color: #FF6B6B; display: flex; align-items: center; gap: 8px;">
-                                    ❤️ HP (Health Points)
-                                </h3>
-                                <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
-                                    Adds a health system to the game. Players start with configurable HP. 
-                                    Touching spikes removes 1 HP and teleports player to the last safe ground they stood on.
-                                    When HP reaches 0, the player dies and respawns at checkpoint.
-                                </p>
-                                <div style="font-size: 12px; color: var(--text-muted);">
-                                    <strong>Features:</strong> HP display, damage system, safe ground respawn
+                    <div class="plugin-card" data-plugin="hp" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+                        <img src="assets/plugins/hp/cover.png" alt="HP Plugin" style="width: 100%; height: 120px; object-fit: cover;">
+                        <div style="padding: 16px 20px 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 8px 0; color: #FF6B6B;">
+                                        HP (Health Points)
+                                    </h3>
+                                    <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+                                        Adds a health system to the game. Players start with configurable HP. 
+                                        Touching spikes removes 1 HP and teleports player to the last safe ground they stood on.
+                                    </p>
                                 </div>
+                                <button class="btn plugin-toggle-btn" data-plugin="hp" style="min-width: 80px; margin-left: 16px;">
+                                    Add
+                                </button>
                             </div>
-                            <button class="btn plugin-toggle-btn" data-plugin="hp" style="min-width: 80px;">
-                                Add
-                            </button>
                         </div>
                     </div>
                     
                     <!-- Hollow Knight Plugin -->
-                    <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; padding: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <h3 style="margin: 0 0 8px 0; color: #667eea; display: flex; align-items: center; gap: 8px;">
-                                    🦋 Hollow Knight
-                                    <span style="font-size: 11px; background: rgba(255,107,107,0.2); color: #FF6B6B; padding: 2px 8px; border-radius: 4px;">Requires HP</span>
-                                </h3>
-                                <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
-                                    Adds Hollow Knight-style mechanics: Soul system, nail attacks (X key), 
-                                    Monarch Wings (double jump), Mothwing Cloak (dash), Crystal Heart (super dash), 
-                                    and Focus healing. Attack spikes to gain soul, use soul to heal!
-                                </p>
-                                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                                    <strong>Controls:</strong>
+                    <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; overflow: hidden;">
+                        <img src="assets/plugins/hk/cover.png" alt="Hollow Knight Plugin" style="width: 100%; height: 120px; object-fit: cover;">
+                        <div style="padding: 16px 20px 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 8px 0; color: #667eea; display: flex; align-items: center; gap: 8px;">
+                                        Hollow Knight
+                                        <span style="font-size: 11px; background: rgba(255,107,107,0.2); color: #FF6B6B; padding: 2px 8px; border-radius: 4px;">Requires HP</span>
+                                    </h3>
+                                    <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+                                        Adds Hollow Knight-style mechanics: Soul system, nail attacks, 
+                                        Monarch Wings (double jump), Mothwing Cloak (dash), Crystal Heart (super dash), 
+                                        and Focus healing.
+                                    </p>
+                                    <div style="font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                        <span>X - Attack (+ ↑/↓ for direction)</span>
+                                        <span>, (comma) - Dash</span>
+                                        <span>. (period) - Super Dash (hold)</span>
+                                        <span>F - Focus/Heal (hold)</span>
+                                    </div>
                                 </div>
-                                <div style="font-size: 11px; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                                    <span>X - Attack (+ ↑/↓ for direction)</span>
-                                    <span>, (comma) - Dash</span>
-                                    <span>. (period) - Super Dash (hold)</span>
-                                    <span>F - Focus/Heal (hold)</span>
-                                </div>
+                                <button class="btn plugin-toggle-btn" data-plugin="hk" style="min-width: 80px; margin-left: 16px;">
+                                    Add
+                                </button>
                             </div>
-                            <button class="btn plugin-toggle-btn" data-plugin="hk" style="min-width: 80px;">
-                                Add
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -2811,6 +2825,13 @@ class Editor {
             this.triggerMapChange();
         });
 
+        document.getElementById('config-camera-lerp').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            this.world.cameraLerp = (value > 0 && value <= 1) ? value : 0.12;
+            document.getElementById('config-camera-lerp-value').textContent = this.world.cameraLerp.toFixed(2);
+            this.triggerMapChange();
+        });
+
         // Spike touchbox mode
         document.getElementById('config-spike-touchbox').addEventListener('change', (e) => {
             this.world.spikeTouchbox = e.target.value;
@@ -2975,13 +2996,6 @@ class Editor {
         });
         
         // Hollow Knight settings
-        document.getElementById('config-hk-hp')?.addEventListener('change', (e) => {
-            this.ensureHKConfig();
-            this.world.plugins.hk.defaultHP = Math.max(1, Math.min(12, parseInt(e.target.value) || 3));
-            e.target.value = this.world.plugins.hk.defaultHP;
-            this.triggerMapChange();
-        });
-        
         document.getElementById('config-hk-maxsoul')?.addEventListener('change', (e) => {
             this.ensureHKConfig();
             this.world.plugins.hk.maxSoul = Math.max(33, Math.min(198, parseInt(e.target.value) || 99));
@@ -3012,6 +3026,12 @@ class Editor {
         document.getElementById('config-hk-superdash')?.addEventListener('change', (e) => {
             this.ensureHKConfig();
             this.world.plugins.hk.superDash = e.target.checked;
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-mantisclaw')?.addEventListener('change', (e) => {
+            this.ensureHKConfig();
+            this.world.plugins.hk.mantisClaw = e.target.checked;
             this.triggerMapChange();
         });
     }
@@ -3106,12 +3126,12 @@ class Editor {
         // Ensure HK config object exists with defaults
         if (!this.world.plugins.hk) {
             this.world.plugins.hk = {
-                defaultHP: 3,
                 maxSoul: 99,
                 monarchWing: false,
                 monarchWingAmount: 1,
                 dash: false,
-                superDash: false
+                superDash: false,
+                mantisClaw: false
             };
         }
     }
@@ -5390,6 +5410,13 @@ class Editor {
         const gravity = document.getElementById('config-gravity');
         if (gravity) gravity.value = this.world.gravity || 0.8;
         
+        const cameraLerp = document.getElementById('config-camera-lerp');
+        const cameraLerpValue = document.getElementById('config-camera-lerp-value');
+        if (cameraLerp) {
+            cameraLerp.value = this.world.cameraLerp || 0.12;
+            if (cameraLerpValue) cameraLerpValue.textContent = (this.world.cameraLerp || 0.12).toFixed(2);
+        }
+        
         // Spike touchbox
         const spikeTouchbox = document.getElementById('config-spike-touchbox');
         if (spikeTouchbox) {
@@ -5478,22 +5505,22 @@ class Editor {
         }
         
         // Hollow Knight settings
-        const hkHP = document.getElementById('config-hk-hp');
         const hkMaxSoul = document.getElementById('config-hk-maxsoul');
         const hkMonarchWing = document.getElementById('config-hk-monarchwing');
         const hkMonarchWingAmount = document.getElementById('config-hk-monarchwing-amount');
         const hkMonarchWingAmountGroup = document.getElementById('config-hk-monarchwing-amount-group');
         const hkDash = document.getElementById('config-hk-dash');
         const hkSuperDash = document.getElementById('config-hk-superdash');
+        const hkMantisClaw = document.getElementById('config-hk-mantisclaw');
         
         const hk = this.world.plugins?.hk;
-        if (hkHP) hkHP.value = hk?.defaultHP ?? 3;
         if (hkMaxSoul) hkMaxSoul.value = hk?.maxSoul ?? 99;
         if (hkMonarchWing) hkMonarchWing.checked = hk?.monarchWing ?? false;
         if (hkMonarchWingAmount) hkMonarchWingAmount.value = hk?.monarchWingAmount ?? 1;
         if (hkMonarchWingAmountGroup) hkMonarchWingAmountGroup.classList.toggle('hidden', !(hk?.monarchWing));
         if (hkDash) hkDash.checked = hk?.dash ?? false;
         if (hkSuperDash) hkSuperDash.checked = hk?.superDash ?? false;
+        if (hkMantisClaw) hkMantisClaw.checked = hk?.mantisClaw ?? false;
     }
     
     syncCustomBackgroundUI() {

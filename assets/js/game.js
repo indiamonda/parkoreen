@@ -664,10 +664,10 @@ class Camera {
         this.targetY = target.y + target.height / 2 - this.height / 2 / this.zoom;
     }
 
-    update() {
+    update(lerp = CAMERA_LERP) {
         // Smooth camera movement
-        this.x += (this.targetX - this.x) * CAMERA_LERP;
-        this.y += (this.targetY - this.y) * CAMERA_LERP;
+        this.x += (this.targetX - this.x) * lerp;
+        this.y += (this.targetY - this.y) * lerp;
     }
 
     setZoom(zoom, centerX = null, centerY = null) {
@@ -1283,6 +1283,7 @@ class World {
         this.playerSpeed = DEFAULT_MOVE_SPEED; // Horizontal movement speed (default: 5)
         this.jumpForce = DEFAULT_JUMP_FORCE;   // Jump force/height (default: -14, negative = upward)
         this.gravity = DEFAULT_GRAVITY;         // Gravity strength (default: 0.8)
+        this.cameraLerp = CAMERA_LERP;          // Camera smoothness (default: 0.12, higher = more responsive)
         
         // Spike touchbox mode
         // 'full' - Entire spike damages player
@@ -1649,6 +1650,7 @@ class World {
             playerSpeed: this.playerSpeed,
             jumpForce: this.jumpForce,
             gravity: this.gravity,
+            cameraLerp: this.cameraLerp,
             // Spike settings
             spikeTouchbox: this.spikeTouchbox,
             dropHurtOnly: this.dropHurtOnly,
@@ -1685,6 +1687,7 @@ class World {
         this.playerSpeed = (typeof data.playerSpeed === 'number' && data.playerSpeed > 0) ? data.playerSpeed : DEFAULT_MOVE_SPEED;
         this.jumpForce = (typeof data.jumpForce === 'number' && data.jumpForce < 0) ? data.jumpForce : DEFAULT_JUMP_FORCE;
         this.gravity = (typeof data.gravity === 'number' && data.gravity > 0) ? data.gravity : DEFAULT_GRAVITY;
+        this.cameraLerp = (typeof data.cameraLerp === 'number' && data.cameraLerp > 0 && data.cameraLerp <= 1) ? data.cameraLerp : CAMERA_LERP;
         
         // Spike touchbox mode
         const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
@@ -1996,6 +1999,14 @@ class GameEngine {
                 this.onKeyPress(e);
             }
             return;
+        }
+        
+        // Prevent default for game keys to avoid browser delays
+        const gameKeys = ['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyZ', 'KeyX', 'KeyC', 'KeyF', 'KeyN',
+                          'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Comma', 'Period',
+                          'ShiftLeft', 'ShiftRight'];
+        if (gameKeys.includes(e.code)) {
+            e.preventDefault();
         }
         
         this.keys[e.code] = true;
@@ -2345,7 +2356,7 @@ class GameEngine {
         // Update particles
         this.updateParticles(deltaTime);
         
-        this.camera.update();
+        this.camera.update(this.world?.cameraLerp ?? CAMERA_LERP);
     }
 
     checkSpecialCollisions() {

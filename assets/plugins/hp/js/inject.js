@@ -9,6 +9,13 @@
     // Get config from world or use defaults
     const config = world?.plugins?.hp || { defaultHP: 3 };
     
+    // Load HP SVG images
+    const hpFullImg = new Image();
+    hpFullImg.src = 'assets/plugins/hp/svg/hpfull.svg';
+    
+    const hpEmptyImg = new Image();
+    hpEmptyImg.src = 'assets/plugins/hp/svg/hpempty.svg';
+    
     // ============================================
     // PLAYER INITIALIZATION HOOK
     // ============================================
@@ -102,52 +109,37 @@
     }, pluginId);
     
     // ============================================
-    // HUD RENDERING HOOK - Draw hearts
+    // HUD RENDERING HOOK - Draw HP using SVG icons
     // ============================================
     pluginManager.registerHook('render.hud', (data) => {
         const { ctx, player, xOffset = 20, yOffset = 20 } = data;
         
         if (!player.useHPSystem) return data;
         
-        const heartSize = 24;
-        const heartSpacing = 28;
+        const hpSize = 24;
+        const hpSpacing = 28;
         let currentX = xOffset;
         
         for (let i = 0; i < player.maxHP; i++) {
-            const heartX = currentX + i * heartSpacing;
-            const heartY = yOffset;
+            const hpX = currentX + i * hpSpacing;
+            const hpY = yOffset;
             
-            // Draw heart shape
-            ctx.beginPath();
-            const topCurveHeight = heartSize * 0.3;
-            ctx.moveTo(heartX + heartSize / 2, heartY + heartSize);
-            ctx.bezierCurveTo(
-                heartX, heartY + heartSize * 0.7,
-                heartX, heartY + topCurveHeight,
-                heartX + heartSize / 2, heartY + topCurveHeight
-            );
-            ctx.bezierCurveTo(
-                heartX + heartSize, heartY + topCurveHeight,
-                heartX + heartSize, heartY + heartSize * 0.7,
-                heartX + heartSize / 2, heartY + heartSize
-            );
-            
-            // Fill color based on HP
+            // Draw HP icon using SVG images
             if (i < player.hp) {
-                ctx.fillStyle = '#FF6B6B'; // Red for filled hearts
+                // Full HP
+                if (hpFullImg.complete) {
+                    ctx.drawImage(hpFullImg, hpX, hpY, hpSize, hpSize);
+                }
             } else {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Dim for empty hearts
+                // Empty HP
+                if (hpEmptyImg.complete) {
+                    ctx.drawImage(hpEmptyImg, hpX, hpY, hpSize, hpSize);
+                }
             }
-            ctx.fill();
-            
-            // Heart outline
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
         }
         
         // Update xOffset for next HUD element
-        return { ...data, xOffset: currentX + player.maxHP * heartSpacing + 10 };
+        return { ...data, xOffset: currentX + player.maxHP * hpSpacing + 10 };
     }, pluginId, 20); // Priority 20 so it renders after soul
     
     // Invincibility flash effect

@@ -648,14 +648,19 @@ a:hover {
    ==================================== */
 .inspect-box-container {
     position: fixed;
-    top: 16px;
+    bottom: 16px;
     left: 16px;
     z-index: 1000;
     transition: transform 0.3s ease;
 }
 
 .inspect-box-container.hidden {
-    transform: translateX(calc(-100% - 32px));
+    transform: translateX(calc(-100% + 24px));
+}
+
+.inspect-box-container.hidden .inspect-box {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .inspect-box {
@@ -711,10 +716,11 @@ a:hover {
 
 .inspect-toggle-btn {
     position: absolute;
-    top: 8px;
-    right: -36px;
-    width: 28px;
-    height: 28px;
+    top: 50%;
+    right: -40px;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
     background: rgba(20, 20, 30, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
@@ -732,7 +738,7 @@ a:hover {
 }
 
 .inspect-box-container.hidden .inspect-toggle-btn {
-    transform: rotate(180deg);
+    transform: translateY(-50%) rotate(180deg);
 }
 
 /* ====================================

@@ -2,9 +2,8 @@
     "id": "hk",
     "name": "Hollow Knight",
     "version": "1.0.0",
-    "description": "Adds Hollow Knight-style mechanics: Soul system, nail attacks, Monarch Wings (double jump), Mothwing Cloak (dash), Crystal Heart (super dash), and Focus healing.",
+    "description": "Adds Hollow Knight-style mechanics: Soul system, nail attacks, Monarch Wings (double jump), Mantis Claw (wall cling & wall jump), Mothwing Cloak (dash), Crystal Heart (super dash), and Focus healing.",
     "author": "Parkoreen",
-    "icon": "🦋",
     "color": "#667eea",
     "dependencies": ["hp"],
     "scripts": {
@@ -27,13 +26,6 @@
         "getSoul": ["mp3/get-soul1.mp3", "mp3/get-soul2.mp3", "mp3/get-soul3.mp3", "mp3/get-soul4.mp3", "mp3/get-soul5.mp3", "mp3/get-soul6.mp3", "mp3/get-soul7.mp3"]
     },
     "config": {
-        "defaultHP": {
-            "type": "number",
-            "label": "Default HP",
-            "default": 3,
-            "min": 1,
-            "max": 12
-        },
         "maxSoul": {
             "type": "number",
             "label": "Max Soul",
@@ -67,12 +59,18 @@
             "label": "Crystal Heart (Super Dash)",
             "description": "Hold period (.) to charge",
             "default": false
+        },
+        "mantisClaw": {
+            "type": "boolean",
+            "label": "Mantis Claw (Wall Jump)",
+            "description": "Cling to walls and wall jump",
+            "default": false  
         }
     },
     "controls": {
         "attack": { "key": "KeyX", "label": "Attack", "description": "+ ↑/↓ for direction" },
         "dash": { "key": "Comma", "label": "Dash" },
         "superDash": { "key": "Period", "label": "Super Dash (hold)" },
-        "heal": { "key": "KeyF", "label": "Focus/Heal (hold)" }
+        "heal": { "key": "KeyF", "label": "Focus/Heal (hold)" },
     }
 }
