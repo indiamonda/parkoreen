@@ -772,6 +772,11 @@ class Editor {
                     </div>
                     <div class="config-section-content">
                         <div class="form-group">
+                            <label class="form-label">HK Gravity</label>
+                            <input type="number" class="form-input" id="config-hk-gravity" min="0.1" max="3" step="0.01" value="1.14">
+                            <small style="color: #888; font-size: 11px;">1.14 = 70% jump height (HK-style)</small>
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Max Soul</label>
                             <input type="number" class="form-input" id="config-hk-maxsoul" min="33" max="198" value="99">
                             <small style="color: #888; font-size: 11px;">33 = one heal, 99 = three heals</small>
@@ -2996,6 +3001,19 @@ class Editor {
         });
         
         // Hollow Knight settings
+        document.getElementById('config-hk-gravity')?.addEventListener('change', (e) => {
+            this.ensureHKConfig();
+            const value = parseFloat(e.target.value) || 1.14;
+            this.world.plugins.hk.defaultGravity = Math.max(0.1, Math.min(3, value));
+            // Also apply to world gravity
+            this.world.gravity = this.world.plugins.hk.defaultGravity;
+            e.target.value = this.world.plugins.hk.defaultGravity;
+            // Update the physics gravity input too
+            const gravityInput = document.getElementById('config-gravity');
+            if (gravityInput) gravityInput.value = this.world.gravity;
+            this.triggerMapChange();
+        });
+        
         document.getElementById('config-hk-maxsoul')?.addEventListener('change', (e) => {
             this.ensureHKConfig();
             this.world.plugins.hk.maxSoul = Math.max(33, Math.min(198, parseInt(e.target.value) || 99));
@@ -3095,6 +3113,16 @@ class Editor {
             }
             
             await this.world.enablePlugin(pluginId);
+            
+            // When enabling HK plugin, apply default gravity
+            if (pluginId === 'hk') {
+                this.ensureHKConfig();
+                const hkGravity = this.world.plugins.hk.defaultGravity ?? 1.14;
+                this.world.gravity = hkGravity;
+                // Update UI
+                const gravityInput = document.getElementById('config-gravity');
+                if (gravityInput) gravityInput.value = this.world.gravity;
+            }
         }
         
         this.updatePluginsPopupState();
@@ -3127,6 +3155,7 @@ class Editor {
         // Ensure HK config object exists with defaults
         if (!this.world.plugins.hk) {
             this.world.plugins.hk = {
+                defaultGravity: 1.14,
                 maxSoul: 99,
                 monarchWing: false,
                 monarchWingAmount: 1,
@@ -5507,6 +5536,7 @@ class Editor {
         }
         
         // Hollow Knight settings
+        const hkGravity = document.getElementById('config-hk-gravity');
         const hkMaxSoul = document.getElementById('config-hk-maxsoul');
         const hkMonarchWing = document.getElementById('config-hk-monarchwing');
         const hkMonarchWingAmount = document.getElementById('config-hk-monarchwing-amount');
@@ -5516,6 +5546,7 @@ class Editor {
         const hkMantisClaw = document.getElementById('config-hk-mantisclaw');
         
         const hk = this.world.plugins?.hk;
+        if (hkGravity) hkGravity.value = hk?.defaultGravity ?? 1.14;
         if (hkMaxSoul) hkMaxSoul.value = hk?.maxSoul ?? 99;
         if (hkMonarchWing) hkMonarchWing.checked = hk?.monarchWing ?? false;
         if (hkMonarchWingAmount) hkMonarchWingAmount.value = hk?.monarchWingAmount ?? 1;
