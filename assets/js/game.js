@@ -244,6 +244,12 @@ class Player {
         
         if (!this.input.jump) {
             this.canJump = true;
+            
+            // Variable jump height - cut upward velocity when jump key is released
+            // This allows for shorter jumps by tapping vs holding
+            if (this.vy < 0 && !this.isOnGround) {
+                this.vy = Math.max(this.vy, jumpForce * 0.4); // Cap at 40% of jump force
+            }
         }
 
         // Apply movement with collision

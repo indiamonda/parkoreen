@@ -109,26 +109,27 @@
         
         // ===== MANTIS CLAW (Wall Cling) =====
         if (player.hasMantisClaw && !player.isOnGround && !player.isDashing && !player.isSuperDashing) {
-            const touchingWall = checkWallContact(player, world);
+            // Only check for wall contact if player is pressing toward a wall direction
+            // This optimizes performance by avoiding collision checks when not needed
+            const pressingLeft = player.input?.left && !player.input?.right;
+            const pressingRight = player.input?.right && !player.input?.left;
             
-            if (touchingWall !== 0) {
-                // Player is touching a wall
-                const pressingTowardWall = (touchingWall === -1 && player.input?.left) || 
-                                           (touchingWall === 1 && player.input?.right);
+            if ((pressingLeft || pressingRight) && player.vy >= 0) {
+                // Player is pressing toward a wall and falling - check for wall contact
+                const touchingWall = checkWallContact(player, world, pressingLeft ? -1 : 1);
                 
-                if (pressingTowardWall && player.vy >= 0) {
+                if (touchingWall !== 0) {
                     // Start or continue wall cling
                     if (!player.isWallClinging) {
                         player.isWallClinging = true;
                         player.wallClingDirection = touchingWall;
                         player.monarchWingsUsed = 0; // Reset double jump when grabbing wall
                     }
-                } else if (player.isWallClinging && !pressingTowardWall) {
-                    // Released wall
+                } else {
                     player.isWallClinging = false;
                 }
-            } else {
-                // Not touching any wall
+            } else if (player.isWallClinging) {
+                // Not pressing toward wall anymore - release
                 player.isWallClinging = false;
             }
         } else {
@@ -343,8 +344,8 @@
             
             player.monarchWingsUsed++;
             
-            // Monarch wing is 85% of normal jump, scaled with gravity
-            player.vy = worldJumpForce * 0.85 * Math.sqrt(gravityRatio);
+            // Monarch wing is 92% of normal jump, scaled with gravity
+            player.vy = worldJumpForce * 0.92 * Math.sqrt(gravityRatio);
             
             pluginManager.playSound(pluginId, 'monarchWings');
             
@@ -545,44 +546,26 @@
                a.y + a.height > b.y;
     }
     
-    // Check if player is touching a wall on either side
+    // Check if player is touching a wall on a specific side
+    // direction: -1 = check left only, 1 = check right only
     // Returns: -1 = touching left wall, 1 = touching right wall, 0 = no wall contact
-    function checkWallContact(player, world) {
+    function checkWallContact(player, world, direction) {
         const margin = 2; // How close to count as "touching"
         
-        // Check left side
-        const leftBox = { 
-            x: player.x - margin, 
-            y: player.y + 4, // Slightly inside to avoid corners
-            width: margin, 
-            height: player.height - 8 
-        };
-        
-        // Check right side
-        const rightBox = { 
-            x: player.x + player.width, 
-            y: player.y + 4, 
-            width: margin, 
-            height: player.height - 8 
-        };
-        
-        let touchingLeft = false;
-        let touchingRight = false;
+        // Only create the box for the side we're checking
+        const checkBox = direction === -1 
+            ? { x: player.x - margin, y: player.y + 4, width: margin, height: player.height - 8 }
+            : { x: player.x + player.width, y: player.y + 4, width: margin, height: player.height - 8 };
         
         for (const obj of world.objects) {
             if (!obj.collision) continue;
             if (obj.actingType === 'text' || obj.actingType === 'teleportal') continue;
             
-            if (boxIntersects(leftBox, obj)) touchingLeft = true;
-            if (boxIntersects(rightBox, obj)) touchingRight = true;
+            if (boxIntersects(checkBox, obj)) {
+                return direction; // Return the direction we found a wall
+            }
         }
         
-        // Prioritize the direction player is facing/moving
-        if (touchingLeft && touchingRight) {
-            return player.facingDirection === -1 ? -1 : 1;
-        }
-        if (touchingLeft) return -1;
-        if (touchingRight) return 1;
         return 0;
     }
     
