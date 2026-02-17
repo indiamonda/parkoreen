@@ -2557,6 +2557,16 @@ class GameEngine {
             // Local player on top
             if (this.localPlayer) {
                 this.localPlayer.render(this.ctx, this.camera, showPosition);
+                
+                // Let plugins render effects around the player (attack slashes, etc.)
+                if (window.PluginManager) {
+                    window.PluginManager.executeHook('render.player', {
+                        ctx: this.ctx,
+                        player: this.localPlayer,
+                        camera: this.camera,
+                        world: this.world
+                    });
+                }
             }
         }
         

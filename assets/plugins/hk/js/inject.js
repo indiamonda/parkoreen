@@ -354,6 +354,80 @@
     }, pluginId);
     
     // ============================================
+    // PLAYER EFFECTS RENDERING - Attack slash, dash trail, etc.
+    // ============================================
+    pluginManager.registerHook('render.player', (data) => {
+        const { ctx, player, camera } = data;
+        
+        // Draw attack slash effect
+        if (player.isAttacking) {
+            const hitbox = getAttackHitbox(player, player.attackDirection);
+            const screenX = hitbox.x - camera.x;
+            const screenY = hitbox.y - camera.y;
+            
+            // Calculate attack progress for animation
+            const elapsed = Date.now() - player.attackStartTime;
+            const progress = Math.min(elapsed / 200, 1);
+            
+            ctx.save();
+            ctx.globalAlpha = 1 - progress * 0.5; // Fade out as attack progresses
+            
+            // Draw slash arc based on direction
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            if (player.attackDirection === 'up') {
+                // Upward slash - horizontal arc above player
+                const centerX = screenX + hitbox.width / 2;
+                const centerY = screenY + hitbox.height;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, hitbox.height * 0.8, Math.PI + 0.3, Math.PI * 2 - 0.3);
+                ctx.stroke();
+            } else if (player.attackDirection === 'down') {
+                // Downward slash - horizontal arc below player
+                const centerX = screenX + hitbox.width / 2;
+                const centerY = screenY;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, hitbox.height * 0.8, 0.3, Math.PI - 0.3);
+                ctx.stroke();
+            } else {
+                // Forward slash - vertical arc in front of player
+                const centerX = player.facingDirection > 0 ? screenX : screenX + hitbox.width;
+                const centerY = screenY + hitbox.height / 2;
+                const startAngle = player.facingDirection > 0 ? -Math.PI / 2 - 0.5 : Math.PI / 2 - 0.5;
+                const endAngle = player.facingDirection > 0 ? Math.PI / 2 + 0.5 : -Math.PI / 2 + 0.5;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, hitbox.width * 0.8, startAngle, endAngle);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        // Draw wall cling indicator
+        if (player.isWallClinging) {
+            const screenX = player.x - camera.x;
+            const screenY = player.y - camera.y;
+            
+            ctx.save();
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = '#88f';
+            
+            // Small particles near the wall
+            const wallX = player.wallClingDirection === -1 ? screenX - 2 : screenX + player.width + 2;
+            for (let i = 0; i < 3; i++) {
+                const particleY = screenY + player.height * (0.2 + i * 0.3);
+                ctx.fillRect(wallX - 2, particleY, 4, 4);
+            }
+            
+            ctx.restore();
+        }
+        
+        return data;
+    }, pluginId);
+    
+    // ============================================
     // HUD RENDERING - Soul vessel using SVG icons
     // ============================================
     pluginManager.registerHook('render.hud', (data) => {
