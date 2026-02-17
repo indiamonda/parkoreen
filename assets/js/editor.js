@@ -578,7 +578,7 @@ class Editor {
                             <label class="form-label">Layout</label>
                             <select class="form-select" id="config-keyboard-layout">
                                 <option value="default">Default (Parkoreen)</option>
-                                <option value="hk">Hollow Knight Default</option>
+                                <option value="hk">Hollow Knight Original</option>
                                 <option value="jimmyqrg">JimmyQrg</option>
                             </select>
                             <small style="color: #888; font-size: 11px;">Applies in test mode & room play only</small>
@@ -592,7 +592,7 @@ class Editor {
                                 <span style="color: #667eea;">Plugin:</span> Attack: X, Heal: F, Dash: , (comma), Super Dash: . (period)
                             </div>
                             <div id="keyboard-info-hk" style="display: none;">
-                                <strong style="color: #fff;">Hollow Knight Default:</strong><br>
+                                <strong style="color: #fff;">Hollow Knight Original:</strong><br>
                                 Move: ←/→<br>
                                 Jump: Z<br>
                                 Attack: X<br>
@@ -3099,6 +3099,7 @@ class Editor {
         
         this.updatePluginsPopupState();
         this.updatePluginConfigSections();
+        this.updateKeyboardLayoutOptions();
         this.triggerMapChange();
     }
     
@@ -5442,6 +5443,7 @@ class Editor {
         if (keyboardLayout) {
             keyboardLayout.value = this.world.keyboardLayout || 'default';
             this.updateKeyboardLayoutInfo(this.world.keyboardLayout || 'default');
+            this.updateKeyboardLayoutOptions();
         }
         
         // Music settings
@@ -5646,6 +5648,27 @@ class Editor {
                 el.style.display = l === layout ? 'block' : 'none';
             }
         });
+    }
+    
+    updateKeyboardLayoutOptions() {
+        const layoutSelect = document.getElementById('config-keyboard-layout');
+        if (!layoutSelect) return;
+        
+        const hkEnabled = this.world.plugins.enabled.includes('hk');
+        const hkOption = layoutSelect.querySelector('option[value="hk"]');
+        
+        if (hkOption) {
+            // Disable/enable the HK layout option based on plugin status
+            hkOption.disabled = !hkEnabled;
+            hkOption.textContent = hkEnabled ? 'Hollow Knight Original' : 'Hollow Knight Original (requires HK plugin)';
+            
+            // If HK layout is selected but plugin is disabled, switch to default
+            if (!hkEnabled && this.world.keyboardLayout === 'hk') {
+                this.world.keyboardLayout = 'default';
+                layoutSelect.value = 'default';
+                this.updateKeyboardLayoutInfo('default');
+            }
+        }
     }
     
     handleMusicUpload(file) {

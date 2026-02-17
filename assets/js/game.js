@@ -2074,7 +2074,7 @@ class GameEngine {
                 superDash: this.keys['Period']
             },
             hk: {
-                // Hollow Knight Default layout
+                // Hollow Knight Original layout (requires HK plugin)
                 left: this.keys['ArrowLeft'],
                 right: this.keys['ArrowRight'],
                 up: this.keys['ArrowUp'],

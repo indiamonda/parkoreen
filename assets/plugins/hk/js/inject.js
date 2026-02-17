@@ -66,6 +66,7 @@
         player.wallClingDirection = 0; // -1 = left wall, 1 = right wall
         player.wallJumpCooldown = 0;
         player.wallSlideSpeed = 2; // Slower fall when clinging
+        player._wallJumpReady = true; // Prevents repeated wall jumps from held key
         
         return data;
     }, pluginId, 5); // Run before HP plugin
@@ -122,9 +123,6 @@
                         player.wallClingDirection = touchingWall;
                         player.monarchWingsUsed = 0; // Reset double jump when grabbing wall
                     }
-                    
-                    // Slow descent while clinging
-                    player.vy = Math.min(player.vy, player.wallSlideSpeed);
                 } else if (player.isWallClinging && !pressingTowardWall) {
                     // Released wall
                     player.isWallClinging = false;
@@ -140,6 +138,51 @@
         // Reset wall cling on ground
         if (player.isOnGround) {
             player.isWallClinging = false;
+        }
+        
+        // Handle wall cling physics - use skipPhysics to control fall speed
+        if (player.isWallClinging) {
+            const worldJumpForce = world?.jumpForce ?? -14;
+            const worldGravity = world?.gravity ?? 0.8;
+            const gravityRatio = worldGravity / 0.8;
+            
+            // Check for wall jump input
+            if (player.input?.jump && player._wallJumpReady !== false) {
+                // Wall jump: push away from wall and up
+                const wallJumpForceX = 8; // Horizontal push away from wall
+                const wallJumpForceY = worldJumpForce * 0.9 * Math.sqrt(gravityRatio);
+                
+                player.vx = -player.wallClingDirection * wallJumpForceX;
+                player.vy = wallJumpForceY;
+                player.facingDirection = -player.wallClingDirection;
+                player.isWallClinging = false;
+                player.monarchWingsUsed = 0; // Reset double jump after wall jump
+                player._wallJumpReady = false; // Prevent repeated jumps from held key
+                
+                pluginManager.playSound(pluginId, 'monarchWings');
+                
+                // Apply movement with collision
+                player.moveWithCollision(world);
+                
+                return { ...data, skipPhysics: true };
+            }
+            
+            // Reset wall jump ready when jump key is released
+            if (!player.input?.jump) {
+                player._wallJumpReady = true;
+            }
+            
+            // Apply slow wall slide instead of normal gravity
+            player.vy += worldGravity * 0.1; // Very slow gravity while clinging
+            player.vy = Math.min(player.vy, player.wallSlideSpeed); // Cap at slide speed
+            
+            // Prevent horizontal movement away from wall while clinging
+            player.vx = 0;
+            
+            // Apply movement with collision
+            player.moveWithCollision(world);
+            
+            return { ...data, skipPhysics: true };
         }
         
         // ===== ATTACK =====
@@ -284,7 +327,8 @@
     }, pluginId);
     
     // ============================================
-    // MONARCH WING & MANTIS CLAW JUMP HANDLING
+    // MONARCH WING JUMP HANDLING
+    // (Mantis Claw wall jump is handled in player.update since it uses skipPhysics)
     // ============================================
     pluginManager.registerHook('player.jump', (data) => {
         const { player, canJump } = data;
@@ -292,23 +336,6 @@
         const worldJumpForce = world?.jumpForce ?? -14;
         const worldGravity = world?.gravity ?? 0.8;
         const gravityRatio = worldGravity / 0.8; // Ratio vs default gravity
-        
-        // MANTIS CLAW - Wall Jump
-        if (player.hasMantisClaw && player.isWallClinging) {
-            // Wall jump: push away from wall and up
-            const wallJumpForceX = 8; // Horizontal push away from wall
-            const wallJumpForceY = worldJumpForce * 0.9 * Math.sqrt(gravityRatio);
-            
-            player.vx = -player.wallClingDirection * wallJumpForceX;
-            player.vy = wallJumpForceY;
-            player.facingDirection = -player.wallClingDirection;
-            player.isWallClinging = false;
-            player.monarchWingsUsed = 0; // Reset double jump after wall jump
-            
-            pluginManager.playSound(pluginId, 'monarchWings'); // Reuse sound for now
-            
-            return { ...data, preventDefault: true, didJump: true };
-        }
         
         // MONARCH WING - Double jump when out of normal jumps
         if (!canJump && player.hasMonarchWing && !player.isOnGround && 
@@ -349,6 +376,7 @@
         player.isHealing = false;
         player.monarchWingsUsed = 0;
         player.isWallClinging = false;
+        player._wallJumpReady = true;
         
         return data;
     }, pluginId);
