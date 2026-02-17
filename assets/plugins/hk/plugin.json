@@ -71,6 +71,6 @@
         "attack": { "key": "KeyX", "label": "Attack", "description": "+ ↑/↓ for direction" },
         "dash": { "key": "Comma", "label": "Dash" },
         "superDash": { "key": "Period", "label": "Super Dash (hold)" },
-        "heal": { "key": "KeyF", "label": "Focus/Heal (hold)" },
+        "heal": { "key": "KeyF", "label": "Focus/Heal (hold)" }
     }
 }
