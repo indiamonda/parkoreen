@@ -287,8 +287,8 @@ class PluginManager {
         
         if (pluginId === 'hk') {
             for (const obj of world.objects) {
-                if (obj.actingType === 'soulStatus') {
-                    objects.push({ section: 'Map', name: 'Soul Status', obj });
+                if (obj.actingType === 'soulStatus' || obj.appearanceType === 'soulStatue') {
+                    objects.push({ section: 'Map', name: 'Soul Statue', obj });
                 }
             }
         }

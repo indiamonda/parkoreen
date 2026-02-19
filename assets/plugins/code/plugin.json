@@ -5,6 +5,7 @@
     "description": "Add triggers and actions to your map. Create interactive experiences with player events, zones, and custom logic.",
     "author": "Parkoreen",
     "color": "#3b82f6",
+    "coverHeight": 120,
     "beta": true,
     "scripts": {
         "skulpt": "js/skulpt.min.js",

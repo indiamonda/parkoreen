@@ -73,6 +73,7 @@
         player.isWallBouncing = false;
         player.wallBounceEndTime = 0;
         player.wallBounceDirection = 0;
+        player._justWallJumped = false; // Prevents monarch wing from triggering right after wall jump
         
         return data;
     }, pluginId, 5); // Run before HP plugin
@@ -177,11 +178,10 @@
             const worldGravity = world?.gravity ?? 0.5;
             const worldJumpForce = world?.jumpForce ?? -11;
             const playerSpeed = world?.playerSpeed ?? 5;
-            const gravityRatio = worldGravity / 0.5;
             
             // Check for wall jump input
             if (player.input?.jump && player._wallJumpReady !== false) {
-                // Wall jump: push away from wall + upward jump
+                // Wall jump: push away from wall + modest upward jump
                 player.isWallClinging = false;
                 player.isWallBouncing = true;
                 player.wallBounceDirection = -player.wallClingDirection;
@@ -190,8 +190,8 @@
                 // Horizontal push away from wall
                 player.vx = player.wallBounceDirection * playerSpeed * 1.2;
                 
-                // Proper upward jump (85% of normal jump, scaled with gravity)
-                player.vy = worldJumpForce * 0.85 * Math.sqrt(gravityRatio);
+                // Wall jump is 50% of normal jump (no gravity scaling - consistent height)
+                player.vy = worldJumpForce * 0.5;
                 
                 player.facingDirection = player.wallBounceDirection;
                 
@@ -199,6 +199,7 @@
                 player.monarchWingsUsed = 0;
                 
                 player._wallJumpReady = false; // Prevent repeated jumps from held key
+                player._justWallJumped = true; // Prevent monarch wing until jump key released
                 
                 // Play normal jump sound
                 if (audioManager) audioManager.play('jump');
@@ -261,7 +262,7 @@
                         
                         // Bounce off soul statue (immediate)
                         if (direction === 'down') {
-                            player.vy = worldJumpForce * 0.65; // Pogo bounce (65% of jump)
+                            player.vy = worldJumpForce * 0.5; // Pogo bounce (50% of jump = 1/2 max height)
                         } else {
                             player.vx = -player.facingDirection * 3;
                             player.vy = worldJumpForce * 0.3;
@@ -273,7 +274,7 @@
                     if (obj.actingType === 'spike' && obj.collision !== false) {
                         // Bounce only (no soul from spikes)
                         if (direction === 'down') {
-                            player.vy = worldJumpForce * 0.65; // Pogo bounce (65% of jump)
+                            player.vy = worldJumpForce * 0.5; // Pogo bounce (50% of jump = 1/2 max height)
                         } else {
                             player.vx = -player.facingDirection * 3;
                             player.vy = worldJumpForce * 0.3;
@@ -306,11 +307,11 @@
         
         if (player.isDashing) {
             const elapsed = now - player.dashStartTime;
-            if (elapsed >= 200) { // Increased duration: 150ms → 200ms
+            if (elapsed >= 150) { // Dash duration: 150ms
                 player.isDashing = false;
                 player.dashCooldown = now + 400;
             } else {
-                player.vx = player.dashDirection * 16; // Increased speed: 12 → 16
+                player.vx = player.dashDirection * 12; // Dash speed
                 player.vy = 0;
                 return { ...data, skipPhysics: true };
             }
@@ -402,6 +403,11 @@
             }
         }
         
+        // Reset _justWallJumped when jump key is released (allows monarch wing next press)
+        if (!player.input?.jump) {
+            player._justWallJumped = false;
+        }
+        
         return data;
     }, pluginId);
     
@@ -413,17 +419,17 @@
         const { player, canJump } = data;
         
         const worldJumpForce = world?.jumpForce ?? -11;
-        const worldGravity = world?.gravity ?? 0.5;
-        const gravityRatio = worldGravity / 0.5; // Ratio vs default gravity
         
         // MONARCH WING - Double jump when out of normal jumps
+        // Don't trigger if just wall jumped (need to release and press jump again)
         if (!canJump && player.hasMonarchWing && !player.isOnGround && 
-            player.monarchWingsUsed < player.monarchWingAmount) {
+            player.monarchWingsUsed < player.monarchWingAmount &&
+            !player._justWallJumped) {
             
             player.monarchWingsUsed++;
             
-            // Monarch wing is 92% of normal jump, scaled with gravity
-            player.vy = worldJumpForce * 0.92 * Math.sqrt(gravityRatio);
+            // Monarch wing is 85% of normal jump (no gravity scaling - consistent height)
+            player.vy = worldJumpForce * 0.85;
             
             pluginManager.playSound(pluginId, 'monarchWings');
             
@@ -460,6 +466,7 @@
         player.isWallClinging = false;
         player.isWallBouncing = false;
         player._wallJumpReady = true;
+        player._justWallJumped = false;
         
         return data;
     }, pluginId);
@@ -605,9 +612,9 @@
     // ============================================
     
     function getAttackHitbox(player, direction) {
-        const attackRange = 72; // Increased range: 52 → 72
-        const attackWidth = 36;
-        const attackHeight = 28;
+        const attackRange = 64; // How far the attack reaches
+        const attackWidth = 28; // Width for up/down attacks
+        const attackHeight = 28; // Height for forward attacks
         
         if (direction === 'up') {
             return {
@@ -624,6 +631,7 @@
                 height: attackRange
             };
         } else {
+            // Forward attack - extends in the direction player is facing
             return {
                 x: player.facingDirection > 0 ? player.x + player.width : player.x - attackRange,
                 y: player.y + (player.height - attackHeight) / 2,

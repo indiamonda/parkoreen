@@ -6,6 +6,7 @@
     "author": "Parkoreen",
     "icon": "❤️",
     "color": "#FF6B6B",
+    "coverHeight": 120,
     "dependencies": [],
     "scripts": {
         "globals": "js/globals.js",

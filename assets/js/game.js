@@ -173,7 +173,10 @@ class Player {
         
         // Horizontal movement
         let currentDirection = 0;
-        if (this.input.left) {
+        if (this.input.left && this.input.right) {
+            // Both pressed - stay in place
+            this.vx = 0;
+        } else if (this.input.left) {
             this.vx = -moveSpeed;
             currentDirection = -1;
         } else if (this.input.right) {
@@ -819,7 +822,8 @@ class WorldObject {
             checkpoint: 'Checkpoint',
             spawnpoint: 'Spawn Point',
             endpoint: 'End Point',
-            teleportal: 'Teleportal'
+            teleportal: 'Teleportal',
+            soulStatue: 'Soul Statue'
         };
         return typeNames[this.appearanceType] || 'Object';
     }
@@ -860,6 +864,8 @@ class WorldObject {
             this.renderZone(ctx, screenX, screenY, width, height);
         } else if (this.type === 'teleportal' || this.appearanceType === 'teleportal') {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
+        } else if (this.appearanceType === 'soulStatue') {
+            this.renderSoulStatue(ctx, screenX, screenY, width, height);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
@@ -1002,6 +1008,27 @@ class WorldObject {
         }
         ctx.closePath();
         ctx.fill();
+    }
+    
+    renderSoulStatue(ctx, x, y, w, h) {
+        // Soul Statue - use PNG image from HK plugin
+        if (!WorldObject.soulStatueImg) {
+            WorldObject.soulStatueImg = new Image();
+            WorldObject.soulStatueImg.src = 'assets/plugins/hk/png/soul-statue.png';
+        }
+        
+        const img = WorldObject.soulStatueImg;
+        if (img.complete && img.naturalWidth > 0) {
+            ctx.drawImage(img, x, y, w, h);
+        } else {
+            // Fallback: simple placeholder while loading
+            ctx.fillStyle = '#3a3a4a';
+            ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.arc(x + w / 2, y + h * 0.4, w * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
     
     renderZone(ctx, x, y, w, h) {

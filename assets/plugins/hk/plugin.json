@@ -5,6 +5,7 @@
     "description": "Adds Hollow Knight-style mechanics: Soul system, nail attacks, Monarch Wings (double jump), Mantis Claw (wall cling & wall jump), Mothwing Cloak (dash), Crystal Heart (super dash), and Focus healing.",
     "author": "Parkoreen",
     "color": "#667eea",
+    "coverHeight": 120,
     "dependencies": ["hp"],
     "scripts": {
         "globals": "js/globals.js",

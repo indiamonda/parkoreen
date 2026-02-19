@@ -902,7 +902,7 @@ class Editor {
                 <div style="overflow-y: auto; padding: 16px 0; flex: 1;">
                     <!-- HP Plugin -->
                     <div class="plugin-card" data-plugin="hp" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                        <img src="assets/plugins/hp/cover.png" alt="HP Plugin" style="width: 100%; height: 120px; object-fit: cover;">
+                        <img src="assets/plugins/hp/cover.png" alt="HP Plugin" style="width: 100%; height: 120px; object-fit: cover; object-position: top;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
@@ -923,7 +923,7 @@ class Editor {
                     
                     <!-- Hollow Knight Plugin -->
                     <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                        <img src="assets/plugins/hk/cover.png" alt="Hollow Knight Plugin" style="width: 100%; height: 120px; object-fit: cover;">
+                        <img src="assets/plugins/hk/cover.png" alt="Hollow Knight Plugin" style="width: 100%; height: 120px; object-fit: cover; object-position: top;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
@@ -952,7 +952,7 @@ class Editor {
                     
                     <!-- Code Plugin -->
                     <div class="plugin-card" data-plugin="code" style="background: var(--bg-light); border-radius: 12px; overflow: hidden;">
-                        <img src="assets/plugins/code/cover.png" alt="Code Plugin" style="width: 100%; height: 120px; object-fit: cover;">
+                        <img src="assets/plugins/code/cover.png" alt="Code Plugin" style="width: 100%; height: 120px; object-fit: cover; object-position: top;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
@@ -4168,6 +4168,9 @@ class Editor {
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
 
+            // Check if HK plugin is enabled for Soul Status option
+            const hkEnabledForBlock = this.world.plugins.enabled.includes('hk');
+
             // Update appearance buttons for block
             const appearanceBtns = options.appearance.querySelector('.placement-option-btns');
             appearanceBtns.innerHTML = `
@@ -4178,13 +4181,19 @@ class Editor {
 
             // Update acting type buttons for block
             const actingBtns = options.acting.querySelector('.placement-option-btns');
-            actingBtns.innerHTML = `
+            let blockActingHtml = `
                 <button class="placement-opt-btn ${this.placementSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
                 <button class="placement-opt-btn ${this.placementSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
                 <button class="placement-opt-btn ${this.placementSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
                 <button class="placement-opt-btn ${this.placementSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
                 <button class="placement-opt-btn ${this.placementSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
             `;
+            if (hkEnabledForBlock) {
+                blockActingHtml += `
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'soulStatus' ? 'active' : ''}" data-acting="soulStatus">Soul</button>
+                `;
+            }
+            actingBtns.innerHTML = blockActingHtml;
             this.reattachActingListeners();
             
             // Update collision buttons
@@ -4197,30 +4206,50 @@ class Editor {
             options.fill.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
 
+            // Check if HK plugin is enabled for Soul Statue option
+            const hkEnabled = this.world.plugins.enabled.includes('hk');
+
             // Update appearance for koreen
             const appearanceBtns = options.appearance.querySelector('.placement-option-btns');
-            appearanceBtns.innerHTML = `
+            let koreenAppearanceHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'checkpoint' ? 'active' : ''}" data-appearance="checkpoint">Checkpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'spawnpoint' ? 'active' : ''}" data-appearance="spawnpoint">Spawnpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'endpoint' ? 'active' : ''}" data-appearance="endpoint">Endpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'zone' ? 'active' : ''}" data-appearance="zone">Zone</button>
             `;
+            if (hkEnabled) {
+                koreenAppearanceHtml += `
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'soulStatue' ? 'active' : ''}" data-appearance="soulStatue">Soul Statue</button>
+                `;
+            }
+            appearanceBtns.innerHTML = koreenAppearanceHtml;
             this.reattachAppearanceListeners();
 
-            // Update acting type buttons for koreen (zone-only if appearance is zone)
+            // Update acting type buttons for koreen (zone-only if appearance is zone, soulStatus if appearance is soulStatue)
             const actingBtns = options.acting.querySelector('.placement-option-btns');
             if (this.koreenSettings.appearanceType === 'zone') {
                 actingBtns.innerHTML = `
                     <button class="placement-opt-btn active" data-acting="zone">Zone</button>
                 `;
                 this.koreenSettings.actingType = 'zone';
+            } else if (this.koreenSettings.appearanceType === 'soulStatue') {
+                actingBtns.innerHTML = `
+                    <button class="placement-opt-btn active" data-acting="soulStatus">Soul Statue</button>
+                `;
+                this.koreenSettings.actingType = 'soulStatus';
             } else {
-            actingBtns.innerHTML = `
+                let koreenActingHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
-            `;
+                `;
+                if (hkEnabled) {
+                    koreenActingHtml += `
+                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'soulStatus' ? 'active' : ''}" data-acting="soulStatus">Soul</button>
+                    `;
+                }
+                actingBtns.innerHTML = koreenActingHtml;
             }
             this.reattachActingListeners();
         } else if (this.placementMode === PlacementMode.TEXT) {
@@ -4348,23 +4377,36 @@ class Editor {
                     this.syncActingTypeUI(btn.dataset.appearance);
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.appearanceType = btn.dataset.appearance;
-                    // Sync acting type with appearance type for koreens
-                    this.koreenSettings.actingType = btn.dataset.appearance;
                     
-                    // Rebuild acting type buttons based on appearance (zone vs non-zone)
+                    // Rebuild acting type buttons based on appearance (zone vs non-zone vs soulStatue)
                     const actingBtns = document.querySelector('#placement-acting .placement-option-btns');
+                    const hkEnabled = this.world.plugins.enabled.includes('hk');
+                    
                     if (btn.dataset.appearance === 'zone') {
                         actingBtns.innerHTML = `
                             <button class="placement-opt-btn active" data-acting="zone">Zone</button>
                         `;
                         this.koreenSettings.actingType = 'zone';
-                    } else {
+                    } else if (btn.dataset.appearance === 'soulStatue') {
                         actingBtns.innerHTML = `
+                            <button class="placement-opt-btn active" data-acting="soulStatus">Soul Statue</button>
+                        `;
+                        this.koreenSettings.actingType = 'soulStatus';
+                    } else {
+                        // Sync acting type with appearance type for koreens
+                        this.koreenSettings.actingType = btn.dataset.appearance;
+                        let koreenActingHtml = `
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
                         `;
+                        if (hkEnabled) {
+                            koreenActingHtml += `
+                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'soulStatus' ? 'active' : ''}" data-acting="soulStatus">Soul</button>
+                            `;
+                        }
+                        actingBtns.innerHTML = koreenActingHtml;
                     }
                     this.reattachActingListeners();
                 }
@@ -5208,10 +5250,20 @@ class Editor {
         
         // 'overlap' mode - no checks, just place on top
 
+        // Determine object height (Soul Statue is 2 blocks tall)
+        let objHeight = GRID_SIZE;
+        let objY = y;
+        if (settings.appearanceType === 'soulStatue') {
+            objHeight = GRID_SIZE * 2; // 2 blocks tall (64px)
+            objY = y - GRID_SIZE; // Place with click point at bottom
+        }
+
         // Create object
         const obj = new WorldObject({
             x: x,
-            y: y,
+            y: objY,
+            width: GRID_SIZE,
+            height: objHeight,
             type: type,
             appearanceType: settings.appearanceType || 'ground',
             actingType: settings.actingType || 'ground',
@@ -6265,7 +6317,7 @@ class Editor {
                     <div class="touch-joystick-container">
                         <div class="touch-joystick-base" id="touch-joystick">
                             <div class="touch-joystick-stick"></div>
-                        </div>
+                    </div>
                     </div>
                     <div class="touch-buttons-right">
                         <button class="touch-btn touch-jump" data-action="jump">
@@ -6285,7 +6337,7 @@ class Editor {
                     </div>
                 `;
                 document.body.appendChild(touchControls);
-                
+
                 // Initialize multi-touch state
                 this.touchState = {
                     joystick: { touchId: null, x: 0, y: 0 },

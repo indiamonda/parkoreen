@@ -37,11 +37,12 @@
     // Grid size for alignment
     const GRID_SIZE = 32;
     
-    // Helper: Check if a position is safe (not overlapping any spike)
+    // Helper: Check if a position is safe (has ground underneath and no spike at position)
     function isPositionSafe(x, y, playerWidth, playerHeight) {
         const playerBox = { x, y, width: playerWidth, height: playerHeight };
         const margin = 4; // Extra margin around spikes
         
+        // Check 1: No spike at the player's position
         for (const obj of world.objects) {
             if (obj.actingType !== 'spike') continue;
             
@@ -53,7 +54,7 @@
                 height: obj.height + margin * 2
             };
             
-            // Check overlap
+            // Check overlap with player position
             if (playerBox.x < spikeBox.x + spikeBox.width &&
                 playerBox.x + playerBox.width > spikeBox.x &&
                 playerBox.y < spikeBox.y + spikeBox.height &&
@@ -61,7 +62,49 @@
                 return false;
             }
         }
-        return true;
+        
+        // Check 2: Has solid ground underneath (check the block position directly below player)
+        const groundCheckY = y + playerHeight; // Position directly below player's feet
+        const groundCheckX1 = x + playerWidth * 0.25; // Check left-center of player
+        const groundCheckX2 = x + playerWidth * 0.75; // Check right-center of player
+        
+        let hasGroundUnderneath = false;
+        for (const obj of world.objects) {
+            // Skip non-collidable objects and spikes
+            if (!obj.collision || obj.actingType === 'spike') continue;
+            
+            // Check if this object is directly beneath the player
+            if (groundCheckY >= obj.y && groundCheckY <= obj.y + 8 && // Within 8px below player
+                ((groundCheckX1 >= obj.x && groundCheckX1 <= obj.x + obj.width) ||
+                 (groundCheckX2 >= obj.x && groundCheckX2 <= obj.x + obj.width))) {
+                hasGroundUnderneath = true;
+                break;
+            }
+        }
+        
+        // Check 3: No spike at the ground position (where player's feet would land)
+        if (hasGroundUnderneath) {
+            const feetBox = {
+                x: x,
+                y: groundCheckY - 4,
+                width: playerWidth,
+                height: 8
+            };
+            
+            for (const obj of world.objects) {
+                if (obj.actingType !== 'spike') continue;
+                
+                // Check if spike is at the ground position
+                if (feetBox.x < obj.x + obj.width &&
+                    feetBox.x + feetBox.width > obj.x &&
+                    feetBox.y < obj.y + obj.height &&
+                    feetBox.y + feetBox.height > obj.y) {
+                    return false; // Spike at ground level
+                }
+            }
+        }
+        
+        return hasGroundUnderneath;
     }
     
     // Helper: Align to grid
