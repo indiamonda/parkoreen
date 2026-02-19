@@ -902,7 +902,7 @@ class Editor {
                 <div style="overflow-y: auto; padding: 16px 0; flex: 1;">
                     <!-- HP Plugin -->
                     <div class="plugin-card" data-plugin="hp" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                        <img src="assets/plugins/hp/cover.png" alt="HP Plugin" style="width: 100%; height: 120px; object-fit: cover; object-position: top;">
+                        <img src="assets/plugins/hp/cover.png" alt="HP Plugin" style="width: 100%; height: auto; display: block;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
@@ -923,7 +923,7 @@ class Editor {
                     
                     <!-- Hollow Knight Plugin -->
                     <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                        <img src="assets/plugins/hk/cover.png" alt="Hollow Knight Plugin" style="width: 100%; height: 120px; object-fit: cover; object-position: top;">
+                        <img src="assets/plugins/hk/cover.png" alt="Hollow Knight Plugin" style="width: 100%; height: auto; display: block;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
@@ -952,7 +952,7 @@ class Editor {
                     
                     <!-- Code Plugin -->
                     <div class="plugin-card" data-plugin="code" style="background: var(--bg-light); border-radius: 12px; overflow: hidden;">
-                        <img src="assets/plugins/code/cover.png" alt="Code Plugin" style="width: 100%; height: 120px; object-fit: cover; object-position: top;">
+                        <img src="assets/plugins/code/cover.png" alt="Code Plugin" style="width: 100%; height: auto; display: block;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
@@ -4228,7 +4228,7 @@ class Editor {
             // Update acting type buttons for koreen (zone-only if appearance is zone, soulStatus if appearance is soulStatue)
             const actingBtns = options.acting.querySelector('.placement-option-btns');
             if (this.koreenSettings.appearanceType === 'zone') {
-                actingBtns.innerHTML = `
+            actingBtns.innerHTML = `
                     <button class="placement-opt-btn active" data-acting="zone">Zone</button>
                 `;
                 this.koreenSettings.actingType = 'zone';
@@ -4243,7 +4243,7 @@ class Editor {
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
-                `;
+            `;
                 if (hkEnabled) {
                     koreenActingHtml += `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'soulStatus' ? 'active' : ''}" data-acting="soulStatus">Soul</button>
@@ -4393,8 +4393,8 @@ class Editor {
                         `;
                         this.koreenSettings.actingType = 'soulStatus';
                     } else {
-                        // Sync acting type with appearance type for koreens
-                        this.koreenSettings.actingType = btn.dataset.appearance;
+                    // Sync acting type with appearance type for koreens
+                    this.koreenSettings.actingType = btn.dataset.appearance;
                         let koreenActingHtml = `
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>

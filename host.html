@@ -162,6 +162,7 @@
             width: 0%;
             background-size: 200% 100%;
             animation: shimmer 1.5s ease-in-out infinite;
+            transition: width 0.15s ease-out;
         }
         .loading-progress-green {
             background: linear-gradient(90deg, #22c55e, #4ade80, #22c55e);
@@ -625,7 +626,7 @@
                 });
             },
             
-            async loadAll() {
+            async loadAll(pluginResources = []) {
                 this.totalLoaded = 0;
                 this.totalSize = 0;
                 this.partLoaded = 0;
@@ -657,8 +658,8 @@
                     'assets/mp3/reggae-party.mp3'
                 ];
                 
-                // Step 1: Calculate ALL sizes upfront so we know the true total
-                const allResources = [...uiImages, ...gameSprites, ...sfx, ...music];
+                // Step 1: Calculate ALL sizes upfront (core + plugins) so we know the true total
+                const allResources = [...uiImages, ...gameSprites, ...sfx, ...music, ...pluginResources];
                 await this.calculateAllSizes(allResources);
                 
                 // Step 2: Load UI images
@@ -685,7 +686,7 @@
                     await this.preloadAudio(src);
                 }
                 
-                // Core resources complete - don't force 100% as plugins may be loaded next
+                // Core resources complete - plugins will be loaded next if any
                 this.currentPart = 'Core resources loaded';
                 this.updatePartUI();
                 
@@ -826,29 +827,26 @@
                 }
             }
             
-            // Step 2: Preload core resources
-            resourceLoader.updateProgress('Loading resources...');
-            await resourceLoader.loadAll();
-            
-            // Step 3: Discover and preload enabled plugins with proper progress tracking
+            // Step 2: Discover plugins FIRST to know all resources upfront
+            let allPluginResources = [];
             if (window.PluginManager && enabledPlugins.length > 0) {
                 resourceLoader.updateProgress('Discovering plugins...');
                 await window.PluginManager.discoverPlugins();
                 
-                // Collect all plugin resources to calculate total size
-                const allPluginResources = [];
+                // Collect all plugin resources to include in initial size calculation
                 for (const pluginId of enabledPlugins) {
                     const scriptUrls = window.PluginManager.getPluginScriptUrls(pluginId);
                     const soundUrls = window.PluginManager.getPluginSoundUrls(pluginId);
                     allPluginResources.push(...scriptUrls, ...soundUrls);
                 }
-                
-                // Calculate and add plugin sizes to total
-                if (allPluginResources.length > 0) {
-                    await resourceLoader.addToTotal(allPluginResources);
-                }
-                
-                // Load each plugin with proper progress tracking
+            }
+            
+            // Step 3: Preload core resources (pass plugin resources for accurate total calculation)
+            resourceLoader.updateProgress('Calculating sizes...');
+            await resourceLoader.loadAll(allPluginResources);
+            
+            // Step 4: Load plugins with progress tracking (sizes already calculated)
+            if (window.PluginManager && enabledPlugins.length > 0) {
                 for (const pluginId of enabledPlugins) {
                     const plugin = window.PluginManager.plugins.get(pluginId);
                     if (!plugin || window.PluginManager.loadedScripts.has(pluginId)) continue;

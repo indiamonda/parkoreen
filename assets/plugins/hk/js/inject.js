@@ -73,7 +73,8 @@
         player.isWallBouncing = false;
         player.wallBounceEndTime = 0;
         player.wallBounceDirection = 0;
-        player._justWallJumped = false; // Prevents monarch wing from triggering right after wall jump
+        player._monarchWingReady = true; // Must release and press jump to use monarch wing
+        player._wasOnGround = true; // Track ground state for jump detection
         
         return data;
     }, pluginId, 5); // Run before HP plugin
@@ -148,6 +149,13 @@
             player.isWallClinging = false;
         }
         
+        // Track when player leaves ground via jump - disable monarch wing until jump released
+        if (player._wasOnGround && !player.isOnGround && player.vy < 0 && player.input?.jump) {
+            // Player just jumped from ground while holding jump
+            player._monarchWingReady = false;
+        }
+        player._wasOnGround = player.isOnGround;
+        
         // Handle wall bounce (horizontal push after wall jump)
         if (player.isWallBouncing) {
             if (now < player.wallBounceEndTime) {
@@ -199,7 +207,7 @@
                 player.monarchWingsUsed = 0;
                 
                 player._wallJumpReady = false; // Prevent repeated jumps from held key
-                player._justWallJumped = true; // Prevent monarch wing until jump key released
+                player._monarchWingReady = false; // Must release jump before monarch wing can trigger
                 
                 // Play normal jump sound
                 if (audioManager) audioManager.play('jump');
@@ -403,9 +411,9 @@
             }
         }
         
-        // Reset _justWallJumped when jump key is released (allows monarch wing next press)
+        // Reset monarch wing ready when jump key is released (allows monarch wing on next press)
         if (!player.input?.jump) {
-            player._justWallJumped = false;
+            player._monarchWingReady = true;
         }
         
         return data;
@@ -421,12 +429,13 @@
         const worldJumpForce = world?.jumpForce ?? -11;
         
         // MONARCH WING - Double jump when out of normal jumps
-        // Don't trigger if just wall jumped (need to release and press jump again)
+        // Requires: jump key was released since last jump/wall jump (fresh press)
         if (!canJump && player.hasMonarchWing && !player.isOnGround && 
             player.monarchWingsUsed < player.monarchWingAmount &&
-            !player._justWallJumped) {
+            player._monarchWingReady) {
             
             player.monarchWingsUsed++;
+            player._monarchWingReady = false; // Must release jump again before next monarch wing
             
             // Monarch wing is 85% of normal jump (no gravity scaling - consistent height)
             player.vy = worldJumpForce * 0.85;
@@ -466,7 +475,8 @@
         player.isWallClinging = false;
         player.isWallBouncing = false;
         player._wallJumpReady = true;
-        player._justWallJumped = false;
+        player._monarchWingReady = true;
+        player._wasOnGround = true;
         
         return data;
     }, pluginId);
