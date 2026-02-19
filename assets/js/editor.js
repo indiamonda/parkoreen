@@ -5250,19 +5250,23 @@ class Editor {
         
         // 'overlap' mode - no checks, just place on top
 
-        // Determine object height (Soul Statue is 2 blocks tall)
+        // Determine object dimensions (Soul Statue is 2x7 blocks)
+        let objWidth = GRID_SIZE;
         let objHeight = GRID_SIZE;
+        let objX = x;
         let objY = y;
         if (settings.appearanceType === 'soulStatue') {
-            objHeight = GRID_SIZE * 3; // 3 blocks tall (96px)
-            objY = y - GRID_SIZE * 2; // Place with click point at bottom
+            objWidth = GRID_SIZE * 2; // 2 blocks wide (64px)
+            objHeight = GRID_SIZE * 7; // 7 blocks tall (224px)
+            objX = x - GRID_SIZE / 2; // Center horizontally on click
+            objY = y - GRID_SIZE * 6; // Place with click point at bottom
         }
 
         // Create object
         const obj = new WorldObject({
-            x: x,
+            x: objX,
             y: objY,
-            width: GRID_SIZE,
+            width: objWidth,
             height: objHeight,
             type: type,
             appearanceType: settings.appearanceType || 'ground',

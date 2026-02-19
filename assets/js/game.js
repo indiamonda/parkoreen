@@ -667,9 +667,30 @@ class Camera {
         this.targetY = 0;
         this.width = width;
         this.height = height;
-        this.zoom = 1;
+        this.defaultZoom = 2; // Default zoom level (2x zoomed in)
+        this.zoom = this.defaultZoom;
+        this.minZoom = 0.5; // Can zoom out to 0.5x in editor/test
+        this.maxZoom = 4; // Can zoom in to 4x
+    }
+    
+    // Set zoom limits based on game mode
+    setZoomLimits(mode) {
+        if (mode === 'editor' || mode === 'test') {
+            // Editor/Test: zoom freely in and out
         this.minZoom = 0.5;
-        this.maxZoom = 2;
+            this.maxZoom = 4;
+        } else {
+            // Play/Host: default zoom is max zoom out level (can only zoom in)
+            this.minZoom = this.defaultZoom;
+            this.maxZoom = 4;
+        }
+        // Clamp current zoom to new limits
+        this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom));
+    }
+    
+    // Reset zoom to default
+    resetZoom() {
+        this.zoom = this.defaultZoom;
     }
 
     follow(target) {
@@ -1012,8 +1033,8 @@ class WorldObject {
     
     renderSoulStatue(ctx, x, y, w, h) {
         // Soul Statue - use PNG image from HK plugin
-        // Touchbox: 3 blocks tall (h), 1 block wide (w)
-        // Appearance: Maintain image aspect ratio, centered horizontally
+        // Touchbox: 2 blocks wide (w), 7 blocks tall (h)
+        // Appearance: Maintain image aspect ratio, centered within touchbox
         if (!WorldObject.soulStatueImg) {
             WorldObject.soulStatueImg = new Image();
             WorldObject.soulStatueImg.src = 'assets/plugins/hk/png/soul-statue.png';
@@ -1021,22 +1042,33 @@ class WorldObject {
         
         const img = WorldObject.soulStatueImg;
         if (img.complete && img.naturalWidth > 0) {
-            // Calculate dimensions to maintain aspect ratio while fitting height
+            // Calculate dimensions to maintain aspect ratio while fitting within bounds
             const imgAspect = img.naturalWidth / img.naturalHeight;
-            const drawHeight = h; // Use full height (3 blocks)
-            const drawWidth = drawHeight * imgAspect; // Width based on aspect ratio
+            const boxAspect = w / h;
             
-            // Center horizontally within the touchbox
+            let drawWidth, drawHeight;
+            if (imgAspect > boxAspect) {
+                // Image is wider than box - fit to width
+                drawWidth = w;
+                drawHeight = w / imgAspect;
+            } else {
+                // Image is taller than box - fit to height
+                drawHeight = h;
+                drawWidth = h * imgAspect;
+            }
+            
+            // Center within the touchbox
             const drawX = x + (w - drawWidth) / 2;
+            const drawY = y + (h - drawHeight) / 2;
             
-            ctx.drawImage(img, drawX, y, drawWidth, drawHeight);
+            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
         } else {
             // Fallback: simple placeholder while loading
             ctx.fillStyle = '#3a3a4a';
             ctx.fillRect(x, y, w, h);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.beginPath();
-            ctx.arc(x + w / 2, y + h * 0.3, w * 0.25, 0, Math.PI * 2);
+            ctx.arc(x + w / 2, y + h * 0.3, w * 0.4, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -1895,6 +1927,7 @@ class GameEngine {
         
         this.world = new World();
         this.camera = new Camera(window.innerWidth, window.innerHeight);
+        this.camera.setZoomLimits('editor'); // Start with editor zoom limits
         this.audioManager = new AudioManager();
         
         this.localPlayer = null;
@@ -1991,17 +2024,16 @@ class GameEngine {
             window.visualViewport.addEventListener('resize', () => this.resizeCanvas());
         }
         
-        // Prevent browser zoom via Ctrl+wheel (only in editor/test mode)
+        // Prevent browser zoom via Ctrl+wheel (use game zoom instead)
         document.addEventListener('wheel', (e) => {
-            if ((e.ctrlKey || e.metaKey) && (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
+            if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
             }
         }, { passive: false });
         
-        // Prevent browser zoom via Ctrl+/- keys (only in editor/test mode)
+        // Prevent browser zoom via Ctrl+/- keys (use game zoom instead)
         document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_') && 
-                (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_')) {
                 e.preventDefault();
             }
         });
@@ -2223,8 +2255,8 @@ class GameEngine {
     }
 
     onWheel(e) {
-        // Ctrl+Scroll zoom only available in editor and test mode
-        if ((e.ctrlKey || e.metaKey) && (this.state === GameState.EDITOR || this.state === GameState.TESTING)) {
+        // Ctrl+Scroll zoom available in all modes (limits are set based on mode)
+        if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
             
             // Get the center point for zoom (player position if available, otherwise screen center)
@@ -2238,9 +2270,9 @@ class GameEngine {
                 centerY = this.camera.y + this.camera.height / 2 / this.camera.zoom;
             }
             
-            // Ctrl+Shift+Scroll: Reset zoom to default (1.0)
+            // Ctrl+Shift+Scroll: Reset zoom to default
             if (e.shiftKey) {
-                this.camera.setZoom(1.0, centerX, centerY);
+                this.camera.setZoom(this.camera.defaultZoom, centerX, centerY);
             } else {
                 // Scale zoom amount based on deltaY for smoother trackpad zoom
                 // Limit to small increments for smooth zooming
@@ -2711,6 +2743,10 @@ class GameEngine {
         this.lastCheckpoint = null;
         this.gameStartTime = Date.now();
         
+        // Set zoom limits for play mode (can only zoom in from default)
+        this.camera.setZoomLimits('play');
+        this.camera.resetZoom();
+        
         // Reset checkpoint states
         for (const obj of this.world.objects) {
             if (obj.actingType === 'checkpoint') {
@@ -2752,6 +2788,9 @@ class GameEngine {
         this.lastCheckpoint = null;
         this.gameStartTime = Date.now();
         
+        // Set zoom limits for test mode (zoom freely)
+        this.camera.setZoomLimits('test');
+        
         // Reset checkpoint states
         for (const obj of this.world.objects) {
             if (obj.actingType === 'checkpoint') {
@@ -2759,9 +2798,10 @@ class GameEngine {
             }
         }
         
-        // Store current camera position for returning
+        // Store current camera position and zoom for returning
         this.editorCameraX = this.camera.x;
         this.editorCameraY = this.camera.y;
+        this.editorCameraZoom = this.camera.zoom;
         
         let spawnX = 100, spawnY = 100;
         if (this.world.spawnPoint) {
@@ -2792,10 +2832,16 @@ class GameEngine {
         this.localPlayer = null;
         this.remotePlayers.clear();
         
-        // Restore camera position if coming from test mode
+        // Set zoom limits for editor mode (zoom freely)
+        this.camera.setZoomLimits('editor');
+        
+        // Restore camera position and zoom if coming from test mode
         if (this.editorCameraX !== undefined) {
             this.camera.x = this.editorCameraX;
             this.camera.y = this.editorCameraY;
+            if (this.editorCameraZoom !== undefined) {
+                this.camera.zoom = this.editorCameraZoom;
+            }
         }
         
         // Recreate editor player

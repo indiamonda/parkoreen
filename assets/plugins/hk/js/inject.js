@@ -80,6 +80,10 @@
         // Attack bounce invincibility (prevents damage during pogo bounce)
         player.attackBounceUntil = 0;
         
+        // Attack hit flags (prevent variable jump height interference)
+        player._pogoJumping = false;
+        player._hitUpward = false;
+        
         return data;
     }, pluginId, 5); // Run before HP plugin
     
@@ -205,8 +209,8 @@
                 player.wallBounceEndTime = now + bounceDuration;
                 player.wallBounceMidTime = now + bounceDuration / 2; // Horizontal push stops at half duration
                 
-                // Horizontal push away from wall
-                player.vx = player.wallBounceDirection * playerSpeed * 1.2;
+                // Horizontal push away from wall (same as player move speed)
+                player.vx = player.wallBounceDirection * playerSpeed;
                 
                 // Wall jump is 50% of normal jump (no gravity scaling - consistent height)
                 player.vy = worldJumpForce * 0.5;
@@ -279,13 +283,19 @@
                             pluginManager.playSound(pluginId, 'getSoul');
                         }, 500);
                         
-                        // Bounce off soul statue (immediate)
+                        // Bounce based on attack direction
                         if (direction === 'down') {
-                            player.vy = worldJumpForce * 0.5; // Pogo bounce (50% of jump = 1/2 max height)
-                            player.monarchWingsUsed = 0; // Reset monarch wing on downward hit
+                            // Pogo bounce - jump up (50% of max jump height)
+                            player.vy = worldJumpForce * 0.5;
+                            player.monarchWingsUsed = 0; // Reset monarch wing
+                            player._pogoJumping = true; // Flag to prevent variable jump height interference
+                        } else if (direction === 'up') {
+                            // Hit upward - immediately start falling
+                            player.vy = 2; // Small downward velocity to start fall
+                            player._hitUpward = true; // Flag to prevent variable jump height interference
                         } else {
-                            player.vx = -player.facingDirection * 3;
-                            player.vy = worldJumpForce * 0.3;
+                            // Forward hit - horizontal repel only, no vertical change
+                            player.vx = -player.facingDirection * 5;
                         }
                         
                         // Brief invincibility during bounce (200ms)
@@ -295,13 +305,19 @@
                     
                     // Spike - just bounce, no soul
                     if (obj.actingType === 'spike' && obj.collision !== false) {
-                        // Bounce only (no soul from spikes)
+                        // Bounce based on attack direction
                         if (direction === 'down') {
-                            player.vy = worldJumpForce * 0.5; // Pogo bounce (50% of jump = 1/2 max height)
-                            player.monarchWingsUsed = 0; // Reset monarch wing on downward hit
+                            // Pogo bounce - jump up (50% of max jump height)
+                            player.vy = worldJumpForce * 0.5;
+                            player.monarchWingsUsed = 0; // Reset monarch wing
+                            player._pogoJumping = true; // Flag to prevent variable jump height interference
+                        } else if (direction === 'up') {
+                            // Hit upward - immediately start falling
+                            player.vy = 2; // Small downward velocity to start fall
+                            player._hitUpward = true; // Flag to prevent variable jump height interference
                         } else {
-                            player.vx = -player.facingDirection * 3;
-                            player.vy = worldJumpForce * 0.3;
+                            // Forward hit - horizontal repel only, no vertical change
+                            player.vx = -player.facingDirection * 5;
                         }
                         
                         // Brief invincibility during bounce (200ms)
@@ -405,7 +421,7 @@
         }
         
         // ===== HEAL =====
-        if (player.input?.heal && !player.isHealing && !player.isDashing && !player.isSuperDashing) {
+        if (player.input?.heal && !player.isHealing && !player.isDashing && !player.isSuperDashing && player.isOnGround) {
             if (player.soul >= 33 && player.hp < player.maxHP) {
                 player.isHealing = true;
                 player.healStartTime = now;
@@ -414,8 +430,15 @@
         }
         
         if (player.isHealing) {
+            // Player cannot move while healing
+            player.vx = 0;
+            
             if (!player.input?.heal) {
-                // Cancelled
+                // Cancelled by releasing heal key
+                player.isHealing = false;
+                pluginManager.stopSound(pluginId, 'healCharging');
+            } else if (!player.isOnGround) {
+                // Cancelled by leaving ground (falling off edge, getting hit, etc.)
                 player.isHealing = false;
                 pluginManager.stopSound(pluginId, 'healCharging');
             } else if (now - player.healStartTime >= 900) {
@@ -429,11 +452,22 @@
         
         // ===== VARIABLE JUMP HEIGHT =====
         // When jump is released while ascending, cut the upward velocity
-        if (!player.input?.jump && player.vy < 0 && !player.isOnGround) {
+        // BUT don't interfere with pogo bounce or upward hit
+        if (!player.input?.jump && player.vy < 0 && !player.isOnGround && !player._pogoJumping) {
             // Cap upward velocity to -2 so player starts falling sooner
             if (player.vy < -2) {
                 player.vy = -2;
             }
+        }
+        
+        // Reset pogo jumping flag when player starts falling or lands
+        if (player._pogoJumping && (player.vy >= 0 || player.isOnGround)) {
+            player._pogoJumping = false;
+        }
+        
+        // Reset hit upward flag when player lands
+        if (player._hitUpward && player.isOnGround) {
+            player._hitUpward = false;
         }
         
         // Reset monarch wing ready when jump key is released (allows monarch wing on next press)
@@ -520,6 +554,8 @@
         player._monarchWingReady = true;
         player._wasOnGround = true;
         player.attackBounceUntil = 0;
+        player._pogoJumping = false;
+        player._hitUpward = false;
         
         return data;
     }, pluginId);
