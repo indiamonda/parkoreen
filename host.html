@@ -598,6 +598,33 @@
                 });
             },
             
+            // Preload audio and return the Audio object for reuse
+            async preloadAudioAndReturn(src) {
+                const size = this.resourceSizes[src] || 50000;
+                
+                return new Promise((resolve) => {
+                    let resolved = false;
+                    
+                    const markLoaded = (audio, success) => {
+                        if (resolved) return;
+                        resolved = true;
+                        this.partLoaded += size;
+                        this.totalLoaded += size;
+                        this.updatePartUI();
+                        this.updateTotalUI();
+                        resolve(success ? audio : null);
+                    };
+                    
+                    const audio = new Audio();
+                    audio.addEventListener('canplaythrough', () => markLoaded(audio, true), { once: true });
+                    audio.onerror = () => markLoaded(null, false);
+                    // Timeout - return audio anyway (may still work)
+                    setTimeout(() => markLoaded(audio, true), 5000);
+                    audio.src = src;
+                    audio.load();
+                });
+            },
+            
             async loadAll() {
                 this.totalLoaded = 0;
                 this.totalSize = 0;
@@ -681,6 +708,72 @@
                 if (sizeEl) sizeEl.textContent = '';
             },
             
+            // Load a script file with progress tracking
+            async preloadScript(src) {
+                const size = this.resourceSizes[src] || 50000;
+                
+                return new Promise((resolve) => {
+                    let resolved = false;
+                    
+                    const markLoaded = (success) => {
+                        if (resolved) return;
+                        resolved = true;
+                        this.partLoaded += size;
+                        this.totalLoaded += size;
+                        this.updatePartUI();
+                        this.updateTotalUI();
+                        resolve(success);
+                    };
+                    
+                    // Check if script already exists
+                    if (document.querySelector(`script[src="${src}"]`)) {
+                        markLoaded(true);
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = () => markLoaded(true);
+                    script.onerror = () => markLoaded(false);
+                    document.head.appendChild(script);
+                });
+            },
+            
+            // Fetch a script as text with progress tracking
+            async preloadScriptText(src) {
+                const size = this.resourceSizes[src] || 10000;
+                
+                try {
+                    const response = await fetch(src);
+                    const text = response.ok ? await response.text() : null;
+                    
+                    this.partLoaded += size;
+                    this.totalLoaded += size;
+                    this.updatePartUI();
+                    this.updateTotalUI();
+                    
+                    return text;
+                } catch (e) {
+                    this.partLoaded += size;
+                    this.totalLoaded += size;
+                    this.updatePartUI();
+                    this.updateTotalUI();
+                    return null;
+                }
+            },
+            
+            // Add more resources to total (for plugins discovered after initial calculation)
+            async addToTotal(resources) {
+                for (const src of resources) {
+                    if (!this.resourceSizes[src]) {
+                        const size = await this.getFileSize(src);
+                        this.resourceSizes[src] = size;
+                        this.totalSize += size;
+                    }
+                }
+                this.updateTotalUI();
+            },
+            
             hide() {
                 // Stop hint cycle
                 stopHintCycle();
@@ -740,15 +833,93 @@
             resourceLoader.updateProgress('Loading resources...');
             await resourceLoader.loadAll();
             
-            // Step 3: Discover and preload enabled plugins
+            // Step 3: Discover and preload enabled plugins with proper progress tracking
             if (window.PluginManager && enabledPlugins.length > 0) {
-                resourceLoader.updateProgress('Loading plugins...');
+                resourceLoader.updateProgress('Discovering plugins...');
                 await window.PluginManager.discoverPlugins();
                 
+                // Collect all plugin resources to calculate total size
+                const allPluginResources = [];
                 for (const pluginId of enabledPlugins) {
-                    resourceLoader.updateProgress(`Loading plugin: ${pluginId}...`);
+                    const scriptUrls = window.PluginManager.getPluginScriptUrls(pluginId);
+                    const soundUrls = window.PluginManager.getPluginSoundUrls(pluginId);
+                    allPluginResources.push(...scriptUrls, ...soundUrls);
+                }
+                
+                // Calculate and add plugin sizes to total
+                if (allPluginResources.length > 0) {
+                    await resourceLoader.addToTotal(allPluginResources);
+                }
+                
+                // Load each plugin with proper progress tracking
+                for (const pluginId of enabledPlugins) {
+                    const plugin = window.PluginManager.plugins.get(pluginId);
+                    if (!plugin || window.PluginManager.loadedScripts.has(pluginId)) continue;
+                    
+                    const scriptUrls = window.PluginManager.getPluginScriptUrls(pluginId);
+                    const soundUrls = window.PluginManager.getPluginSoundUrls(pluginId);
+                    const pluginResources = [...scriptUrls, ...soundUrls];
+                    
+                    // Start part tracking for this plugin
+                    resourceLoader.startPart(`Plugin: ${plugin.name || pluginId}`, pluginResources);
+                    
                     try {
-                        await window.PluginManager.loadPluginScripts(pluginId);
+                        // Load library scripts (as script tags)
+                        const libraryScripts = ['skulpt', 'skulptStdlib', 'pythonCompiler'];
+                        for (const scriptName of libraryScripts) {
+                            if (plugin.scripts?.[scriptName]) {
+                                const src = plugin.path + plugin.scripts[scriptName];
+                                await resourceLoader.preloadScript(src);
+                            }
+                        }
+                        
+                        // Load text scripts (globals, inject, script)
+                        const scripts = {};
+                        if (plugin.scripts?.globals) {
+                            scripts.globals = await resourceLoader.preloadScriptText(plugin.path + plugin.scripts.globals);
+                        }
+                        if (plugin.scripts?.inject) {
+                            scripts.inject = await resourceLoader.preloadScriptText(plugin.path + plugin.scripts.inject);
+                        }
+                        if (plugin.scripts?.script) {
+                            scripts.script = await resourceLoader.preloadScriptText(plugin.path + plugin.scripts.script);
+                        }
+                        
+                        // Load editor script (as script tag)
+                        if (plugin.scripts?.editor) {
+                            await resourceLoader.preloadScript(plugin.path + plugin.scripts.editor);
+                        }
+                        
+                        // Store loaded scripts in plugin manager
+                        window.PluginManager.loadedScripts.set(pluginId, scripts);
+                        
+                        // Load sounds with progress tracking
+                        // This also stores the audio objects for reuse
+                        if (plugin.sounds) {
+                            const sounds = {};
+                            for (const [name, path] of Object.entries(plugin.sounds)) {
+                                if (Array.isArray(path)) {
+                                    sounds[name] = [];
+                                    for (const p of path) {
+                                        const audio = await resourceLoader.preloadAudioAndReturn(plugin.path + p);
+                                        if (audio) {
+                                            audio.volume = 1;
+                                            sounds[name].push(audio);
+                                        }
+                                    }
+                                } else {
+                                    const audio = await resourceLoader.preloadAudioAndReturn(plugin.path + path);
+                                    if (audio) {
+                                        audio.volume = 1;
+                                        if (name === 'superdashFlying') {
+                                            audio.loop = true;
+                                        }
+                                        sounds[name] = audio;
+                                    }
+                                }
+                            }
+                            window.PluginManager.sounds.set(pluginId, sounds);
+                        }
                     } catch (e) {
                         console.warn(`[Preload] Failed to load plugin ${pluginId}:`, e);
                     }

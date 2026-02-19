@@ -401,6 +401,66 @@ class PluginManager {
     }
     
     // ============================================
+    // RESOURCE HELPERS
+    // ============================================
+    
+    /**
+     * Get all script URLs that will be loaded for a plugin
+     * Used for progress tracking during preload
+     * @param {string} pluginId - Plugin ID
+     * @returns {string[]} - Array of script URLs
+     */
+    getPluginScriptUrls(pluginId) {
+        const plugin = this.plugins.get(pluginId);
+        if (!plugin || !plugin.scripts) return [];
+        
+        const urls = [];
+        
+        // Library scripts (skulpt, skulptStdlib, pythonCompiler)
+        const libraryScripts = ['skulpt', 'skulptStdlib', 'pythonCompiler'];
+        for (const scriptName of libraryScripts) {
+            if (plugin.scripts[scriptName]) {
+                urls.push(plugin.path + plugin.scripts[scriptName]);
+            }
+        }
+        
+        // Text scripts (globals, inject, script, editor)
+        const textScripts = ['globals', 'inject', 'script', 'editor'];
+        for (const scriptName of textScripts) {
+            if (plugin.scripts[scriptName]) {
+                urls.push(plugin.path + plugin.scripts[scriptName]);
+            }
+        }
+        
+        return urls;
+    }
+    
+    /**
+     * Get all sound URLs that will be loaded for a plugin
+     * Used for progress tracking during preload
+     * @param {string} pluginId - Plugin ID
+     * @returns {string[]} - Array of sound URLs
+     */
+    getPluginSoundUrls(pluginId) {
+        const plugin = this.plugins.get(pluginId);
+        if (!plugin || !plugin.sounds) return [];
+        
+        const urls = [];
+        
+        for (const [name, path] of Object.entries(plugin.sounds)) {
+            if (Array.isArray(path)) {
+                for (const p of path) {
+                    urls.push(plugin.path + p);
+                }
+            } else {
+                urls.push(plugin.path + path);
+            }
+        }
+        
+        return urls;
+    }
+    
+    // ============================================
     // SERIALIZATION
     // ============================================
     
