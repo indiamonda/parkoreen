@@ -1616,18 +1616,18 @@ a:hover {
     display: block;
 }
 
-/* Joystick Container - Left side */
+/* Joystick Container - Left side, matching SVG position */
 .touch-joystick-container {
     position: fixed;
-    left: 20px;
-    bottom: 20px;
+    left: 5%;
+    bottom: 8%;
     pointer-events: auto;
     touch-action: none;
 }
 
 .touch-joystick-base {
-    width: 150px;
-    height: 150px;
+    width: min(150px, 20vw);
+    height: min(150px, 20vw);
     background: rgba(255, 255, 255, 0.12);
     border: 3px solid rgba(255, 255, 255, 0.25);
     border-radius: 50%;
@@ -1647,8 +1647,8 @@ a:hover {
 }
 
 .touch-joystick-stick {
-    width: 65px;
-    height: 65px;
+    width: min(65px, 9vw);
+    height: min(65px, 9vw);
     background: rgba(255, 255, 255, 0.35);
     border: 3px solid rgba(255, 255, 255, 0.6);
     border-radius: 50%;
@@ -1663,13 +1663,14 @@ a:hover {
     border-color: rgba(255, 255, 255, 0.8);
 }
 
-/* Action Buttons Container - Right side */
+/* Action Buttons Container - Right side, diagonal layout matching SVG */
 .touch-buttons-right {
     position: fixed;
-    right: 20px;
-    bottom: 20px;
-    display: flex;
-    flex-direction: column-reverse;
+    right: 3%;
+    bottom: 8%;
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    grid-template-rows: repeat(2, auto);
     align-items: center;
     gap: 12px;
     pointer-events: auto;
@@ -1678,8 +1679,8 @@ a:hover {
 
 /* Base button style */
 .touch-btn {
-    width: 80px;
-    height: 80px;
+    width: min(80px, 12vw);
+    height: min(80px, 12vw);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1696,7 +1697,7 @@ a:hover {
 }
 
 .touch-btn .material-symbols-outlined {
-    font-size: 40px;
+    font-size: min(40px, 6vw);
     pointer-events: none;
 }
 
@@ -1704,16 +1705,18 @@ a:hover {
     transform: scale(0.92);
 }
 
-/* Jump Button - Primary action, larger */
+/* Jump Button - Primary action, larger, positioned bottom-right in grid */
 .touch-btn.touch-jump {
-    width: 95px;
-    height: 95px;
+    width: min(95px, 14vw);
+    height: min(95px, 14vw);
     background: rgba(76, 175, 80, 0.25);
     border-color: rgba(76, 175, 80, 0.5);
+    grid-column: 2;
+    grid-row: 2;
 }
 
 .touch-btn.touch-jump .material-symbols-outlined {
-    font-size: 48px;
+    font-size: min(48px, 7vw);
 }
 
 .touch-btn.touch-jump.active {
@@ -1721,10 +1724,15 @@ a:hover {
     border-color: rgba(76, 175, 80, 0.8);
 }
 
-/* Attack Button - Red/Orange */
+/* Attack Button - Red/Orange, positioned bottom-left in grid */
 .touch-btn.touch-attack {
+    width: min(80px, 12vw);
+    height: min(80px, 12vw);
     background: rgba(244, 67, 54, 0.25);
     border-color: rgba(244, 67, 54, 0.5);
+    grid-column: 1;
+    grid-row: 2;
+    align-self: end;
 }
 
 .touch-btn.touch-attack.active {
@@ -1732,10 +1740,15 @@ a:hover {
     border-color: rgba(244, 67, 54, 0.8);
 }
 
-/* Dash Button - Blue */
+/* Dash Button - Blue, positioned top-right in grid */
 .touch-btn.touch-dash {
+    width: min(80px, 12vw);
+    height: min(80px, 12vw);
     background: rgba(33, 150, 243, 0.25);
     border-color: rgba(33, 150, 243, 0.5);
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
 }
 
 .touch-btn.touch-dash.active {
@@ -1743,10 +1756,14 @@ a:hover {
     border-color: rgba(33, 150, 243, 0.8);
 }
 
-/* Heal Button - Pink/Magenta */
+/* Heal Button - Pink/Magenta, positioned top-left in grid */
 .touch-btn.touch-heal {
+    width: min(80px, 12vw);
+    height: min(80px, 12vw);
     background: rgba(233, 30, 99, 0.25);
     border-color: rgba(233, 30, 99, 0.5);
+    grid-column: 1;
+    grid-row: 1;
 }
 
 .touch-btn.touch-heal.active {
@@ -1754,79 +1771,87 @@ a:hover {
     border-color: rgba(233, 30, 99, 0.8);
 }
 
-/* Landscape orientation - spread buttons horizontally */
+/* Landscape orientation - compact layout */
 @media (orientation: landscape) and (max-height: 500px) {
     .touch-buttons-right {
-        flex-direction: row;
-        bottom: 20px;
-        right: 20px;
-        gap: 10px;
+        bottom: 5%;
+        right: 2%;
+        gap: 6px;
     }
     
-    .touch-btn {
-        width: 70px;
-        height: 70px;
-    }
-    
-    .touch-btn .material-symbols-outlined {
-        font-size: 32px;
-    }
-    
-    .touch-btn.touch-jump {
-        width: 80px;
-        height: 80px;
-    }
-    
-    .touch-btn.touch-jump .material-symbols-outlined {
-        font-size: 40px;
+    .touch-joystick-container {
+        left: 3%;
+        bottom: 5%;
     }
     
     .touch-joystick-base {
-        width: 120px;
-        height: 120px;
+        width: min(120px, 25vh);
+        height: min(120px, 25vh);
     }
     
     .touch-joystick-stick {
-        width: 50px;
-        height: 50px;
+        width: min(50px, 11vh);
+        height: min(50px, 11vh);
+    }
+    
+    .touch-btn {
+        width: min(60px, 13vh);
+        height: min(60px, 13vh);
+    }
+    
+    .touch-btn .material-symbols-outlined {
+        font-size: min(28px, 6vh);
+    }
+    
+    .touch-btn.touch-jump {
+        width: min(70px, 15vh);
+        height: min(70px, 15vh);
+    }
+    
+    .touch-btn.touch-jump .material-symbols-outlined {
+        font-size: min(36px, 8vh);
     }
 }
 
 /* Small screens - compact layout */
 @media (max-width: 400px) {
     .touch-joystick-container {
-        left: 15px;
-        bottom: 15px;
+        left: 3%;
+        bottom: 5%;
     }
     
     .touch-joystick-base {
-        width: 120px;
-        height: 120px;
+        width: 100px;
+        height: 100px;
     }
     
     .touch-joystick-stick {
-        width: 50px;
-        height: 50px;
+        width: 42px;
+        height: 42px;
     }
     
     .touch-buttons-right {
-        right: 15px;
-        bottom: 15px;
-        gap: 8px;
+        right: 2%;
+        bottom: 5%;
+        gap: 6px;
     }
     
     .touch-btn {
+        width: 55px;
+        height: 55px;
+    }
+    
+    .touch-btn .material-symbols-outlined {
+        font-size: 26px;
+    }
+    
+    .touch-btn.touch-jump {
         width: 65px;
         height: 65px;
     }
     
-    .touch-btn .material-symbols-outlined {
+    .touch-btn.touch-jump .material-symbols-outlined {
         font-size: 32px;
-    }
-    
-    .touch-btn.touch-jump {
-        width: 75px;
-        height: 75px;
     }
 }
 

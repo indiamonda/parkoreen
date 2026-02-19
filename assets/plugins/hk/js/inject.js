@@ -631,19 +631,22 @@
     }, pluginId);
     
     // ============================================
-    // HUD RENDERING - Soul vessel using SVG icons
+    // HUD RENDERING - Soul vessel using SVG icons (TOP RIGHT)
     // ============================================
     pluginManager.registerHook('render.hud', (data) => {
         const { ctx, player } = data;
-        let xOffset = data.xOffset || 20;
         const yOffset = data.yOffset || 20;
         
         const containerSize = 60;
         const soulPercent = player.soul / player.maxSoul;
         
+        // Position Soul on top-right (matching SVG layout)
+        const canvasWidth = ctx.canvas.width;
+        const soulX = canvasWidth - containerSize - 20;
+        
         // Draw empty soul container
         if (soulEmptyImg.complete) {
-            ctx.drawImage(soulEmptyImg, xOffset, yOffset, containerSize, containerSize);
+            ctx.drawImage(soulEmptyImg, soulX, yOffset, containerSize, containerSize);
         }
         
         // Draw filled soul container with clipping based on soul percentage
@@ -652,9 +655,9 @@
             // Clip from bottom up based on soul percentage
             const fillHeight = containerSize * soulPercent;
             ctx.beginPath();
-            ctx.rect(xOffset, yOffset + containerSize - fillHeight, containerSize, fillHeight);
+            ctx.rect(soulX, yOffset + containerSize - fillHeight, containerSize, fillHeight);
             ctx.clip();
-            ctx.drawImage(soulFullImg, xOffset, yOffset, containerSize, containerSize);
+            ctx.drawImage(soulFullImg, soulX, yOffset, containerSize, containerSize);
             ctx.restore();
         }
         
@@ -663,7 +666,7 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         const soulText = Math.floor(player.soul).toString();
-        const textX = xOffset + containerSize / 2;
+        const textX = soulX + containerSize / 2;
         const textY = yOffset + containerSize / 2;
         
         // Black outline
@@ -684,12 +687,12 @@
             ctx.strokeStyle = '#4CAF50';
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.arc(xOffset + containerSize / 2, yOffset + containerSize / 2, containerSize / 2 + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+            ctx.arc(soulX + containerSize / 2, yOffset + containerSize / 2, containerSize / 2 + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
             ctx.stroke();
         }
         
-        // Update xOffset for HP hearts
-        return { ...data, xOffset: xOffset + containerSize + 20 };
+        // HP stays on left side - don't modify xOffset
+        return data;
     }, pluginId, 10); // Priority 10, runs before HP plugin
     
     // ============================================
