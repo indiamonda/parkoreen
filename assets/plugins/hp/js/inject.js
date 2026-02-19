@@ -28,6 +28,8 @@
         player.useHPSystem = true;
         player.invincibleUntil = 0;
         player.safeGroundHistory = [];
+        player.damageStunUntil = 0; // Prevents movement during damage stun
+        player.originalColor = player.color; // Store original color for flashing
         
         return data;
     }, pluginId);
@@ -68,13 +70,29 @@
     }
     
     // ============================================
-    // PLAYER UPDATE HOOK - Record safe ground
+    // PLAYER UPDATE HOOK - Record safe ground & handle stun
     // ============================================
     let lastSafeGroundCheck = 0;
     const SAFE_GROUND_CHECK_INTERVAL = 200; // Only check every 200ms to reduce lag
     
     pluginManager.registerHook('player.update', (data) => {
         const { player } = data;
+        const now = Date.now();
+        
+        // Handle damage stun - prevent movement
+        if (player.useHPSystem && player.damageStunUntil && now < player.damageStunUntil) {
+            // Clear input during stun
+            player.vx = 0;
+            // Keep gravity, but don't allow player input
+            player.input = {
+                ...player.input,
+                left: false,
+                right: false,
+                jump: false,
+                up: false,
+                down: false
+            };
+        }
         
         // Record safe ground when player is on ground (throttled)
         if (player.isOnGround && !player.isDead && player.useHPSystem) {
@@ -132,6 +150,12 @@
         // Take damage
         player.hp--;
         player.invincibleUntil = now + 1000; // 1 second invincibility
+        player.damageStunUntil = now + 500; // 0.5 second stun (can't move)
+        
+        // Store original color if not already stored
+        if (!player.originalColor) {
+            player.originalColor = player.color;
+        }
         
         if (player.hp <= 0) {
             // Player dies - don't prevent default
@@ -158,12 +182,32 @@
             }
         }
         
-        // If no safe ground found, try spawn point
-        if (!foundSafe && world.spawnPoint) {
-            player.x = alignToGrid(world.spawnPoint.x);
-            player.y = alignToGrid(world.spawnPoint.y - player.height);
+        // If no safe ground found, use checkpoint or spawn point
+        if (!foundSafe) {
+            // Get the game engine's last checkpoint if available
+            const engine = window.gameEngine || window.engine;
+            const lastCheckpoint = engine?.lastCheckpoint;
+            const dieLineY = world.dieLineY ?? 2000;
+            
+            let newX = 100, newY = 100; // Default fallback
+            
+            if (lastCheckpoint && (lastCheckpoint.y - player.height) < dieLineY) {
+                // Use checkpoint (if it's above the void)
+                newX = lastCheckpoint.x + lastCheckpoint.width / 2 - player.width / 2;
+                newY = lastCheckpoint.y - player.height;
+            } else if (world.spawnPoint && (world.spawnPoint.y - player.height) < dieLineY) {
+                // Use spawn point (if it's above the void)
+                newX = world.spawnPoint.x + world.spawnPoint.width / 2 - player.width / 2;
+                newY = world.spawnPoint.y - player.height;
+            }
+            // else use default (100, 100) which should be safe
+            
+            player.x = newX;
+            player.y = newY;
             player.vx = 0;
             player.vy = 0;
+            // Clear history since we're at spawn/checkpoint
+            player.safeGroundHistory = [];
         }
         
         // Prevent default death behavior
@@ -179,6 +223,7 @@
         if (player.useHPSystem) {
             player.hp = player.maxHP;
             player.invincibleUntil = 0;
+            player.damageStunUntil = 0;
             player.safeGroundHistory = [];
         }
         
@@ -219,17 +264,33 @@
         return { ...data, xOffset: currentX + player.maxHP * hpSpacing + 10 };
     }, pluginId, 20); // Priority 20 so it renders after soul
     
-    // Invincibility flash effect
-    pluginManager.registerHook('render.hud', (data) => {
-        const { ctx, player, canvas } = data;
+    // ============================================
+    // PLAYER RENDER HOOK - Flash player sprite during invincibility
+    // ============================================
+    pluginManager.registerHook('render.player', (data) => {
+        const { ctx, player, camera } = data;
         
-        if (player.useHPSystem && player.invincibleUntil > Date.now()) {
-            const flashOpacity = Math.sin(Date.now() / 50) * 0.2 + 0.2;
-            ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (!player.useHPSystem) return data;
+        
+        const now = Date.now();
+        
+        // During invincibility, flash between black overlay and normal
+        if (player.invincibleUntil && now < player.invincibleUntil) {
+            // Flash frequency: alternate every 100ms
+            const flashPhase = Math.floor(now / 100) % 2;
+            
+            if (flashPhase === 0) {
+                // Draw black overlay on the player
+                const screenX = player.x - camera.x;
+                const screenY = player.y - camera.y;
+                
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(screenX, screenY, player.width, player.height);
+            }
+            // On odd phase, player is shown normally (already rendered)
         }
         
         return data;
-    }, pluginId, 100); // High priority, runs last
+    }, pluginId);
     
 })(ctx);

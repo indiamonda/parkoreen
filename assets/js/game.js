@@ -7,8 +7,11 @@
 // CONSTANTS
 // ============================================
 const GRID_SIZE = 32;
-const DEFAULT_GRAVITY = 0.8;
-const DEFAULT_JUMP_FORCE = -14;
+// Physics: Lower gravity for floatier feel, jump force adjusted to maintain same jump HEIGHT
+// Formula: h = v²/(2g), so to keep h constant: v₂ = v₁ * sqrt(g₂/g₁)
+// Old: g=0.8, v=-14, h=122.5 | New: g=0.5, v=-11, h=121 (same height, slower speed)
+const DEFAULT_GRAVITY = 0.5;
+const DEFAULT_JUMP_FORCE = -11;
 const DEFAULT_MOVE_SPEED = 5;
 const FLY_SPEED = 8;
 const CAMERA_LERP_X = 0.12;
@@ -2337,7 +2340,23 @@ class GameEngine {
                 // Check for die line (void death)
                 const dieLineY = this.world.dieLineY ?? 2000;
                 if (this.localPlayer.y > dieLineY) {
+                    // Use damage hook so HP plugin can handle it (1 damage, teleport to safe ground)
+                    if (window.PluginManager) {
+                        const result = window.PluginManager.executeHook('player.damage', {
+                            player: this.localPlayer,
+                            source: { type: 'void', actingType: 'void' },
+                            world: this.world
+                        });
+                        if (result.preventDefault) {
+                            // Plugin handled the damage - don't die
+                            // But we need to move player out of the void zone
+                            // (HP plugin will have teleported them already)
+                        } else {
                     this.localPlayer.die();
+                        }
+                    } else {
+                        this.localPlayer.die();
+                    }
                 }
                 
                 // Check for respawn

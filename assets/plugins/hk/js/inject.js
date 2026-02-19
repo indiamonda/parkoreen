@@ -55,6 +55,7 @@
         player.superDashChargeStart = 0;
         player.superDashDirection = 1;
         player._playedCharge2 = false;
+        player._superDashKeyReady = true;
         
         // Heal
         player.isHealing = false;
@@ -154,11 +155,11 @@
                 player.vx = player.wallBounceDirection * playerSpeed;
                 
                 // Normal gravity applies during bounce
-                const worldGravity = world?.gravity ?? 0.8;
+                const worldGravity = world?.gravity ?? 0.5;
                 player.vy += worldGravity;
                 
                 // Cap fall speed
-                const maxFallSpeed = 20 * (worldGravity / 0.8);
+                const maxFallSpeed = 20 * (worldGravity / 0.5);
                 if (player.vy > maxFallSpeed) player.vy = maxFallSpeed;
                 
                 // Apply movement with collision
@@ -173,24 +174,33 @@
         
         // Handle wall cling physics - use skipPhysics to control fall speed
         if (player.isWallClinging) {
-            const worldGravity = world?.gravity ?? 0.8;
+            const worldGravity = world?.gravity ?? 0.5;
+            const worldJumpForce = world?.jumpForce ?? -11;
             const playerSpeed = world?.playerSpeed ?? 5;
+            const gravityRatio = worldGravity / 0.5;
             
             // Check for wall jump input
             if (player.input?.jump && player._wallJumpReady !== false) {
-                // Wall bounce: horizontal push away from wall
+                // Wall jump: push away from wall + upward jump
                 player.isWallClinging = false;
                 player.isWallBouncing = true;
                 player.wallBounceDirection = -player.wallClingDirection;
-                player.wallBounceEndTime = now + 120; // Short bounce duration (120ms)
+                player.wallBounceEndTime = now + 150; // Wall bounce duration (150ms)
                 
-                player.vx = player.wallBounceDirection * playerSpeed;
-                player.vy = -2; // Small upward nudge to feel responsive
+                // Horizontal push away from wall
+                player.vx = player.wallBounceDirection * playerSpeed * 1.2;
+                
+                // Proper upward jump (85% of normal jump, scaled with gravity)
+                player.vy = worldJumpForce * 0.85 * Math.sqrt(gravityRatio);
+                
                 player.facingDirection = player.wallBounceDirection;
-                player.monarchWingsUsed = 0; // Reset double jump after wall jump
+                
+                // Reset monarch wings (double jump) after wall jump
+                player.monarchWingsUsed = 0;
+                
                 player._wallJumpReady = false; // Prevent repeated jumps from held key
                 
-                // Play normal jump sound (not monarch wings sound)
+                // Play normal jump sound
                 if (audioManager) audioManager.play('jump');
                 
                 // Apply movement with collision
@@ -219,6 +229,11 @@
         
         // ===== ATTACK =====
         if (player.input?.attack && !player.isAttacking && now > player.attackCooldown) {
+            // If wall clinging, force attack direction away from wall
+            if (player.isWallClinging) {
+                player.facingDirection = -player.wallClingDirection;
+            }
+            
             let direction = 'forward';
             if (player.input?.up) direction = 'up';
             else if (player.input?.down && !player.isOnGround) direction = 'down';
@@ -227,21 +242,41 @@
             player.attackDirection = direction;
             player.attackStartTime = now;
             
-            // Check for spike collision with attack hitbox
+            // Check for object collision with attack hitbox
             const hitbox = getAttackHitbox(player, direction);
+            const worldJumpForce = world?.jumpForce ?? -11;
+            
             for (const obj of world.objects) {
-                if (obj.actingType === 'spike' && obj.collision !== false) {
-                    if (boxIntersects(hitbox, obj)) {
-                        // Gain soul
-                        player.soul = Math.min(player.maxSoul, player.soul + 16.5);
-                        pluginManager.playSound(pluginId, 'getSoul');
+                if (boxIntersects(hitbox, obj)) {
+                    // Soul Statue - hit sound now, soul + getSoul sound 0.5s later
+                    if (obj.actingType === 'soulStatus') {
+                        // Play hit sound immediately
+                        pluginManager.playSound(pluginId, 'hitSoulStatus');
                         
-                        // Bounce
+                        // Delay soul gain and getSoul sound by 0.5 seconds
+                        setTimeout(() => {
+                            player.soul = Math.min(player.maxSoul, player.soul + 16.5);
+                            pluginManager.playSound(pluginId, 'getSoul');
+                        }, 500);
+                        
+                        // Bounce off soul statue (immediate)
                         if (direction === 'down') {
-                            player.vy = -14 * 0.4; // Pogo bounce
+                            player.vy = worldJumpForce * 0.65; // Pogo bounce (65% of jump)
                         } else {
                             player.vx = -player.facingDirection * 3;
-                            player.vy = -3;
+                            player.vy = worldJumpForce * 0.3;
+                        }
+                        break;
+                    }
+                    
+                    // Spike - just bounce, no soul
+                    if (obj.actingType === 'spike' && obj.collision !== false) {
+                        // Bounce only (no soul from spikes)
+                        if (direction === 'down') {
+                            player.vy = worldJumpForce * 0.65; // Pogo bounce (65% of jump)
+                        } else {
+                            player.vx = -player.facingDirection * 3;
+                            player.vy = worldJumpForce * 0.3;
                         }
                         break;
                     }
@@ -257,6 +292,12 @@
         
         // ===== DASH =====
         if (player.input?.dash && player.hasDash && !player.isDashing && now > player.dashCooldown) {
+            // If wall clinging, force dash direction away from wall and detach
+            if (player.isWallClinging) {
+                player.facingDirection = -player.wallClingDirection;
+                player.isWallClinging = false;
+            }
+            
             player.isDashing = true;
             player.dashStartTime = now;
             player.dashDirection = player.facingDirection;
@@ -265,35 +306,41 @@
         
         if (player.isDashing) {
             const elapsed = now - player.dashStartTime;
-            if (elapsed >= 150) {
+            if (elapsed >= 200) { // Increased duration: 150ms → 200ms
                 player.isDashing = false;
                 player.dashCooldown = now + 400;
             } else {
-                player.vx = player.dashDirection * 12;
+                player.vx = player.dashDirection * 16; // Increased speed: 12 → 16
                 player.vy = 0;
                 return { ...data, skipPhysics: true };
             }
         }
         
         // ===== SUPER DASH =====
-        if (player.input?.superDash && player.hasSuperDash && !player.isSuperDashing && !player.superDashCharging) {
+        // Track key release to prevent instant re-charge after manual stop
+        if (!player.input?.superDash) {
+            player._superDashKeyReady = true;
+        }
+        
+        if (player.input?.superDash && player.hasSuperDash && !player.isSuperDashing && !player.superDashCharging && player._superDashKeyReady) {
             player.superDashCharging = true;
             player.superDashChargeStart = now;
             player.superDashDirection = player.facingDirection;
             player._playedCharge2 = false;
+            player._superDashKeyReady = false; // Require key release before next charge
             pluginManager.playSound(pluginId, 'superdashCharge1');
         }
         
         if (player.superDashCharging) {
             const elapsed = now - player.superDashChargeStart;
             
-            // Play charge2 sound halfway
-            if (elapsed >= 400 && !player._playedCharge2) {
+            // Play charge2 sound when charging finishes
+            if (elapsed >= 800 && !player._playedCharge2) {
                 player._playedCharge2 = true;
                 pluginManager.playSound(pluginId, 'superdashCharge2');
             }
             
-            // Release check
+            // Release check - player releases key to burst
             if (!player.input?.superDash) {
                 player.superDashCharging = false;
                 if (elapsed >= 800) {
@@ -315,8 +362,8 @@
                 stopSuperDash(player, 'wall');
             }
             
-            // Jump cancels super dash
-            if (player.input?.attack || (player.input?.jump && player.canJump)) {
+            // Super dash key, jump, or attack cancels super dash
+            if (player.input?.superDash || player.input?.attack || player.input?.jump) {
                 stopSuperDash(player, 'manual');
             }
             
@@ -365,9 +412,9 @@
     pluginManager.registerHook('player.jump', (data) => {
         const { player, canJump } = data;
         
-        const worldJumpForce = world?.jumpForce ?? -14;
-        const worldGravity = world?.gravity ?? 0.8;
-        const gravityRatio = worldGravity / 0.8; // Ratio vs default gravity
+        const worldJumpForce = world?.jumpForce ?? -11;
+        const worldGravity = world?.gravity ?? 0.5;
+        const gravityRatio = worldGravity / 0.5; // Ratio vs default gravity
         
         // MONARCH WING - Double jump when out of normal jumps
         if (!canJump && player.hasMonarchWing && !player.isOnGround && 
@@ -406,6 +453,8 @@
         player.isDashing = false;
         player.isSuperDashing = false;
         player.superDashCharging = false;
+        player._playedCharge2 = false;
+        player._superDashKeyReady = true;
         player.isHealing = false;
         player.monarchWingsUsed = 0;
         player.isWallClinging = false;
@@ -517,11 +566,23 @@
             ctx.restore();
         }
         
-        // Soul number
-        ctx.fillStyle = '#000';
+        // Soul number - white text with black outline for visibility
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(Math.floor(player.soul).toString(), xOffset + containerSize / 2, yOffset + containerSize / 2 + 5);
+        ctx.textBaseline = 'middle';
+        const soulText = Math.floor(player.soul).toString();
+        const textX = xOffset + containerSize / 2;
+        const textY = yOffset + containerSize / 2;
+        
+        // Black outline
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(soulText, textX, textY);
+        
+        // White fill
+        ctx.fillStyle = '#fff';
+        ctx.fillText(soulText, textX, textY);
         
         // Heal progress indicator
         if (player.isHealing) {
@@ -544,7 +605,7 @@
     // ============================================
     
     function getAttackHitbox(player, direction) {
-        const attackRange = 52;
+        const attackRange = 72; // Increased range: 52 → 72
         const attackWidth = 36;
         const attackHeight = 28;
         

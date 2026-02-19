@@ -685,11 +685,8 @@
                     await this.preloadAudio(src);
                 }
                 
-                // Ensure we show 100%
-                this.totalLoaded = this.totalSize;
-                this.partLoaded = this.partSize;
-                this.currentPart = 'Complete!';
-                this.updateTotalUI();
+                // Core resources complete - don't force 100% as plugins may be loaded next
+                this.currentPart = 'Core resources loaded';
                 this.updatePartUI();
                 
                 return true;
@@ -797,7 +794,7 @@
             currentMapId = params.get('map');
             currentMode = params.get('mode') || 'edit';
             const roomCode = params.get('room');
-            
+
             // Step 1: Pre-fetch map data to know which plugins need loading
             let mapData = null;
             let enabledPlugins = [];
@@ -929,6 +926,7 @@
             // Step 4: Initialize game engine
             resourceLoader.updateProgress('Initializing game engine...');
             engine = new GameEngine('game-canvas');
+            window.engine = engine; // Expose globally for plugins
             engine.start();
 
             // Step 5: Initialize editor
@@ -960,7 +958,7 @@
                     await loadMapWithData(currentMapId, mapData);
                 } else {
                     // Fallback: fetch and load (if pre-fetch failed)
-                    await loadMap(currentMapId);
+                await loadMap(currentMapId);
                 }
                 
                 if (currentMode === 'host') {
@@ -1010,6 +1008,9 @@
             }
             
             // Hide loading screen after everything is ready
+            // Ensure total bar shows 100%
+            resourceLoader.totalLoaded = resourceLoader.totalSize;
+            resourceLoader.updateTotalUI();
             resourceLoader.updateProgress('Ready!');
             setTimeout(() => {
                 resourceLoader.hide();
