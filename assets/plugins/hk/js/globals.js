@@ -15,9 +15,12 @@ const HK_DEFAULTS = {
     superDashSpeed: 20,
     attackDuration: 200, // ms
     attackCooldown: 100, // ms
-    attackRange: 40,
+    attackRange: 52,
     pogoBouncePower: 0.4, // Fraction of normal jump
-    monarchWingJumpPower: 0.9 // Fraction of normal jump
+    monarchWingJumpPower: 0.9, // Fraction of normal jump
+    // Camera smoothness - HK style: slow horizontal, slightly responsive vertical
+    defaultCameraLerpX: 0.04, // Very smooth horizontal (tiny value)
+    defaultCameraLerpY: 0.15  // Slightly above default vertical
 };
 
 // Player HK state (will be attached to player objects)

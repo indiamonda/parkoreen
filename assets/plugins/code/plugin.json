@@ -1,0 +1,29 @@
+{
+    "id": "code",
+    "name": "Code",
+    "version": "0.1.0-beta",
+    "description": "Add triggers and actions to your map. Create interactive experiences with player events, zones, and custom logic.",
+    "author": "Parkoreen",
+    "color": "#3b82f6",
+    "beta": true,
+    "scripts": {
+        "skulpt": "js/skulpt.min.js",
+        "skulptStdlib": "js/skulpt-stdlib.js",
+        "pythonCompiler": "js/pythonCompiler.js",
+        "globals": "js/globals.js",
+        "inject": "js/inject.js",
+        "script": "js/script.js",
+        "editor": "js/editor.js"
+    },
+    "config": {
+        "autoRespawn": {
+            "type": "boolean",
+            "label": "Auto Respawn",
+            "description": "Automatically respawn player when they die",
+            "default": true
+        }
+    },
+    "features": [
+        "zones"
+    ]
+}

@@ -22,7 +22,7 @@ class PluginManager {
     
     async discoverPlugins() {
         // List of known plugins (could be made dynamic later)
-        const pluginIds = ['hp', 'hk'];
+        const pluginIds = ['hp', 'hk', 'code'];
         
         for (const id of pluginIds) {
             try {
@@ -49,7 +49,20 @@ class PluginManager {
         
         const scripts = {};
         
-        // Load globals
+        // Load library scripts first (executed as <script> tags for global scope)
+        // These are scripts that need to run in global scope (like Skulpt)
+        const libraryScripts = ['skulpt', 'skulptStdlib', 'pythonCompiler'];
+        for (const scriptName of libraryScripts) {
+            if (plugin.scripts?.[scriptName]) {
+                try {
+                    await this.loadScriptTag(plugin.path + plugin.scripts[scriptName]);
+                } catch (e) {
+                    console.warn(`Failed to load ${scriptName} for ${pluginId}:`, e);
+                }
+            }
+        }
+        
+        // Load globals (fetched as text for eval)
         if (plugin.scripts?.globals) {
             try {
                 const response = await fetch(plugin.path + plugin.scripts.globals);
@@ -85,12 +98,38 @@ class PluginManager {
             }
         }
         
+        // Load editor script (for plugins with editor UI)
+        if (plugin.scripts?.editor) {
+            try {
+                await this.loadScriptTag(plugin.path + plugin.scripts.editor);
+            } catch (e) {
+                console.warn(`Failed to load editor for ${pluginId}:`, e);
+            }
+        }
+        
         this.loadedScripts.set(pluginId, scripts);
         
         // Load sounds
         if (plugin.sounds) {
             await this.loadPluginSounds(pluginId, plugin);
         }
+    }
+    
+    // Load a script as a <script> tag (for libraries that need global scope)
+    loadScriptTag(src) {
+        return new Promise((resolve, reject) => {
+            // Check if already loaded
+            if (document.querySelector(`script[src="${src}"]`)) {
+                resolve();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
     }
     
     async loadPluginSounds(pluginId, plugin) {
@@ -369,6 +408,11 @@ class PluginManager {
      * Initialize plugins from world data (called when loading a map)
      */
     async initFromWorld(world) {
+        // Ensure plugins are discovered first
+        if (this.plugins.size === 0) {
+            await this.discoverPlugins();
+        }
+        
         // Clear current state
         this.enabled.clear();
         for (const hookName in this.hooks) {

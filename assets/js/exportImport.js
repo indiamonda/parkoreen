@@ -32,9 +32,12 @@ const PKRN_DEFAULTS = {
     playerSpeed: 5,
     jumpForce: -14,
     gravity: 0.8,
+    cameraLerpX: 0.12,
+    cameraLerpY: 0.12,
     spikeTouchbox: 'normal',
     dropHurtOnly: false,
     storedDataType: 'json', // 'json' or 'dat'
+    keyboardLayout: 'jimmyqrg',
     customBackground: {
         enabled: false,
         type: null,
@@ -52,6 +55,13 @@ const PKRN_DEFAULTS = {
         customName: null,
         volume: 50,
         loop: true
+    },
+    plugins: {
+        enabled: []
+    },
+    codeData: {
+        triggers: [],
+        actions: []
     }
 };
 
@@ -405,6 +415,9 @@ class ExportManager {
                 playerSpeed: world.playerSpeed,
                 jumpForce: world.jumpForce,
                 gravity: world.gravity,
+                // Camera settings
+                cameraLerpX: world.cameraLerpX,
+                cameraLerpY: world.cameraLerpY,
                 // Spike settings
                 spikeTouchbox: world.spikeTouchbox,
                 dropHurtOnly: world.dropHurtOnly,
@@ -413,8 +426,15 @@ class ExportManager {
                 // Custom background
                 customBackground: world.customBackground,
                 // Music
-                music: world.music
+                music: world.music,
+                // Keyboard layout
+                keyboardLayout: world.keyboardLayout
             },
+            // Plugins configuration
+            plugins: world.plugins,
+            // Code plugin data (triggers & actions)
+            codeData: world.codeData,
+            // Objects
             objects: world.objects.map(obj => this.serializeObject(obj))
         };
     }
@@ -686,6 +706,9 @@ class ImportManager {
             playerSpeed: getNumber(settings.playerSpeed, PKRN_DEFAULTS.playerSpeed, v => v > 0),
             jumpForce: getNumber(settings.jumpForce, PKRN_DEFAULTS.jumpForce, v => v < 0),
             gravity: getNumber(settings.gravity, PKRN_DEFAULTS.gravity, v => v > 0),
+            // Camera settings (default to 0.12 if not specified)
+            cameraLerpX: getNumber(settings.cameraLerpX, 0.12, v => v > 0 && v <= 1),
+            cameraLerpY: getNumber(settings.cameraLerpY, 0.12, v => v > 0 && v <= 1),
             // Spike settings
             spikeTouchbox: ['full', 'normal', 'tip', 'ground', 'flag', 'air'].includes(settings.spikeTouchbox) 
                 ? settings.spikeTouchbox : PKRN_DEFAULTS.spikeTouchbox,
@@ -697,7 +720,55 @@ class ImportManager {
             customBackground: this.deserializeCustomBackground(settings.customBackground),
             // Music with validation
             music: this.deserializeMusic(settings.music),
+            // Keyboard layout
+            keyboardLayout: ['default', 'hk', 'jimmyqrg'].includes(settings.keyboardLayout)
+                ? settings.keyboardLayout : 'jimmyqrg',
+            // Plugins configuration
+            plugins: this.deserializePlugins(data.plugins),
+            // Code plugin data (triggers & actions)
+            codeData: this.deserializeCodeData(data.codeData),
+            // Objects
             objects: (data.objects || []).map(obj => this.deserializeObject(obj))
+        };
+    }
+    
+    /**
+     * Deserialize plugins configuration
+     * @param {Object} plugins - Plugins data
+     * @returns {Object} Validated plugins data
+     */
+    deserializePlugins(plugins) {
+        if (!plugins || typeof plugins !== 'object') {
+            return { enabled: [] };
+        }
+        
+        const result = {
+            enabled: Array.isArray(plugins.enabled) ? plugins.enabled : []
+        };
+        
+        // Copy plugin configs (hp, hk, code, etc.)
+        for (const key of Object.keys(plugins)) {
+            if (key !== 'enabled' && typeof plugins[key] === 'object') {
+                result[key] = { ...plugins[key] };
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Deserialize code plugin data (triggers & actions)
+     * @param {Object} codeData - Code data
+     * @returns {Object} Validated code data
+     */
+    deserializeCodeData(codeData) {
+        if (!codeData || typeof codeData !== 'object') {
+            return { triggers: [], actions: [] };
+        }
+        
+        return {
+            triggers: Array.isArray(codeData.triggers) ? codeData.triggers : [],
+            actions: Array.isArray(codeData.actions) ? codeData.actions : []
         };
     }
     
@@ -836,6 +907,24 @@ class CloudSyncManager {
     }
 
     /**
+     * Handle unauthorized response - sign out user
+     * @param {Response} response - Fetch response
+     */
+    handleUnauthorized(response) {
+        if (response.status === 401) {
+            console.warn('[CloudSync] Unauthorized - signing out user');
+            // Clear auth tokens from localStorage
+            localStorage.removeItem('parkoreen_auth_token');
+            localStorage.removeItem('parkoreen_user');
+            // Redirect to login/dashboard
+            if (typeof window !== 'undefined') {
+                window.location.href = '/parkoreen/dashboard/';
+            }
+            throw new Error('Session expired. Please sign in again.');
+        }
+    }
+
+    /**
      * Save map to cloud
      * @param {World} world - World to save
      * @param {string} token - Auth token
@@ -854,6 +943,8 @@ class CloudSyncManager {
             body: JSON.stringify(data)
         });
 
+        this.handleUnauthorized(response);
+        
         if (!response.ok) {
             throw new Error('Failed to save to cloud');
         }
@@ -874,6 +965,8 @@ class CloudSyncManager {
             }
         });
 
+        this.handleUnauthorized(response);
+        
         if (!response.ok) {
             throw new Error('Failed to load from cloud');
         }
@@ -893,6 +986,8 @@ class CloudSyncManager {
                 'Authorization': `Bearer ${token}`
             }
         });
+        
+        this.handleUnauthorized(response);
         
         if (!response.ok) {
             throw new Error('Failed to list maps');
@@ -915,6 +1010,8 @@ class CloudSyncManager {
             }
         });
 
+        this.handleUnauthorized(response);
+        
         return response.ok;
         }
     }

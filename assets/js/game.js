@@ -11,7 +11,8 @@ const DEFAULT_GRAVITY = 0.8;
 const DEFAULT_JUMP_FORCE = -14;
 const DEFAULT_MOVE_SPEED = 5;
 const FLY_SPEED = 8;
-const CAMERA_LERP = 0.12;
+const CAMERA_LERP_X = 0.12;
+const CAMERA_LERP_Y = 0.12;
 const PLAYER_SIZE = 32;
 
 // ============================================
@@ -241,7 +242,7 @@ class Player {
         if (this.coyoteTimeStart !== null && (now - this.coyoteTimeStart) > this.COYOTE_TIME) {
             this.coyoteTimeStart = null;
         }
-        
+
         if (!this.input.jump) {
             this.canJump = true;
             
@@ -393,7 +394,7 @@ class Player {
                 
                 // In 'full' mode, any contact with spike = damage
                 if (spikeMode === 'full') {
-                    if (this.boxIntersects(hurtBox, obj)) {
+                if (this.boxIntersects(hurtBox, obj)) {
                         gotHit = true;
                     }
                 }
@@ -573,7 +574,7 @@ class Player {
     resetJumps() {
         // When landing on ground, reset to full jumps
         // (The walk-off-ledge penalty is handled in moveWithCollision)
-        this.jumpsRemaining = this.maxJumps;
+            this.jumpsRemaining = this.maxJumps;
         // Clear coyote time when landing
         this.coyoteTimeStart = null;
         // Notify plugins of landing
@@ -670,10 +671,10 @@ class Camera {
         this.targetY = target.y + target.height / 2 - this.height / 2 / this.zoom;
     }
 
-    update(lerp = CAMERA_LERP) {
-        // Smooth camera movement
-        this.x += (this.targetX - this.x) * lerp;
-        this.y += (this.targetY - this.y) * lerp;
+    update(lerpX = CAMERA_LERP_X, lerpY = CAMERA_LERP_Y) {
+        // Smooth camera movement (separate horizontal/vertical smoothness)
+        this.x += (this.targetX - this.x) * lerpX;
+        this.y += (this.targetY - this.y) * lerpY;
     }
 
     setZoom(zoom, centerX = null, centerY = null) {
@@ -1289,7 +1290,8 @@ class World {
         this.playerSpeed = DEFAULT_MOVE_SPEED; // Horizontal movement speed (default: 5)
         this.jumpForce = DEFAULT_JUMP_FORCE;   // Jump force/height (default: -14, negative = upward)
         this.gravity = DEFAULT_GRAVITY;         // Gravity strength (default: 0.8)
-        this.cameraLerp = CAMERA_LERP;          // Camera smoothness (default: 0.12, higher = more responsive)
+        this.cameraLerpX = CAMERA_LERP_X;       // Horizontal camera smoothness (default: 0.12)
+        this.cameraLerpY = CAMERA_LERP_Y;       // Vertical camera smoothness (default: 0.12)
         
         // Spike touchbox mode
         // 'full' - Entire spike damages player
@@ -1319,6 +1321,12 @@ class World {
         // 'default' - Standard Parkoreen controls
         // 'hk' - Hollow Knight style controls
         this.keyboardLayout = 'jimmyqrg';
+        
+        // Code plugin data (triggers and actions)
+        this.codeData = {
+            triggers: [],
+            actions: []
+        };
     }
 
     addObject(obj) {
@@ -1656,7 +1664,8 @@ class World {
             playerSpeed: this.playerSpeed,
             jumpForce: this.jumpForce,
             gravity: this.gravity,
-            cameraLerp: this.cameraLerp,
+            cameraLerpX: this.cameraLerpX,
+            cameraLerpY: this.cameraLerpY,
             // Spike settings
             spikeTouchbox: this.spikeTouchbox,
             dropHurtOnly: this.dropHurtOnly,
@@ -1669,7 +1678,9 @@ class World {
             // Plugins
             plugins: this.plugins,
             // Keyboard layout
-            keyboardLayout: this.keyboardLayout
+            keyboardLayout: this.keyboardLayout,
+            // Code plugin data
+            codeData: this.codeData
         };
     }
 
@@ -1693,7 +1704,8 @@ class World {
         this.playerSpeed = (typeof data.playerSpeed === 'number' && data.playerSpeed > 0) ? data.playerSpeed : DEFAULT_MOVE_SPEED;
         this.jumpForce = (typeof data.jumpForce === 'number' && data.jumpForce < 0) ? data.jumpForce : DEFAULT_JUMP_FORCE;
         this.gravity = (typeof data.gravity === 'number' && data.gravity > 0) ? data.gravity : DEFAULT_GRAVITY;
-        this.cameraLerp = (typeof data.cameraLerp === 'number' && data.cameraLerp > 0 && data.cameraLerp <= 1) ? data.cameraLerp : CAMERA_LERP;
+        this.cameraLerpX = (typeof data.cameraLerpX === 'number' && data.cameraLerpX > 0 && data.cameraLerpX <= 1) ? data.cameraLerpX : CAMERA_LERP_X;
+        this.cameraLerpY = (typeof data.cameraLerpY === 'number' && data.cameraLerpY > 0 && data.cameraLerpY <= 1) ? data.cameraLerpY : CAMERA_LERP_Y;
         
         // Spike touchbox mode
         const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
@@ -1769,6 +1781,16 @@ class World {
         // Keyboard layout
         const validLayouts = ['default', 'hk', 'jimmyqrg'];
         this.keyboardLayout = validLayouts.includes(data.keyboardLayout) ? data.keyboardLayout : 'jimmyqrg';
+        
+        // Code plugin data
+        if (data.codeData && typeof data.codeData === 'object') {
+            this.codeData = {
+                triggers: Array.isArray(data.codeData.triggers) ? data.codeData.triggers : [],
+                actions: Array.isArray(data.codeData.actions) ? data.codeData.actions : []
+            };
+        } else {
+            this.codeData = { triggers: [], actions: [] };
+        }
         
         if (data.objects) {
             for (const objData of data.objects) {
@@ -2294,7 +2316,7 @@ class GameEngine {
                     
                     // Skip normal physics if plugin says so (e.g., during dash)
                     if (!result.skipPhysics) {
-                        this.localPlayer.update(this.world, this.audioManager);
+                this.localPlayer.update(this.world, this.audioManager);
                     } else {
                         // Plugin is controlling movement - apply velocity with collision checking
                         this.localPlayer.moveWithCollision(this.world);
@@ -2362,7 +2384,7 @@ class GameEngine {
         // Update particles
         this.updateParticles(deltaTime);
         
-        this.camera.update(this.world?.cameraLerp ?? CAMERA_LERP);
+        this.camera.update(this.world?.cameraLerpX ?? CAMERA_LERP_X, this.world?.cameraLerpY ?? CAMERA_LERP_Y);
     }
 
     checkSpecialCollisions() {

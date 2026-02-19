@@ -190,7 +190,8 @@
                 player.monarchWingsUsed = 0; // Reset double jump after wall jump
                 player._wallJumpReady = false; // Prevent repeated jumps from held key
                 
-                pluginManager.playSound(pluginId, 'monarchWings');
+                // Play normal jump sound (not monarch wings sound)
+                if (audioManager) audioManager.play('jump');
                 
                 // Apply movement with collision
                 player.moveWithCollision(world);

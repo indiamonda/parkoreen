@@ -628,11 +628,20 @@ class Editor {
                             <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall</small>
                     </div>
                         <div class="form-group">
-                            <label class="form-label">Camera Smoothness</label>
-                            <input type="range" class="form-input" id="config-camera-lerp" min="0.05" max="1" step="0.05" value="0.12" style="width: 100%;">
+                            <label class="form-label">Camera Horizontal Smoothness</label>
+                            <input type="range" class="form-input" id="config-camera-lerp-x" min="0.02" max="1" step="0.01" value="0.12" style="width: 100%;">
                             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
                                 <span>Smooth</span>
-                                <span id="config-camera-lerp-value">0.12</span>
+                                <span id="config-camera-lerp-x-value">0.12</span>
+                                <span>Snappy</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Camera Vertical Smoothness</label>
+                            <input type="range" class="form-input" id="config-camera-lerp-y" min="0.02" max="1" step="0.01" value="0.12" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
+                                <span>Smooth</span>
+                                <span id="config-camera-lerp-y-value">0.12</span>
                                 <span>Snappy</span>
                             </div>
                         </div>
@@ -777,6 +786,24 @@ class Editor {
                             <small style="color: #888; font-size: 11px;">1.14 = 70% jump height (HK-style)</small>
                         </div>
                         <div class="form-group">
+                            <label class="form-label">HK Camera Horizontal</label>
+                            <input type="range" class="form-input" id="config-hk-camera-x" min="0.02" max="0.5" step="0.01" value="0.04" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
+                                <span>Smooth</span>
+                                <span id="config-hk-camera-x-value">0.04</span>
+                                <span>Snappy</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">HK Camera Vertical</label>
+                            <input type="range" class="form-input" id="config-hk-camera-y" min="0.02" max="0.5" step="0.01" value="0.15" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
+                                <span>Smooth</span>
+                                <span id="config-hk-camera-y-value">0.15</span>
+                                <span>Snappy</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Max Soul</label>
                             <input type="number" class="form-input" id="config-hk-maxsoul" min="33" max="198" value="99">
                             <small style="color: #888; font-size: 11px;">33 = one heal, 99 = three heals</small>
@@ -827,6 +854,34 @@ class Editor {
                         </div>
                     </div>
                 </div>
+                
+                <!-- Code Section (hidden by default, shown when Code plugin enabled) -->
+                <div class="config-section collapsible hidden" id="config-section-code">
+                    <div class="config-section-header">
+                        <span class="config-section-title" style="display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; color: #3b82f6;">code</span>
+                            Code
+                            <span style="font-size: 9px; font-weight: 700; background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); color: white; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px;">BETA</span>
+                        </span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-size: 13px;">Auto Respawn</span>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Automatically respawn player when they die</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-code-autorespawn" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-edit-code" style="width: 100%; margin-top: 16px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); border: none; color: white;">
+                            <span class="material-symbols-outlined">code</span>
+                            Edit Code
+                        </button>
+                    </div>
+                </div>
             </div>
         `;
         document.body.appendChild(configPanel);
@@ -867,7 +922,7 @@ class Editor {
                     </div>
                     
                     <!-- Hollow Knight Plugin -->
-                    <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; overflow: hidden;">
+                    <div class="plugin-card" data-plugin="hk" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
                         <img src="assets/plugins/hk/cover.png" alt="Hollow Knight Plugin" style="width: 100%; height: 120px; object-fit: cover;">
                         <div style="padding: 16px 20px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -889,6 +944,31 @@ class Editor {
                                     </div>
                                 </div>
                                 <button class="btn plugin-toggle-btn" data-plugin="hk" style="min-width: 80px; margin-left: 16px;">
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Code Plugin -->
+                    <div class="plugin-card" data-plugin="code" style="background: var(--bg-light); border-radius: 12px; overflow: hidden;">
+                        <img src="assets/plugins/code/cover.png" alt="Code Plugin" style="width: 100%; height: 120px; object-fit: cover;">
+                        <div style="padding: 16px 20px 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 8px 0; color: #3b82f6; display: flex; align-items: center; gap: 8px;">
+                                        Code
+                                        <span style="font-size: 10px; font-weight: 700; background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); color: white; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px;">BETA</span>
+                                    </h3>
+                                    <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+                                        Add triggers and actions to your map. Create interactive experiences with player events, 
+                                        zones, and custom logic. Enables Zone placement.
+                                    </p>
+                                    <div style="font-size: 11px; color: var(--text-muted);">
+                                        <span style="color: #3b82f6;">Unlocks:</span> Zones, Triggers, Actions
+                                    </div>
+                                </div>
+                                <button class="btn plugin-toggle-btn" data-plugin="code" style="min-width: 80px; margin-left: 16px;">
                                     Add
                                 </button>
                             </div>
@@ -2830,10 +2910,17 @@ class Editor {
             this.triggerMapChange();
         });
 
-        document.getElementById('config-camera-lerp').addEventListener('input', (e) => {
+        document.getElementById('config-camera-lerp-x').addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
-            this.world.cameraLerp = (value > 0 && value <= 1) ? value : 0.12;
-            document.getElementById('config-camera-lerp-value').textContent = this.world.cameraLerp.toFixed(2);
+            this.world.cameraLerpX = (value > 0 && value <= 1) ? value : 0.12;
+            document.getElementById('config-camera-lerp-x-value').textContent = this.world.cameraLerpX.toFixed(2);
+            this.triggerMapChange();
+        });
+
+        document.getElementById('config-camera-lerp-y').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            this.world.cameraLerpY = (value > 0 && value <= 1) ? value : 0.12;
+            document.getElementById('config-camera-lerp-y-value').textContent = this.world.cameraLerpY.toFixed(2);
             this.triggerMapChange();
         });
 
@@ -3014,6 +3101,36 @@ class Editor {
             this.triggerMapChange();
         });
         
+        document.getElementById('config-hk-camera-x')?.addEventListener('input', (e) => {
+            this.ensureHKConfig();
+            const value = parseFloat(e.target.value) || 0.04;
+            this.world.plugins.hk.defaultCameraLerpX = Math.max(0.02, Math.min(0.5, value));
+            // Also apply to world camera
+            this.world.cameraLerpX = this.world.plugins.hk.defaultCameraLerpX;
+            document.getElementById('config-hk-camera-x-value').textContent = this.world.cameraLerpX.toFixed(2);
+            // Update the physics camera input too
+            const cameraInput = document.getElementById('config-camera-lerp-x');
+            const cameraValue = document.getElementById('config-camera-lerp-x-value');
+            if (cameraInput) cameraInput.value = this.world.cameraLerpX;
+            if (cameraValue) cameraValue.textContent = this.world.cameraLerpX.toFixed(2);
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('config-hk-camera-y')?.addEventListener('input', (e) => {
+            this.ensureHKConfig();
+            const value = parseFloat(e.target.value) || 0.15;
+            this.world.plugins.hk.defaultCameraLerpY = Math.max(0.02, Math.min(0.5, value));
+            // Also apply to world camera
+            this.world.cameraLerpY = this.world.plugins.hk.defaultCameraLerpY;
+            document.getElementById('config-hk-camera-y-value').textContent = this.world.cameraLerpY.toFixed(2);
+            // Update the physics camera input too
+            const cameraInput = document.getElementById('config-camera-lerp-y');
+            const cameraValue = document.getElementById('config-camera-lerp-y-value');
+            if (cameraInput) cameraInput.value = this.world.cameraLerpY;
+            if (cameraValue) cameraValue.textContent = this.world.cameraLerpY.toFixed(2);
+            this.triggerMapChange();
+        });
+        
         document.getElementById('config-hk-maxsoul')?.addEventListener('change', (e) => {
             this.ensureHKConfig();
             this.world.plugins.hk.maxSoul = Math.max(33, Math.min(198, parseInt(e.target.value) || 99));
@@ -3052,6 +3169,30 @@ class Editor {
             this.world.plugins.hk.mantisClaw = e.target.checked;
             this.triggerMapChange();
         });
+        
+        // Code plugin settings
+        document.getElementById('config-code-autorespawn')?.addEventListener('change', (e) => {
+            this.ensureCodeConfig();
+            this.world.plugins.code.autoRespawn = e.target.checked;
+            this.triggerMapChange();
+        });
+        
+        document.getElementById('btn-edit-code')?.addEventListener('click', () => {
+            if (typeof CodeEditor !== 'undefined' && CodeEditor.open) {
+                CodeEditor.open();
+            } else {
+                console.warn('Code Editor not available');
+            }
+        });
+    }
+    
+    ensureCodeConfig() {
+        // Ensure Code config object exists with defaults
+        if (!this.world.plugins.code) {
+            this.world.plugins.code = {
+                autoRespawn: true
+            };
+        }
     }
     
     openPluginsPopup() {
@@ -3114,14 +3255,30 @@ class Editor {
             
             await this.world.enablePlugin(pluginId);
             
-            // When enabling HK plugin, apply default gravity
+            // When enabling HK plugin, apply default gravity and camera settings
             if (pluginId === 'hk') {
                 this.ensureHKConfig();
                 const hkGravity = this.world.plugins.hk.defaultGravity ?? 1.14;
+                const hkCameraLerpX = this.world.plugins.hk.defaultCameraLerpX ?? 0.04;
+                const hkCameraLerpY = this.world.plugins.hk.defaultCameraLerpY ?? 0.15;
+                
                 this.world.gravity = hkGravity;
+                this.world.cameraLerpX = hkCameraLerpX;
+                this.world.cameraLerpY = hkCameraLerpY;
+                
                 // Update UI
                 const gravityInput = document.getElementById('config-gravity');
                 if (gravityInput) gravityInput.value = this.world.gravity;
+                
+                const cameraLerpXInput = document.getElementById('config-camera-lerp-x');
+                const cameraLerpXValue = document.getElementById('config-camera-lerp-x-value');
+                if (cameraLerpXInput) cameraLerpXInput.value = this.world.cameraLerpX;
+                if (cameraLerpXValue) cameraLerpXValue.textContent = this.world.cameraLerpX.toFixed(2);
+                
+                const cameraLerpYInput = document.getElementById('config-camera-lerp-y');
+                const cameraLerpYValue = document.getElementById('config-camera-lerp-y-value');
+                if (cameraLerpYInput) cameraLerpYInput.value = this.world.cameraLerpY;
+                if (cameraLerpYValue) cameraLerpYValue.textContent = this.world.cameraLerpY.toFixed(2);
             }
         }
         
@@ -3142,12 +3299,36 @@ class Editor {
     updatePluginConfigSections() {
         const hpSection = document.getElementById('config-section-hp');
         const hkSection = document.getElementById('config-section-hk');
+        const codeSection = document.getElementById('config-section-code');
         
         if (hpSection) {
             hpSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hp'));
         }
         if (hkSection) {
             hkSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hk'));
+        }
+        if (codeSection) {
+            codeSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('code'));
+        }
+        
+        // Update Zone button availability based on Code plugin
+        this.updateZoneButtonState();
+    }
+    
+    updateZoneButtonState() {
+        const codeEnabled = this.world.plugins.enabled.includes('code');
+        const zoneBtn = document.querySelector('[data-appearance="zone"]');
+        
+        if (zoneBtn) {
+            if (codeEnabled) {
+                zoneBtn.disabled = false;
+                zoneBtn.style.opacity = '1';
+                zoneBtn.title = 'Zone';
+            } else {
+                zoneBtn.disabled = true;
+                zoneBtn.style.opacity = '0.4';
+                zoneBtn.title = 'Enable Code plugin to use zones';
+            }
         }
     }
     
@@ -3156,6 +3337,8 @@ class Editor {
         if (!this.world.plugins.hk) {
             this.world.plugins.hk = {
                 defaultGravity: 1.14,
+                defaultCameraLerpX: 0.04,  // Very smooth horizontal
+                defaultCameraLerpY: 0.15,  // Slightly above default vertical
                 maxSoul: 99,
                 monarchWing: false,
                 monarchWingAmount: 1,
@@ -4126,6 +4309,12 @@ class Editor {
         
         newContainer.querySelectorAll('[data-appearance]').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Check if trying to select Zone without Code plugin
+                if (btn.dataset.appearance === 'zone' && !this.world.plugins.enabled.includes('code')) {
+                    this.showPluginError('Code Plugin Required', 'Enable the Code plugin to use zones. Go to Plugins to enable it.');
+                    return;
+                }
+                
                 newContainer.querySelectorAll('[data-appearance]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 if (this.placementMode === PlacementMode.BLOCK) {
@@ -5261,6 +5450,12 @@ class Editor {
             const importManager = new ImportManager();
             const data = await importManager.importFromFile(file);
                 this.world.fromJSON(data);
+                
+                // Initialize plugins from imported world data
+                if (window.PluginManager) {
+                    await window.PluginManager.initFromWorld(this.world);
+                }
+                
                 this.updateBackground();
             this.syncConfigPanel();
                 this.triggerMapChange();
@@ -5440,11 +5635,18 @@ class Editor {
         const gravity = document.getElementById('config-gravity');
         if (gravity) gravity.value = this.world.gravity || 0.8;
         
-        const cameraLerp = document.getElementById('config-camera-lerp');
-        const cameraLerpValue = document.getElementById('config-camera-lerp-value');
-        if (cameraLerp) {
-            cameraLerp.value = this.world.cameraLerp || 0.12;
-            if (cameraLerpValue) cameraLerpValue.textContent = (this.world.cameraLerp || 0.12).toFixed(2);
+        const cameraLerpX = document.getElementById('config-camera-lerp-x');
+        const cameraLerpXValue = document.getElementById('config-camera-lerp-x-value');
+        if (cameraLerpX) {
+            cameraLerpX.value = this.world.cameraLerpX || 0.12;
+            if (cameraLerpXValue) cameraLerpXValue.textContent = (this.world.cameraLerpX || 0.12).toFixed(2);
+        }
+        
+        const cameraLerpY = document.getElementById('config-camera-lerp-y');
+        const cameraLerpYValue = document.getElementById('config-camera-lerp-y-value');
+        if (cameraLerpY) {
+            cameraLerpY.value = this.world.cameraLerpY || 0.12;
+            if (cameraLerpYValue) cameraLerpYValue.textContent = (this.world.cameraLerpY || 0.12).toFixed(2);
         }
         
         // Spike touchbox
@@ -5554,6 +5756,24 @@ class Editor {
         if (hkDash) hkDash.checked = hk?.dash ?? false;
         if (hkSuperDash) hkSuperDash.checked = hk?.superDash ?? false;
         if (hkMantisClaw) hkMantisClaw.checked = hk?.mantisClaw ?? false;
+        
+        // HK Camera settings
+        const hkCameraX = document.getElementById('config-hk-camera-x');
+        const hkCameraXValue = document.getElementById('config-hk-camera-x-value');
+        const hkCameraY = document.getElementById('config-hk-camera-y');
+        const hkCameraYValue = document.getElementById('config-hk-camera-y-value');
+        if (hkCameraX) hkCameraX.value = hk?.defaultCameraLerpX ?? 0.04;
+        if (hkCameraXValue) hkCameraXValue.textContent = (hk?.defaultCameraLerpX ?? 0.04).toFixed(2);
+        if (hkCameraY) hkCameraY.value = hk?.defaultCameraLerpY ?? 0.15;
+        if (hkCameraYValue) hkCameraYValue.textContent = (hk?.defaultCameraLerpY ?? 0.15).toFixed(2);
+        
+        // Code plugin settings
+        const codeAutoRespawn = document.getElementById('config-code-autorespawn');
+        const code = this.world.plugins?.code;
+        if (codeAutoRespawn) codeAutoRespawn.checked = code?.autoRespawn ?? true;
+        
+        // Update zone button state
+        this.updateZoneButtonState();
     }
     
     syncCustomBackgroundUI() {

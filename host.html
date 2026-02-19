@@ -705,16 +705,62 @@
             currentMode = params.get('mode') || 'edit';
             const roomCode = params.get('room');
             
-            // Preload resources first
+            // Step 1: Pre-fetch map data to know which plugins need loading
+            let mapData = null;
+            let enabledPlugins = [];
+            
+            if (currentMapId) {
+                resourceLoader.updateProgress('Fetching map info...');
+                try {
+                    const getMapFn = window.MapManager.getMap;
+                    mapData = await getMapFn.call(window.MapManager, currentMapId);
+                    // Extract enabled plugins from map data
+                    if (mapData?.data?.plugins?.enabled) {
+                        enabledPlugins = mapData.data.plugins.enabled;
+                    }
+                } catch (e) {
+                    console.warn('[Preload] Could not fetch map data:', e);
+                }
+            } else if (currentMode === 'play' && roomCode) {
+                // Check session storage for play mode
+                const gameData = sessionStorage.getItem('parkoreen_game');
+                if (gameData) {
+                    try {
+                        const data = JSON.parse(gameData);
+                        if (data.mapData?.plugins?.enabled) {
+                            enabledPlugins = data.mapData.plugins.enabled;
+                        }
+                    } catch (e) {
+                        console.warn('[Preload] Could not parse game data:', e);
+                    }
+                }
+            }
+            
+            // Step 2: Preload core resources
             resourceLoader.updateProgress('Loading resources...');
             await resourceLoader.loadAll();
+            
+            // Step 3: Discover and preload enabled plugins
+            if (window.PluginManager && enabledPlugins.length > 0) {
+                resourceLoader.updateProgress('Loading plugins...');
+                await window.PluginManager.discoverPlugins();
+                
+                for (const pluginId of enabledPlugins) {
+                    resourceLoader.updateProgress(`Loading plugin: ${pluginId}...`);
+                    try {
+                        await window.PluginManager.loadPluginScripts(pluginId);
+                    } catch (e) {
+                        console.warn(`[Preload] Failed to load plugin ${pluginId}:`, e);
+                    }
+                }
+            }
 
-            // Initialize game engine
+            // Step 4: Initialize game engine
             resourceLoader.updateProgress('Initializing game engine...');
             engine = new GameEngine('game-canvas');
             engine.start();
 
-            // Initialize editor
+            // Step 5: Initialize editor
             resourceLoader.updateProgress('Setting up editor...');
             editor = new Editor(engine);
             editor.initUI();
@@ -730,15 +776,21 @@
                 setFavicon('play');
             }
 
-            // Load map or game data
+            // Step 6: Load map or game data (plugins already loaded, just need to enable them)
             if (currentMode === 'play' && roomCode) {
                 // Join existing game
                 resourceLoader.updateProgress('Joining game...');
                 await initializePlayMode(roomCode);
             } else if (currentMapId) {
                 // Load map for editing or hosting
-                resourceLoader.updateProgress('Loading map data...');
-                await loadMap(currentMapId);
+                resourceLoader.updateProgress('Applying map data...');
+                if (mapData) {
+                    // Use pre-fetched data (plugins already loaded in preload phase)
+                    await loadMapWithData(currentMapId, mapData);
+                } else {
+                    // Fallback: fetch and load (if pre-fetch failed)
+                    await loadMap(currentMapId);
+                }
                 
                 if (currentMode === 'host') {
                     // Directly start hosting after map is loaded
@@ -823,6 +875,36 @@
             };
         }
 
+        // Load map using pre-fetched data (plugins already loaded in preload phase)
+        async function loadMapWithData(mapId, prefetchedData) {
+            try {
+                if (prefetchedData && prefetchedData.data) {
+                    engine.world.fromJSON(prefetchedData.data);
+                }
+                engine.world.mapName = prefetchedData?.name || 'Untitled Map';
+                
+                // Initialize plugins from world data (scripts already loaded in preload)
+                if (window.PluginManager) {
+                    await window.PluginManager.initFromWorld(engine.world);
+                }
+                
+                // Recreate editor player at spawn point
+                engine.createEditorPlayer();
+                
+                editor.updateBackground();
+                
+                // Map loaded successfully - allow saving
+                mapLoadedSuccessfully = true;
+                toastSuccess('Map loaded!');
+            } catch (parseError) {
+                // Parse/corruption error - show popup
+                mapLoadedSuccessfully = false;
+                console.error('[LoadMap] Save corrupted:', parseError);
+                showSaveCorruptedPopup();
+            }
+        }
+        
+        // Legacy function for cases where data needs to be fetched
         async function loadMap(mapId) {
             let mapData = null;
             
@@ -902,9 +984,8 @@
                     // Update background based on map theme
                     editor.updateBackground();
                     
-                    // Initialize plugins from world data
+                    // Initialize plugins from world data (scripts already loaded in preload phase)
                     if (window.PluginManager) {
-                        await window.PluginManager.discoverPlugins();
                         await window.PluginManager.initFromWorld(engine.world);
                     }
                 }
@@ -1005,7 +1086,7 @@
                             player.vx || 0,
                             player.vy || 0,
                             player.jumpsRemaining || 1
-                        );
+                    );
                     }
                 }
             }, 100); // 10 updates per second (reduced from 20)
