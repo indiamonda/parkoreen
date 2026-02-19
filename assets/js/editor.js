@@ -5250,16 +5250,16 @@ class Editor {
         
         // 'overlap' mode - no checks, just place on top
 
-        // Determine object dimensions (Soul Statue is 2x7 blocks)
+        // Determine object dimensions (Soul Statue is 3x10 blocks)
         let objWidth = GRID_SIZE;
         let objHeight = GRID_SIZE;
         let objX = x;
         let objY = y;
         if (settings.appearanceType === 'soulStatue') {
-            objWidth = GRID_SIZE * 2; // 2 blocks wide (64px)
-            objHeight = GRID_SIZE * 7; // 7 blocks tall (224px)
-            objX = x - GRID_SIZE / 2; // Center horizontally on click
-            objY = y - GRID_SIZE * 6; // Place with click point at bottom
+            objWidth = GRID_SIZE * 3; // 3 blocks wide (96px)
+            objHeight = GRID_SIZE * 10; // 10 blocks tall (320px)
+            objX = x - GRID_SIZE; // Center horizontally on click
+            objY = y - GRID_SIZE * 9; // Place with click point at bottom
         }
 
         // Create object

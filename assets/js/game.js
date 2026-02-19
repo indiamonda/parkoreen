@@ -667,7 +667,7 @@ class Camera {
         this.targetY = 0;
         this.width = width;
         this.height = height;
-        this.defaultZoom = 2; // Default zoom level (2x zoomed in)
+        this.defaultZoom = 1.5; // Default zoom level (1.5x zoomed in)
         this.zoom = this.defaultZoom;
         this.minZoom = 0.5; // Can zoom out to 0.5x in editor/test
         this.maxZoom = 4; // Can zoom in to 4x
@@ -677,10 +677,10 @@ class Camera {
     setZoomLimits(mode) {
         if (mode === 'editor' || mode === 'test') {
             // Editor/Test: zoom freely in and out
-        this.minZoom = 0.5;
+            this.minZoom = 0.5;
             this.maxZoom = 4;
         } else {
-            // Play/Host: default zoom is max zoom out level (can only zoom in)
+            // Play/Host: default zoom is max zoom out level (can only zoom in from default)
             this.minZoom = this.defaultZoom;
             this.maxZoom = 4;
         }
@@ -1033,7 +1033,7 @@ class WorldObject {
     
     renderSoulStatue(ctx, x, y, w, h) {
         // Soul Statue - use PNG image from HK plugin
-        // Touchbox: 2 blocks wide (w), 7 blocks tall (h)
+        // Touchbox: 3 blocks wide (w), 10 blocks tall (h)
         // Appearance: Maintain image aspect ratio, centered within touchbox
         if (!WorldObject.soulStatueImg) {
             WorldObject.soulStatueImg = new Image();

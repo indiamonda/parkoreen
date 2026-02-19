@@ -183,9 +183,7 @@
                 const maxFallSpeed = 20 * (worldGravity / 0.5);
                 if (player.vy > maxFallSpeed) player.vy = maxFallSpeed;
                 
-                // Apply movement with collision
-                player.moveWithCollision(world);
-                
+                // Don't call moveWithCollision here - game engine will call it when skipPhysics is true
                 return { ...data, skipPhysics: true };
             } else {
                 // Bounce ended - return to normal physics
@@ -244,9 +242,7 @@
             // Prevent horizontal movement away from wall while clinging
             player.vx = 0;
             
-            // Apply movement with collision
-            player.moveWithCollision(world);
-            
+            // Don't call moveWithCollision here - game engine will call it when skipPhysics is true
             return { ...data, skipPhysics: true };
         }
         
