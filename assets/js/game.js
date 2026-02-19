@@ -2255,6 +2255,15 @@ class GameEngine {
             case 'jump':
                 this.localPlayer.input.jump = pressed;
                 break;
+            case 'attack':
+                this.localPlayer.input.attack = pressed;
+                break;
+            case 'dash':
+                this.localPlayer.input.dash = pressed;
+                break;
+            case 'heal':
+                this.localPlayer.input.heal = pressed;
+                break;
         }
     }
 

@@ -3285,6 +3285,7 @@ class Editor {
         this.updatePluginsPopupState();
         this.updatePluginConfigSections();
         this.updateKeyboardLayoutOptions();
+        this.updateTouchButtonVisibility();
         this.triggerMapChange();
     }
     
@@ -3499,10 +3500,33 @@ class Editor {
             this.updateTouchControls();
         });
 
-        // Load saved settings
-        const savedTouchscreen = Settings.get('touchscreenMode');
+        // Mobile detection helper
+        const isMobileDevice = () => {
+            // Check for touch capability
+            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            // Check user agent for mobile devices
+            const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            // Check screen size (mobile typically < 1024px width)
+            const smallScreen = window.innerWidth <= 1024;
+            return hasTouch && (mobileUA || smallScreen);
+        };
+        
+        // Load saved settings or auto-detect for mobile
+        let savedTouchscreen = Settings.get('touchscreenMode');
+        
+        // Auto-enable touchscreen mode on mobile if not explicitly set
+        if (savedTouchscreen === undefined || savedTouchscreen === null) {
+            savedTouchscreen = isMobileDevice();
+            Settings.set('touchscreenMode', savedTouchscreen);
+        }
+        
         touchscreen.checked = savedTouchscreen;
         this.engine.touchscreenMode = savedTouchscreen;
+        
+        // Initialize touch controls if enabled
+        if (savedTouchscreen) {
+            this.updateTouchControls();
+        }
 
         const savedVolume = localStorage.getItem('parkoreen_volume');
         if (savedVolume !== null) {
@@ -6223,7 +6247,7 @@ class Editor {
     }
 
     // ========================================
-    // TOUCH CONTROLS
+    // TOUCH CONTROLS - Multi-touch enabled
     // ========================================
     updateTouchControls() {
         let touchControls = document.getElementById('touch-controls');
@@ -6233,34 +6257,61 @@ class Editor {
                 touchControls = document.createElement('div');
                 touchControls.id = 'touch-controls';
                 touchControls.className = 'touch-controls active';
+                
+                // Check if HK plugin is enabled for extra buttons
+                const hkEnabled = window.PluginManager?.isEnabled('hk');
+                
                 touchControls.innerHTML = `
                     <div class="touch-joystick-container">
-                        <div class="touch-joystick-base">
+                        <div class="touch-joystick-base" id="touch-joystick">
                             <div class="touch-joystick-stick"></div>
+                        </div>
                     </div>
+                    <div class="touch-buttons-right">
+                        <button class="touch-btn touch-jump" data-action="jump">
+                            <span class="material-symbols-outlined">keyboard_double_arrow_up</span>
+                        </button>
+                        ${hkEnabled ? `
+                        <button class="touch-btn touch-attack" data-action="attack">
+                            <span class="material-symbols-outlined">swords</span>
+                        </button>
+                        <button class="touch-btn touch-dash" data-action="dash">
+                            <span class="material-symbols-outlined">bolt</span>
+                        </button>
+                        <button class="touch-btn touch-heal" data-action="heal">
+                            <span class="material-symbols-outlined">favorite</span>
+                        </button>
+                        ` : ''}
                     </div>
-                    <button class="touch-jump" data-dir="jump">
-                        <span class="material-symbols-outlined">keyboard_double_arrow_up</span>
-                    </button>
                 `;
                 document.body.appendChild(touchControls);
-
-                // Joystick state
-                this.joystickState = { active: false, x: 0, y: 0 };
                 
-                // Joystick setup
-                const joystickBase = touchControls.querySelector('.touch-joystick-base');
-                const joystickStick = touchControls.querySelector('.touch-joystick-stick');
-                const baseRect = { width: 120, height: 120, centerX: 60, centerY: 60 };
-                const maxDistance = 45;
+                // Initialize multi-touch state
+                this.touchState = {
+                    joystick: { touchId: null, x: 0, y: 0 },
+                    buttons: new Map() // action -> touchId
+                };
                 
-                const handleJoystickMove = (clientX, clientY) => {
+                const joystickBase = document.getElementById('touch-joystick');
+                const joystickStick = joystickBase.querySelector('.touch-joystick-stick');
+                const maxDistance = 50;
+                
+                // Helper: Find touch by ID in a TouchList
+                const findTouch = (touches, id) => {
+                    for (let i = 0; i < touches.length; i++) {
+                        if (touches[i].identifier === id) return touches[i];
+                    }
+                    return null;
+                };
+                
+                // Joystick movement handler
+                const handleJoystickMove = (touch) => {
                     const rect = joystickBase.getBoundingClientRect();
                     const centerX = rect.left + rect.width / 2;
                     const centerY = rect.top + rect.height / 2;
                     
-                    let dx = clientX - centerX;
-                    let dy = clientY - centerY;
+                    let dx = touch.clientX - centerX;
+                    let dy = touch.clientY - centerY;
                     
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     if (distance > maxDistance) {
@@ -6271,35 +6322,28 @@ class Editor {
                     joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
                     
                     // Normalize to -1 to 1
-                    this.joystickState.x = dx / maxDistance;
-                    this.joystickState.y = dy / maxDistance;
+                    this.touchState.joystick.x = dx / maxDistance;
+                    this.touchState.joystick.y = dy / maxDistance;
                     
-                    // Update engine input based on joystick position
+                    // Update engine input
                     const threshold = 0.3;
-                    
-                    // Only allow fly mode in editor/test mode, never in play mode
                     const isPlayMode = this.engine.state === GameState.PLAYING;
-                    const isFlying = !isPlayMode && (this.isFlying || (this.engine.localPlayer && this.engine.localPlayer.isFlying));
+                    const isFlying = !isPlayMode && (this.isFlying || (this.engine.localPlayer?.isFlying));
                     
-                    // Horizontal movement (always available)
-                    this.engine.setTouchInput('left', this.joystickState.x < -threshold);
-                    this.engine.setTouchInput('right', this.joystickState.x > threshold);
+                    this.engine.setTouchInput('left', this.touchState.joystick.x < -threshold);
+                    this.engine.setTouchInput('right', this.touchState.joystick.x > threshold);
                     
-                    // Vertical movement (only in fly mode, and never in play mode)
                     if (isFlying) {
-                        this.engine.setTouchInput('up', this.joystickState.y < -threshold);
-                        this.engine.setTouchInput('down', this.joystickState.y > threshold);
-                    } else {
-                        this.engine.setTouchInput('up', false);
-                        this.engine.setTouchInput('down', false);
+                        this.engine.setTouchInput('up', this.touchState.joystick.y < -threshold);
+                        this.engine.setTouchInput('down', this.touchState.joystick.y > threshold);
                     }
                 };
                 
                 const resetJoystick = () => {
                     joystickStick.style.transform = 'translate(0, 0)';
-                    this.joystickState.x = 0;
-                    this.joystickState.y = 0;
-                    this.joystickState.active = false;
+                    this.touchState.joystick.touchId = null;
+                    this.touchState.joystick.x = 0;
+                    this.touchState.joystick.y = 0;
                     
                     this.engine.setTouchInput('left', false);
                     this.engine.setTouchInput('right', false);
@@ -6307,45 +6351,166 @@ class Editor {
                     this.engine.setTouchInput('down', false);
                 };
                 
+                // JOYSTICK EVENTS - Track specific touch
                 joystickBase.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
-                    this.joystickState.active = true;
-                    const touch = e.touches[0];
-                    handleJoystickMove(touch.clientX, touch.clientY);
-                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Only claim if not already tracking a touch
+                    if (this.touchState.joystick.touchId === null) {
+                        const touch = e.changedTouches[0];
+                        this.touchState.joystick.touchId = touch.identifier;
+                        joystickBase.classList.add('active');
+                        handleJoystickMove(touch);
+                        
+                        // Haptic feedback
+                        if (navigator.vibrate) navigator.vibrate(10);
+                    }
+                }, { passive: false });
                 
                 joystickBase.addEventListener('touchmove', (e) => {
-                        e.preventDefault();
-                    if (this.joystickState.active) {
-                        const touch = e.touches[0];
-                        handleJoystickMove(touch.clientX, touch.clientY);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (this.touchState.joystick.touchId !== null) {
+                        const touch = findTouch(e.touches, this.touchState.joystick.touchId);
+                        if (touch) {
+                            handleJoystickMove(touch);
+                        }
                     }
-                });
+                }, { passive: false });
                 
                 joystickBase.addEventListener('touchend', (e) => {
                     e.preventDefault();
-                    resetJoystick();
-                });
+                    e.stopPropagation();
+                    
+                    // Check if our tracked touch ended
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === this.touchState.joystick.touchId) {
+                            joystickBase.classList.remove('active');
+                            resetJoystick();
+                            break;
+                        }
+                    }
+                }, { passive: false });
                 
                 joystickBase.addEventListener('touchcancel', (e) => {
                     e.preventDefault();
+                    joystickBase.classList.remove('active');
                     resetJoystick();
-                });
+                }, { passive: false });
                 
-                // Jump button
-                const jumpBtn = touchControls.querySelector('.touch-jump');
-                jumpBtn.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    this.engine.setTouchInput('jump', true);
-                });
-                jumpBtn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    this.engine.setTouchInput('jump', false);
+                // ACTION BUTTONS - Each tracks its own touch
+                const actionButtons = touchControls.querySelectorAll('.touch-btn');
+                actionButtons.forEach(btn => {
+                    const action = btn.dataset.action;
+                    
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Only claim if not already tracking
+                        if (!this.touchState.buttons.has(action)) {
+                            const touch = e.changedTouches[0];
+                            this.touchState.buttons.set(action, touch.identifier);
+                            btn.classList.add('active');
+                            
+                            // Set input based on action
+                            if (action === 'jump') {
+                                this.engine.setTouchInput('jump', true);
+                            } else if (action === 'attack') {
+                                this.engine.setTouchInput('attack', true);
+                            } else if (action === 'dash') {
+                                this.engine.setTouchInput('dash', true);
+                            } else if (action === 'heal') {
+                                this.engine.setTouchInput('heal', true);
+                            }
+                            
+                            // Haptic feedback
+                            if (navigator.vibrate) navigator.vibrate(15);
+                        }
+                    }, { passive: false });
+                    
+                    btn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Check if our tracked touch ended
+                        const trackedId = this.touchState.buttons.get(action);
+                        for (let i = 0; i < e.changedTouches.length; i++) {
+                            if (e.changedTouches[i].identifier === trackedId) {
+                                this.touchState.buttons.delete(action);
+                                btn.classList.remove('active');
+                                
+                                // Release input
+                                if (action === 'jump') {
+                                    this.engine.setTouchInput('jump', false);
+                                } else if (action === 'attack') {
+                                    this.engine.setTouchInput('attack', false);
+                                } else if (action === 'dash') {
+                                    this.engine.setTouchInput('dash', false);
+                                } else if (action === 'heal') {
+                                    this.engine.setTouchInput('heal', false);
+                                }
+                                break;
+                            }
+                        }
+                    }, { passive: false });
+                    
+                    btn.addEventListener('touchcancel', (e) => {
+                        e.preventDefault();
+                        this.touchState.buttons.delete(action);
+                        btn.classList.remove('active');
+                        
+                        if (action === 'jump') {
+                            this.engine.setTouchInput('jump', false);
+                        } else if (action === 'attack') {
+                            this.engine.setTouchInput('attack', false);
+                        } else if (action === 'dash') {
+                            this.engine.setTouchInput('dash', false);
+                        } else if (action === 'heal') {
+                            this.engine.setTouchInput('heal', false);
+                        }
+                    }, { passive: false });
                 });
             }
+            
+            // Update button visibility based on HK plugin state
+            this.updateTouchButtonVisibility();
             touchControls.classList.add('active');
+            document.body.classList.add('touch-active');
         } else if (touchControls) {
             touchControls.classList.remove('active');
+            document.body.classList.remove('touch-active');
+        }
+    }
+    
+    // Update which touch buttons are visible based on enabled plugins
+    updateTouchButtonVisibility() {
+        const touchControls = document.getElementById('touch-controls');
+        if (!touchControls) return;
+        
+        const hkEnabled = window.PluginManager?.isEnabled('hk');
+        const buttonsContainer = touchControls.querySelector('.touch-buttons-right');
+        
+        if (buttonsContainer) {
+            // Check if HK buttons exist
+            const attackBtn = buttonsContainer.querySelector('.touch-attack');
+            const dashBtn = buttonsContainer.querySelector('.touch-dash');
+            const healBtn = buttonsContainer.querySelector('.touch-heal');
+            
+            // If HK is enabled but buttons don't exist, recreate touch controls
+            if (hkEnabled && !attackBtn) {
+                // Remove old controls and recreate
+                touchControls.remove();
+                this.updateTouchControls();
+                return;
+            }
+            
+            // If HK is disabled but buttons exist, just hide them
+            if (attackBtn) attackBtn.style.display = hkEnabled ? '' : 'none';
+            if (dashBtn) dashBtn.style.display = hkEnabled ? '' : 'none';
+            if (healBtn) healBtn.style.display = hkEnabled ? '' : 'none';
         }
     }
 

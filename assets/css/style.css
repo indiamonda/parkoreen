@@ -103,6 +103,36 @@ body.game-active {
     touch-action: manipulation;
 }
 
+/* Mobile-specific styles when touch controls are active */
+body.touch-active {
+    /* Prevent all touch actions on body (scrolling, zooming) */
+    touch-action: none;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    /* Prevent text selection */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Prevent callouts (long-press menus) */
+    -webkit-touch-callout: none;
+}
+
+/* Prevent double-tap zoom on interactive elements */
+body.touch-active button,
+body.touch-active .touch-btn,
+body.touch-active .touch-joystick-base,
+body.touch-active canvas {
+    touch-action: manipulation;
+}
+
+/* Ensure canvas fills viewport on mobile */
+@media (max-width: 1024px) {
+    #game-canvas {
+        touch-action: none;
+    }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
@@ -1555,83 +1585,236 @@ a:hover {
 }
 
 /* ====================================
-   TOUCHSCREEN CONTROLS
+   TOUCHSCREEN CONTROLS - Multi-touch
    ==================================== */
 .touch-controls {
     position: fixed;
     z-index: var(--z-editor-ui);
     display: none;
     pointer-events: none;
+    /* Prevent any scrolling/zooming while touch controls are active */
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .touch-controls.active {
     display: block;
 }
 
-/* Joystick Container */
+/* Joystick Container - Left side */
 .touch-joystick-container {
     position: fixed;
-    left: 24px;
-    bottom: 24px;
+    left: 20px;
+    bottom: 20px;
     pointer-events: auto;
+    touch-action: none;
 }
 
 .touch-joystick-base {
-    width: 140px;
-    height: 140px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 3px solid rgba(255, 255, 255, 0.3);
+    width: 150px;
+    height: 150px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 3px solid rgba(255, 255, 255, 0.25);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     touch-action: none;
     position: relative;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.touch-joystick-base.active {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 .touch-joystick-stick {
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.4);
-    border: 3px solid rgba(255, 255, 255, 0.7);
+    width: 65px;
+    height: 65px;
+    background: rgba(255, 255, 255, 0.35);
+    border: 3px solid rgba(255, 255, 255, 0.6);
     border-radius: 50%;
     position: absolute;
-    transition: transform 0.05s ease-out;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.03s ease-out, background 0.15s;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    will-change: transform;
 }
 
-.touch-joystick-base:active .touch-joystick-stick {
-    background: rgba(255, 255, 255, 0.6);
+.touch-joystick-base.active .touch-joystick-stick {
+    background: rgba(255, 255, 255, 0.55);
+    border-color: rgba(255, 255, 255, 0.8);
 }
 
-/* Jump Button - Larger and repositioned */
-.touch-jump {
+/* Action Buttons Container - Right side */
+.touch-buttons-right {
     position: fixed;
-    right: 24px;
-    bottom: 24px;
-    width: 100px;
-    height: 100px;
-    background: rgba(76, 175, 80, 0.3);
-    border: 4px solid rgba(76, 175, 80, 0.6);
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+/* Base button style */
+.touch-btn {
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    backdrop-filter: blur(6px);
-    touch-action: manipulation;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    touch-action: none;
     pointer-events: auto;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    border: 3px solid;
+    transition: transform 0.1s, background 0.1s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.touch-jump .material-symbols-outlined {
+.touch-btn .material-symbols-outlined {
+    font-size: 40px;
+    pointer-events: none;
+}
+
+.touch-btn.active {
+    transform: scale(0.92);
+}
+
+/* Jump Button - Primary action, larger */
+.touch-btn.touch-jump {
+    width: 95px;
+    height: 95px;
+    background: rgba(76, 175, 80, 0.25);
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.touch-btn.touch-jump .material-symbols-outlined {
     font-size: 48px;
 }
 
-.touch-jump:active {
-    background: rgba(76, 175, 80, 0.6);
-    transform: scale(0.95);
+.touch-btn.touch-jump.active {
+    background: rgba(76, 175, 80, 0.5);
+    border-color: rgba(76, 175, 80, 0.8);
+}
+
+/* Attack Button - Red/Orange */
+.touch-btn.touch-attack {
+    background: rgba(244, 67, 54, 0.25);
+    border-color: rgba(244, 67, 54, 0.5);
+}
+
+.touch-btn.touch-attack.active {
+    background: rgba(244, 67, 54, 0.5);
+    border-color: rgba(244, 67, 54, 0.8);
+}
+
+/* Dash Button - Blue */
+.touch-btn.touch-dash {
+    background: rgba(33, 150, 243, 0.25);
+    border-color: rgba(33, 150, 243, 0.5);
+}
+
+.touch-btn.touch-dash.active {
+    background: rgba(33, 150, 243, 0.5);
+    border-color: rgba(33, 150, 243, 0.8);
+}
+
+/* Heal Button - Pink/Magenta */
+.touch-btn.touch-heal {
+    background: rgba(233, 30, 99, 0.25);
+    border-color: rgba(233, 30, 99, 0.5);
+}
+
+.touch-btn.touch-heal.active {
+    background: rgba(233, 30, 99, 0.5);
+    border-color: rgba(233, 30, 99, 0.8);
+}
+
+/* Landscape orientation - spread buttons horizontally */
+@media (orientation: landscape) and (max-height: 500px) {
+    .touch-buttons-right {
+        flex-direction: row;
+        bottom: 20px;
+        right: 20px;
+        gap: 10px;
+    }
+    
+    .touch-btn {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .touch-btn .material-symbols-outlined {
+        font-size: 32px;
+    }
+    
+    .touch-btn.touch-jump {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .touch-btn.touch-jump .material-symbols-outlined {
+        font-size: 40px;
+    }
+    
+    .touch-joystick-base {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .touch-joystick-stick {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* Small screens - compact layout */
+@media (max-width: 400px) {
+    .touch-joystick-container {
+        left: 15px;
+        bottom: 15px;
+    }
+    
+    .touch-joystick-base {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .touch-joystick-stick {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .touch-buttons-right {
+        right: 15px;
+        bottom: 15px;
+        gap: 8px;
+    }
+    
+    .touch-btn {
+        width: 65px;
+        height: 65px;
+    }
+    
+    .touch-btn .material-symbols-outlined {
+        font-size: 32px;
+    }
+    
+    .touch-btn.touch-jump {
+        width: 75px;
+        height: 75px;
+    }
 }
 
 /* ====================================
