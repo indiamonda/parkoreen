@@ -72,9 +72,13 @@
         // Wall bounce state (horizontal push off wall)
         player.isWallBouncing = false;
         player.wallBounceEndTime = 0;
+        player.wallBounceMidTime = 0; // Time when horizontal push stops (halfway through)
         player.wallBounceDirection = 0;
         player._monarchWingReady = true; // Must release and press jump to use monarch wing
         player._wasOnGround = true; // Track ground state for jump detection
+        
+        // Attack bounce invincibility (prevents damage during pogo bounce)
+        player.attackBounceUntil = 0;
         
         return data;
     }, pluginId, 5); // Run before HP plugin
@@ -159,9 +163,13 @@
         // Handle wall bounce (horizontal push after wall jump)
         if (player.isWallBouncing) {
             if (now < player.wallBounceEndTime) {
-                // Force horizontal movement at player speed
                 const playerSpeed = world?.playerSpeed ?? 5;
-                player.vx = player.wallBounceDirection * playerSpeed;
+                
+                // Horizontal push only happens during the first half of the bounce
+                if (now < player.wallBounceMidTime) {
+                    player.vx = player.wallBounceDirection * playerSpeed;
+                }
+                // After midpoint, player regains horizontal control (vx handled by normal physics)
                 
                 // Normal gravity applies during bounce
                 const worldGravity = world?.gravity ?? 0.5;
@@ -193,7 +201,9 @@
                 player.isWallClinging = false;
                 player.isWallBouncing = true;
                 player.wallBounceDirection = -player.wallClingDirection;
-                player.wallBounceEndTime = now + 150; // Wall bounce duration (150ms)
+                const bounceDuration = 150; // Wall bounce total duration (150ms)
+                player.wallBounceEndTime = now + bounceDuration;
+                player.wallBounceMidTime = now + bounceDuration / 2; // Horizontal push stops at half duration
                 
                 // Horizontal push away from wall
                 player.vx = player.wallBounceDirection * playerSpeed * 1.2;
@@ -238,9 +248,10 @@
         
         // ===== ATTACK =====
         if (player.input?.attack && !player.isAttacking && now > player.attackCooldown) {
-            // If wall clinging, force attack direction away from wall
+            // If wall clinging, force attack direction away from wall and detach
             if (player.isWallClinging) {
                 player.facingDirection = -player.wallClingDirection;
+                player.isWallClinging = false; // Detach from wall when attacking
             }
             
             let direction = 'forward';
@@ -271,10 +282,14 @@
                         // Bounce off soul statue (immediate)
                         if (direction === 'down') {
                             player.vy = worldJumpForce * 0.5; // Pogo bounce (50% of jump = 1/2 max height)
+                            player.monarchWingsUsed = 0; // Reset monarch wing on downward hit
                         } else {
                             player.vx = -player.facingDirection * 3;
                             player.vy = worldJumpForce * 0.3;
                         }
+                        
+                        // Brief invincibility during bounce (200ms)
+                        player.attackBounceUntil = now + 200;
                         break;
                     }
                     
@@ -283,10 +298,14 @@
                         // Bounce only (no soul from spikes)
                         if (direction === 'down') {
                             player.vy = worldJumpForce * 0.5; // Pogo bounce (50% of jump = 1/2 max height)
+                            player.monarchWingsUsed = 0; // Reset monarch wing on downward hit
                         } else {
                             player.vx = -player.facingDirection * 3;
                             player.vy = worldJumpForce * 0.3;
                         }
+                        
+                        // Brief invincibility during bounce (200ms)
+                        player.attackBounceUntil = now + 200;
                         break;
                     }
                 }
@@ -332,6 +351,12 @@
         }
         
         if (player.input?.superDash && player.hasSuperDash && !player.isSuperDashing && !player.superDashCharging && player._superDashKeyReady) {
+            // If wall clinging, force super dash direction away from wall and detach
+            if (player.isWallClinging) {
+                player.facingDirection = -player.wallClingDirection;
+                player.isWallClinging = false;
+            }
+            
             player.superDashCharging = true;
             player.superDashChargeStart = now;
             player.superDashDirection = player.facingDirection;
@@ -458,6 +483,23 @@
     }, pluginId);
     
     // ============================================
+    // ATTACK BOUNCE INVINCIBILITY - Prevent damage during pogo bounce
+    // ============================================
+    pluginManager.registerHook('player.damage', (data) => {
+        const { player, source } = data;
+        const now = Date.now();
+        
+        // If player is in attack bounce invincibility, prevent damage from spikes
+        if (player.attackBounceUntil && now < player.attackBounceUntil) {
+            if (source?.actingType === 'spike') {
+                return { ...data, preventDefault: true };
+            }
+        }
+        
+        return data;
+    }, pluginId, 1); // Priority 1 - run before HP plugin
+    
+    // ============================================
     // RESPAWN - Reset HK state
     // ============================================
     pluginManager.registerHook('player.respawn', (data) => {
@@ -477,6 +519,7 @@
         player._wallJumpReady = true;
         player._monarchWingReady = true;
         player._wasOnGround = true;
+        player.attackBounceUntil = 0;
         
         return data;
     }, pluginId);

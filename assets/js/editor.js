@@ -629,7 +629,7 @@ class Editor {
                     </div>
                         <div class="form-group">
                             <label class="form-label">Camera Horizontal Smoothness</label>
-                            <input type="range" class="form-input" id="config-camera-lerp-x" min="0.02" max="1" step="0.01" value="0.12" style="width: 100%;">
+                            <input type="range" class="form-range" id="config-camera-lerp-x" min="0.02" max="1" step="0.01" value="0.12" style="width: 100%;">
                             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
                                 <span>Smooth</span>
                                 <span id="config-camera-lerp-x-value">0.12</span>
@@ -638,7 +638,7 @@ class Editor {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Camera Vertical Smoothness</label>
-                            <input type="range" class="form-input" id="config-camera-lerp-y" min="0.02" max="1" step="0.01" value="0.12" style="width: 100%;">
+                            <input type="range" class="form-range" id="config-camera-lerp-y" min="0.02" max="1" step="0.01" value="0.12" style="width: 100%;">
                             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
                                 <span>Smooth</span>
                                 <span id="config-camera-lerp-y-value">0.12</span>
@@ -787,7 +787,7 @@ class Editor {
                         </div>
                         <div class="form-group">
                             <label class="form-label">HK Camera Horizontal</label>
-                            <input type="range" class="form-input" id="config-hk-camera-x" min="0.02" max="0.5" step="0.01" value="0.04" style="width: 100%;">
+                            <input type="range" class="form-range" id="config-hk-camera-x" min="0.02" max="0.5" step="0.01" value="0.04" style="width: 100%;">
                             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
                                 <span>Smooth</span>
                                 <span id="config-hk-camera-x-value">0.04</span>
@@ -796,7 +796,7 @@ class Editor {
                         </div>
                         <div class="form-group">
                             <label class="form-label">HK Camera Vertical</label>
-                            <input type="range" class="form-input" id="config-hk-camera-y" min="0.02" max="0.5" step="0.01" value="0.15" style="width: 100%;">
+                            <input type="range" class="form-range" id="config-hk-camera-y" min="0.02" max="0.5" step="0.01" value="0.15" style="width: 100%;">
                             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
                                 <span>Smooth</span>
                                 <span id="config-hk-camera-y-value">0.15</span>
@@ -5254,8 +5254,8 @@ class Editor {
         let objHeight = GRID_SIZE;
         let objY = y;
         if (settings.appearanceType === 'soulStatue') {
-            objHeight = GRID_SIZE * 2; // 2 blocks tall (64px)
-            objY = y - GRID_SIZE; // Place with click point at bottom
+            objHeight = GRID_SIZE * 3; // 3 blocks tall (96px)
+            objY = y - GRID_SIZE * 2; // Place with click point at bottom
         }
 
         // Create object

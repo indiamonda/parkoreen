@@ -327,19 +327,32 @@ a:hover {
     border: 1px solid var(--surface-light);
     border-radius: 4px;
     outline: none;
+    margin: 10px 0; /* Add vertical margin for thumb overflow */
 }
 
 .form-range::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: var(--primary);
     border-radius: 50%;
     cursor: pointer;
     transition: background var(--transition);
+    margin-top: -5px; /* Center thumb on track */
 }
 
-.form-range::-webkit-slider-thumb:hover {
+.form-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: background var(--transition);
+}
+
+.form-range::-webkit-slider-thumb:hover,
+.form-range::-moz-range-thumb:hover {
     background: var(--primary-light);
 }
 

@@ -1012,6 +1012,8 @@ class WorldObject {
     
     renderSoulStatue(ctx, x, y, w, h) {
         // Soul Statue - use PNG image from HK plugin
+        // Touchbox: 3 blocks tall (h), 1 block wide (w)
+        // Appearance: Maintain image aspect ratio, centered horizontally
         if (!WorldObject.soulStatueImg) {
             WorldObject.soulStatueImg = new Image();
             WorldObject.soulStatueImg.src = 'assets/plugins/hk/png/soul-statue.png';
@@ -1019,14 +1021,22 @@ class WorldObject {
         
         const img = WorldObject.soulStatueImg;
         if (img.complete && img.naturalWidth > 0) {
-            ctx.drawImage(img, x, y, w, h);
+            // Calculate dimensions to maintain aspect ratio while fitting height
+            const imgAspect = img.naturalWidth / img.naturalHeight;
+            const drawHeight = h; // Use full height (3 blocks)
+            const drawWidth = drawHeight * imgAspect; // Width based on aspect ratio
+            
+            // Center horizontally within the touchbox
+            const drawX = x + (w - drawWidth) / 2;
+            
+            ctx.drawImage(img, drawX, y, drawWidth, drawHeight);
         } else {
             // Fallback: simple placeholder while loading
             ctx.fillStyle = '#3a3a4a';
             ctx.fillRect(x, y, w, h);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.beginPath();
-            ctx.arc(x + w / 2, y + h * 0.4, w * 0.2, 0, Math.PI * 2);
+            ctx.arc(x + w / 2, y + h * 0.3, w * 0.25, 0, Math.PI * 2);
             ctx.fill();
         }
     }
