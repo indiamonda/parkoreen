@@ -8,7 +8,7 @@ const HK_DEFAULTS = {
     soulPerHit: 16.5,
     healCost: 33,
     healDuration: 900, // ms
-    dashDuration: 200, // ms
+    dashDuration: 250, // ms
     dashCooldown: 350, // ms
     dashSpeed: 15,
     superDashChargeDuration: 800, // ms
