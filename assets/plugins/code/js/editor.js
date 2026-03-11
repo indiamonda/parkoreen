@@ -23,11 +23,15 @@
         const w = getWorld();
         if (w) {
             if (!w.codeData) {
-                w.codeData = { triggers: [], actions: [] };
+                w.codeData = { triggers: [], actions: [], variables: [] };
+            }
+            // Ensure variables array exists (backward compatibility)
+            if (!w.codeData.variables) {
+                w.codeData.variables = [];
             }
             return w.codeData;
         }
-        return { triggers: [], actions: [] };
+        return { triggers: [], actions: [], variables: [] };
     };
     
     // Save code data to world and notify editor
@@ -148,7 +152,7 @@
                     </h1>
                     <button class="btn btn-primary code-new-btn" id="code-new-block">
                         <span class="material-symbols-outlined">add</span>
-                        New Code
+                        New Mechanic
                     </button>
                 </div>
                 <div class="code-editor-content" id="code-editor-content">
@@ -791,7 +795,8 @@
         const codeData = getCodeData();
         const triggers = codeData.triggers || [];
         const actions = codeData.actions || [];
-        const allBlocks = [...triggers, ...actions];
+        const variables = codeData.variables || [];
+        const allBlocks = [...triggers, ...actions, ...variables];
         
         // Update header
         const backBtn = document.getElementById('code-editor-back');
@@ -816,8 +821,8 @@
             content.innerHTML = `
                 <div class="code-empty-state">
                     <span class="material-symbols-outlined">code_off</span>
-                    <p>No code blocks yet</p>
-                    <small>Click "New Code" to create your first trigger or action</small>
+                    <p>No mechanic blocks yet</p>
+                    <small>Click "New Mechanic" to create your first trigger or action</small>
                 </div>
             `;
             return;
@@ -835,7 +840,18 @@
                 </div>
             `;
         }
-        
+
+        if (variables.length > 0) {
+            html += `
+                <div class="code-section">
+                    <div class="code-section-title">Variables (${variables.length})</div>
+                    <div class="code-blocks-grid">
+                        ${variables.map(v => renderBlockCard(v)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         if (actions.length > 0) {
             html += `
                 <div class="code-section">
@@ -878,8 +894,19 @@
     // Render a single block card
     const renderBlockCard = (block) => {
         const isTrigger = block.type === CODE_BLOCK_TYPES.TRIGGER;
-        const icon = isTrigger ? 'frame_inspect' : 'code_blocks';
-        const iconClass = isTrigger ? 'trigger' : 'action';
+        const isVariable = block.type === CODE_BLOCK_TYPES.VARIABLE;
+        let icon, iconClass;
+        
+        if (isTrigger) {
+            icon = 'frame_inspect';
+            iconClass = 'trigger';
+        } else if (isVariable) {
+            icon = 'data_object';
+            iconClass = 'variable';
+        } else {
+            icon = 'code_blocks';
+            iconClass = 'action';
+        }
         
         const error = isTrigger ? getTriggerError(block) : null;
         
@@ -925,6 +952,14 @@
                     break;
                 default:
                     typeDescription = triggerInfo?.label || 'Trigger';
+            }
+        } else if (isVariable) {
+            const varType = block.variableType === CODE_VARIABLE_TYPES.LIST ? 'List' : 'Variable';
+            const valueType = CODE_VALUE_TYPES.find(v => v.id === block.valueType)?.label || block.valueType;
+            if (block.variableType === CODE_VARIABLE_TYPES.LIST) {
+                typeDescription = `List (${block.listLength || 0} items)`;
+            } else {
+                typeDescription = `${valueType}: ${block.defaultValue !== undefined ? block.defaultValue : 'undefined'}`;
             }
         } else {
             typeDescription = 'Action (coming soon)';
@@ -1035,14 +1070,16 @@
     // Edit a block
     const editBlock = (blockId) => {
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions].find(b => b.id === blockId);
-        
+        const block = [...codeData.triggers, ...codeData.actions, ...codeData.variables].find(b => b.id === blockId);
+
         if (!block) return;
-        
+
         editingBlock = block;
-        
+
         if (block.type === CODE_BLOCK_TYPES.TRIGGER) {
             showTriggerEditor(block);
+        } else if (block.type === CODE_BLOCK_TYPES.VARIABLE) {
+            showVariableEditor(block);
         } else {
             showActionEditor(block);
         }
@@ -1051,8 +1088,8 @@
     // Toggle block enabled/disabled
     const toggleBlock = (blockId) => {
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions].find(b => b.id === blockId);
-        
+        const block = [...codeData.triggers, ...codeData.actions, ...codeData.variables].find(b => b.id === blockId);
+
         if (block) {
             block.enabled = !block.enabled;
             saveCodeData(codeData);
@@ -1064,7 +1101,7 @@
     // Duplicate a block
     const duplicateBlock = (blockId) => {
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions].find(b => b.id === blockId);
+        const block = [...codeData.triggers, ...codeData.actions, ...codeData.variables].find(b => b.id === blockId);
         
         if (!block) return;
         
@@ -1074,22 +1111,25 @@
         
         if (block.type === CODE_BLOCK_TYPES.TRIGGER) {
             codeData.triggers.push(newBlock);
+        } else if (block.type === CODE_BLOCK_TYPES.VARIABLE) {
+            codeData.variables.push(newBlock);
         } else {
             codeData.actions.push(newBlock);
         }
-        
+
         saveCodeData(codeData);
         showToast('Duplicated', 'success');
         showDashboard();
     };
-    
+
     // Delete a block
     const deleteBlock = (blockId) => {
         const codeData = getCodeData();
-        
+
         codeData.triggers = codeData.triggers.filter(t => t.id !== blockId);
         codeData.actions = codeData.actions.filter(a => a.id !== blockId);
-        
+        codeData.variables = codeData.variables.filter(v => v.id !== blockId);
+
         saveCodeData(codeData);
         showToast('Deleted', 'info');
         showDashboard();
@@ -1101,11 +1141,15 @@
         dialog.className = 'code-dialog-overlay';
         dialog.innerHTML = `
             <div class="code-dialog">
-                <h2>Create New Code Block</h2>
+                <h2>Create New Mechanic Block</h2>
                 <div class="code-dialog-types">
                     <button class="code-type-btn selected" data-type="trigger">
                         <span class="material-symbols-outlined">frame_inspect</span>
                         <span>Trigger</span>
+                    </button>
+                    <button class="code-type-btn" data-type="variable">
+                        <span class="material-symbols-outlined">data_object</span>
+                        <span>Variable</span>
                     </button>
                     <button class="code-type-btn" data-type="action">
                         <span class="material-symbols-outlined">code_blocks</span>
@@ -1181,6 +1225,16 @@
                 saveCodeData(codeData);
                 dialog.remove();
                 showTriggerEditor(newTrigger);
+            } else if (selectedType === 'variable') {
+                const newVariable = {
+                    ...JSON.parse(JSON.stringify(CODE_DEFAULT_VARIABLE)),
+                    id: generateId(),
+                    name: name || 'New Variable'
+                };
+                codeData.variables.push(newVariable);
+                saveCodeData(codeData);
+                dialog.remove();
+                showVariableEditor(newVariable);
             } else {
                 const newAction = {
                     ...JSON.parse(JSON.stringify(CODE_DEFAULT_ACTION)),

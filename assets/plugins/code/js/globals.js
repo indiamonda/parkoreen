@@ -181,8 +181,24 @@ const CODE_TIME_UNITS = [
 // Code Block Types
 const CODE_BLOCK_TYPES = {
     TRIGGER: 'trigger',
-    ACTION: 'action'
+    ACTION: 'action',
+    VARIABLE: 'variable'
 };
+
+// Variable Types
+const CODE_VARIABLE_TYPES = {
+    VARIABLE: 'variable',
+    LIST: 'list'
+};
+
+// Variable Value Types
+const CODE_VALUE_TYPES = [
+    { id: 'string', label: 'String', default: '' },
+    { id: 'integer', label: 'Integer', default: 0 },
+    { id: 'float', label: 'Float', default: 0.0 },
+    { id: 'boolean', label: 'Boolean', default: false },
+    { id: 'variable', label: 'Variable Reference', default: null }
+];
 
 // Default trigger template
 const CODE_DEFAULT_TRIGGER = {
@@ -203,6 +219,20 @@ const CODE_DEFAULT_ACTION = {
     code: ''
 };
 
+// Default variable template
+const CODE_DEFAULT_VARIABLE = {
+    id: '',
+    name: 'New Variable',
+    type: CODE_BLOCK_TYPES.VARIABLE,
+    enabled: true,
+    variableType: CODE_VARIABLE_TYPES.VARIABLE, // 'variable' or 'list'
+    valueType: 'string', // string, integer, float, boolean
+    defaultValue: '',
+    // For lists:
+    listLength: 0,
+    listItems: [] // Array of { valueType, value }
+};
+
 // Plugin state (runtime, not persisted)
 const CODE_STATE = {
     isEditorOpen: false,
@@ -219,7 +249,10 @@ if (typeof window !== 'undefined') {
     window.CODE_KEYBOARD_KEYS = CODE_KEYBOARD_KEYS;
     window.CODE_TIME_UNITS = CODE_TIME_UNITS;
     window.CODE_BLOCK_TYPES = CODE_BLOCK_TYPES;
+    window.CODE_VARIABLE_TYPES = CODE_VARIABLE_TYPES;
+    window.CODE_VALUE_TYPES = CODE_VALUE_TYPES;
     window.CODE_DEFAULT_TRIGGER = CODE_DEFAULT_TRIGGER;
     window.CODE_DEFAULT_ACTION = CODE_DEFAULT_ACTION;
+    window.CODE_DEFAULT_VARIABLE = CODE_DEFAULT_VARIABLE;
     window.CODE_STATE = CODE_STATE;
 }
