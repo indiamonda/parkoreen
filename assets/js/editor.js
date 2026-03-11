@@ -19,6 +19,7 @@ const PlacementMode = {
     NONE: 'none',
     BLOCK: 'block',
     SPIKE: 'spike',
+    SPINNER: 'spinner',
     KOREEN: 'koreen',
     TEXT: 'text',
     TELEPORTAL: 'teleportal'
@@ -104,8 +105,27 @@ class Editor {
             opacity: 1
         };
         
+        // Spinner settings
+        this.spinnerSettings = {
+            actingType: 'spike',
+            width: 2,  // in grid units
+            height: 2, // in grid units
+            color: '#ffffff',
+            opacity: 1,
+            spinSpeed: 1 // rotations per second
+        };
+
         // Zone placement state
         this.zonePlacement = {
+            isPlacing: false,
+            startX: 0,
+            startY: 0,
+            endX: 0,
+            endY: 0
+        };
+
+        // Spinner placement state (similar to zone)
+        this.spinnerPlacement = {
             isPlacing: false,
             startX: 0,
             startY: 0,
@@ -983,6 +1003,10 @@ class Editor {
             <button class="add-menu-btn" data-add="spike">
                 <span class="material-symbols-outlined">warning</span>
                 Spike
+            </button>
+            <button class="add-menu-btn" data-add="spinner">
+                <span class="material-symbols-outlined">settings</span>
+                Saw Blade
             </button>
             <button class="add-menu-btn" data-add="koreen">
                 <span class="material-symbols-outlined">device_hub</span>
@@ -1867,7 +1891,43 @@ class Editor {
         this.pendingZone = zone;
         this.showZoneNamePopup();
     }
-    
+
+    completeSpinnerPlacement() {
+        const { startX, startY, endX, endY } = this.spinnerPlacement;
+
+        // Calculate rectangle bounds
+        const x = Math.min(startX, endX);
+        const y = Math.min(startY, endY);
+        const width = Math.abs(endX - startX) + GRID_SIZE;
+        const height = Math.abs(endY - startY) + GRID_SIZE;
+
+        // Minimum spinner size (2x2 blocks default)
+        const minSize = GRID_SIZE * 2;
+        const finalWidth = Math.max(width, minSize);
+        const finalHeight = Math.max(height, minSize);
+
+        // Create the spinner object
+        const spinner = new WorldObject({
+            x: x,
+            y: y,
+            width: finalWidth,
+            height: finalHeight,
+            type: 'spinner',
+            appearanceType: 'spinner',
+            actingType: this.spinnerSettings.actingType || 'spike',
+            collision: true,
+            color: this.spinnerSettings.color || '#ffffff',
+            opacity: this.spinnerSettings.opacity || 1,
+            spinSpeed: this.spinnerSettings.spinSpeed || 1,
+            rotation: 0
+        });
+
+        spinner.layer = 2; // Above player by default
+
+        this.world.addObject(spinner);
+        this.triggerMapChange();
+    }
+
     showZoneNamePopup() {
         // Create popup if it doesn't exist
         let popup = document.getElementById('zone-name-popup');
@@ -2629,6 +2689,8 @@ class Editor {
                 btn.classList.add('active');
                 if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
                     this.placementSettings.actingType = btn.dataset.acting;
+                } else if (this.placementMode === PlacementMode.SPINNER) {
+                    this.spinnerSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.TEXT) {
@@ -2675,6 +2737,8 @@ class Editor {
                     this.textSettings.color = color;
                 } else if (this.placementMode === PlacementMode.TELEPORTAL) {
                     this.teleportalSettings.color = color;
+                } else if (this.placementMode === PlacementMode.SPINNER) {
+                    this.spinnerSettings.color = color;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.color = color;
                 } else {
@@ -2692,6 +2756,8 @@ class Editor {
             e.target.value = opacity;
             if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
                 this.placementSettings.opacity = opacity / 100;
+            } else if (this.placementMode === PlacementMode.SPINNER) {
+                this.spinnerSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.TEXT) {
@@ -4180,12 +4246,14 @@ class Editor {
     // ========================================
     startPlacement(mode) {
         this.closeAddMenu();
-        
+
         // Spike mode uses block mode with spike appearance preset
         if (mode === 'spike') {
             this.placementMode = PlacementMode.SPIKE;
             this.placementSettings.appearanceType = 'spike';
             this.placementSettings.actingType = 'spike';
+        } else if (mode === 'spinner') {
+            this.placementMode = PlacementMode.SPINNER;
         } else {
             this.placementMode = mode;
             // Reset block to ground if coming from spike mode
@@ -4194,7 +4262,7 @@ class Editor {
                 this.placementSettings.actingType = 'ground';
             }
         }
-        
+
         // Disable non-fly tools when entering placement mode
         this.disableNonFlyTools();
         
@@ -4451,9 +4519,39 @@ class Editor {
             // Sync opacity
             const teleportalOpacity = Math.round((this.teleportalSettings.opacity || 1) * 100);
             document.getElementById('placement-opacity-input').value = teleportalOpacity;
+        } else if (this.placementMode === PlacementMode.SPINNER) {
+            // Spinner options - acting type, color, and opacity
+            options.acting.classList.remove('hidden');
+            options.color.classList.remove('hidden');
+            options.opacity.classList.remove('hidden');
+
+            // Check if HK plugin is enabled for Soul Statue option
+            const hkEnabledForSpinner = this.world.plugins.enabled.includes('hk');
+
+            // Update acting type buttons for spinner
+            const actingBtnsSpinner = options.acting.querySelector('.placement-option-btns');
+            let spinnerActingHtml = `
+                <button class="placement-opt-btn ${this.spinnerSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
+                <button class="placement-opt-btn ${this.spinnerSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
+                <button class="placement-opt-btn ${this.spinnerSettings.actingType === 'portal' ? 'active' : ''}" data-acting="portal">Portal</button>
+            `;
+            if (hkEnabledForSpinner) {
+                spinnerActingHtml += `<button class="placement-opt-btn ${this.spinnerSettings.actingType === 'soulStatue' ? 'active' : ''}" data-acting="soulStatue">Soul</button>`;
+            }
+            actingBtnsSpinner.innerHTML = spinnerActingHtml;
+            this.reattachActingListeners();
+
+            // Sync color picker with spinner settings
+            const spinnerColor = this.spinnerSettings.color || '#ffffff';
+            document.getElementById('placement-color-preview').style.background = spinnerColor;
+            document.getElementById('placement-color-input').value = spinnerColor;
+
+            // Sync opacity
+            const spinnerOpacity = Math.round((this.spinnerSettings.opacity || 1) * 100);
+            document.getElementById('placement-opacity-input').value = spinnerOpacity;
         }
     }
-    
+
     updatePlacementFontPreview() {
         const previewText = document.getElementById('font-preview-text');
         if (!previewText) return;
@@ -4894,6 +4992,8 @@ class Editor {
                 this.textSettings.color = hex;
             } else if (this.placementMode === PlacementMode.TELEPORTAL) {
                 this.teleportalSettings.color = hex;
+            } else if (this.placementMode === PlacementMode.SPINNER) {
+                this.spinnerSettings.color = hex;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.color = hex;
             } else {
@@ -5027,7 +5127,13 @@ class Editor {
             this.zonePlacement.isPlacing = false;
             return;
         }
-        
+
+        // Cancel spinner placement
+        if (this.spinnerPlacement.isPlacing) {
+            this.spinnerPlacement.isPlacing = false;
+            return;
+        }
+
         if (this.placementMode !== PlacementMode.NONE) {
             this.stopPlacement();
         } else if (this.currentTool !== EditorTool.NONE) {
@@ -5067,6 +5173,13 @@ class Editor {
             this.zonePlacement.endY = gridPos.y;
             return; // Don't do anything else during zone drawing
         }
+
+        // Spinner placement - update end corner
+        if (this.spinnerPlacement.isPlacing) {
+            this.spinnerPlacement.endX = gridPos.x;
+            this.spinnerPlacement.endY = gridPos.y;
+            return; // Don't do anything else during spinner drawing
+        }
         
         // Zone adjustment - handle dragger movement
         if (this.zoneAdjustment.active && this.zoneAdjustment.draggerHeld && this.engine.mouse.down) {
@@ -5080,8 +5193,8 @@ class Editor {
             this.camera.targetY -= e.movementY / this.camera.zoom;
         }
 
-        // Brush-like placement - continue placing while mouse is held (except for teleportal)
-        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && !this.isOverUI(e)) {
+        // Brush-like placement - continue placing while mouse is held (except for teleportal and spinner)
+        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && this.placementMode !== PlacementMode.SPINNER && !this.isOverUI(e)) {
             this.placeObject(gridPos.x, gridPos.y);
         }
 
@@ -5163,6 +5276,16 @@ class Editor {
             return;
         }
 
+        // Spinner placement mode - start drawing region (like zone)
+        if (this.placementMode === PlacementMode.SPINNER) {
+            this.spinnerPlacement.isPlacing = true;
+            this.spinnerPlacement.startX = gridPos.x;
+            this.spinnerPlacement.startY = gridPos.y;
+            this.spinnerPlacement.endX = gridPos.x;
+            this.spinnerPlacement.endY = gridPos.y;
+            return;
+        }
+
         // Placement mode - start brush placement
         if (this.placementMode !== PlacementMode.NONE) {
             this.isPlacing = true;
@@ -5229,6 +5352,13 @@ class Editor {
         if (this.zonePlacement.isPlacing) {
             this.zonePlacement.isPlacing = false;
             this.completeZonePlacement();
+            return;
+        }
+
+        // Complete spinner placement
+        if (this.spinnerPlacement.isPlacing) {
+            this.spinnerPlacement.isPlacing = false;
+            this.completeSpinnerPlacement();
             return;
         }
         
@@ -6789,6 +6919,29 @@ class Editor {
                 ctx.lineWidth = 2 / camera.zoom;
                 ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
                 ctx.strokeRect(screenX, screenY, screenW, screenH);
+                ctx.setLineDash([]);
+            } else if (this.spinnerPlacement.isPlacing) {
+                // Spinner placement preview (oval/rectangle)
+                const { startX, startY, endX, endY } = this.spinnerPlacement;
+                const x = Math.min(startX, endX);
+                const y = Math.min(startY, endY);
+                const width = Math.max(Math.abs(endX - startX) + GRID_SIZE, GRID_SIZE * 2);
+                const height = Math.max(Math.abs(endY - startY) + GRID_SIZE, GRID_SIZE * 2);
+                
+                const screenX = x - camera.x;
+                const screenY = y - camera.y;
+                const centerX = screenX + width / 2;
+                const centerY = screenY + height / 2;
+                
+                // Draw ellipse preview
+                ctx.beginPath();
+                ctx.ellipse(centerX, centerY, width / 2, height / 2, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 100, 100, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 100, 100, 1)';
+                ctx.lineWidth = 2 / camera.zoom;
+                ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
+                ctx.stroke();
                 ctx.setLineDash([]);
             } else {
                 // Normal placement preview

@@ -771,6 +771,17 @@ const PortalImage = {
     }
 };
 
+const SpinnerImage = {
+    image: null,
+    loaded: false,
+    load() {
+        if (this.image) return;
+        this.image = new Image();
+        this.image.onload = () => { this.loaded = true; };
+        this.image.src = 'assets/svg/spinner.svg';
+    }
+};
+
 // Block Textures
 const BlockTextures = {
     brick: {
@@ -788,6 +799,7 @@ const BlockTextures = {
 // Load images immediately
 SpikeImage.load();
 PortalImage.load();
+SpinnerImage.load();
 BlockTextures.brick.load();
 
 // ============================================
@@ -809,6 +821,7 @@ class WorldObject {
         this.layer = config.layer || 1; // 0: behind, 1: same, 2: above player
         this.rotation = config.rotation || 0;
         this.flipHorizontal = config.flipHorizontal || false;
+        this.texture = config.texture || 'solid'; // solid, brick, etc.
         
         // Text specific
         this.content = config.content || '';
@@ -830,7 +843,10 @@ class WorldObject {
         
         // Zone-specific property
         this.zoneName = config.zoneName || null;
-        
+
+        // Spinner-specific properties
+        this.spinSpeed = config.spinSpeed !== undefined ? config.spinSpeed : 1;
+
         // Teleportal-specific properties
         this.teleportalName = config.teleportalName || null;
         // sendTo/receiveFrom: Array of {name, enabled} objects (backward compatible with string arrays)
@@ -902,6 +918,8 @@ class WorldObject {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
         } else if (this.appearanceType === 'soulStatue') {
             this.renderSoulStatue(ctx, screenX, screenY, width, height);
+        } else if (this.type === 'spinner' || this.appearanceType === 'spinner') {
+            this.renderSpinner(ctx, screenX, screenY, width, height);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
@@ -1207,6 +1225,80 @@ class WorldObject {
         }
     }
 
+    renderSpinner(ctx, x, y, w, h) {
+        const centerX = x + w / 2;
+        const centerY = y + h / 2;
+        
+        // Calculate rotation angle based on time
+        const time = Date.now() / 1000; // Convert to seconds
+        const spinSpeed = this.spinSpeed || 1; // Rotations per second
+        const rotationAngle = time * spinSpeed * Math.PI * 2;
+        
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rotationAngle);
+        
+        // Use the SVG spinner image if loaded
+        if (SpinnerImage.loaded && SpinnerImage.image) {
+            // The spinner SVG is 128x73, so we need to scale and stretch it
+            // to fit the target dimensions while maintaining the spinning effect
+            const offscreen = document.createElement('canvas');
+            offscreen.width = w;
+            offscreen.height = h;
+            const offCtx = offscreen.getContext('2d');
+            
+            // Draw the spinner image scaled to fit the ellipse
+            offCtx.drawImage(SpinnerImage.image, 0, 0, w, h);
+            
+            // Tint the spinner with the object's color using source-in blend
+            offCtx.globalCompositeOperation = 'source-in';
+            offCtx.fillStyle = this.color;
+            offCtx.fillRect(0, 0, w, h);
+            
+            // Draw the tinted spinner centered at origin (due to translate above)
+            ctx.drawImage(offscreen, -w / 2, -h / 2);
+        } else {
+            // Fallback: draw a simple saw blade shape
+            const radiusX = w / 2;
+            const radiusY = h / 2;
+            const teeth = 8;
+            
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            
+            for (let i = 0; i < teeth; i++) {
+                const angle1 = (i / teeth) * Math.PI * 2;
+                const angle2 = ((i + 0.5) / teeth) * Math.PI * 2;
+                
+                // Outer point (tooth tip)
+                const outerX = Math.cos(angle1) * radiusX;
+                const outerY = Math.sin(angle1) * radiusY;
+                
+                // Inner point (between teeth)
+                const innerX = Math.cos(angle2) * radiusX * 0.7;
+                const innerY = Math.sin(angle2) * radiusY * 0.7;
+                
+                if (i === 0) {
+                    ctx.moveTo(outerX, outerY);
+                } else {
+                    ctx.lineTo(outerX, outerY);
+                }
+                ctx.lineTo(innerX, innerY);
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            
+            // Center hole
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, radiusX * 0.15, radiusY * 0.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+
     renderText(ctx, x, y, w, h) {
         ctx.fillStyle = this.color;
         const scaleFactor = w / this.width;
@@ -1317,6 +1409,7 @@ class WorldObject {
             layer: this.layer,
             rotation: this.rotation,
             flipHorizontal: this.flipHorizontal,
+            texture: this.texture,
             content: this.content,
             font: this.font,
             fontSize: this.fontSize,
@@ -1327,6 +1420,7 @@ class WorldObject {
             spikeTouchbox: this.spikeTouchbox,
             dropHurtOnly: this.dropHurtOnly,
             zoneName: this.zoneName,
+            spinSpeed: this.spinSpeed,
             teleportalName: this.teleportalName,
             sendTo: this.sendTo,
             receiveFrom: this.receiveFrom,
