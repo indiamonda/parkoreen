@@ -1213,6 +1213,29 @@ a:hover {
     color: var(--text-secondary);
 }
 
+.add-menu-section {
+    margin: var(--spacing-xs) 0;
+    padding: var(--spacing-xs) 0;
+    border-top: 1px solid var(--surface-light);
+    border-bottom: 1px solid var(--surface-light);
+}
+
+.add-menu-section-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+}
+
+.add-menu-section-items {
+    display: flex;
+    flex-direction: column;
+}
+
 /* ====================================
    CONFIG PANEL
    ==================================== */

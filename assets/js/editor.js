@@ -1000,14 +1000,19 @@ class Editor {
                 <span class="material-symbols-outlined">square</span>
                 Block
             </button>
-            <button class="add-menu-btn" data-add="spike">
-                <span class="material-symbols-outlined">warning</span>
-                Spike
-            </button>
-            <button class="add-menu-btn" data-add="spinner">
-                <span class="material-symbols-outlined">settings</span>
-                Saw Blade
-            </button>
+            <div class="add-menu-section">
+                <span class="add-menu-section-label">Spikes</span>
+                <div class="add-menu-section-items">
+                    <button class="add-menu-btn" data-add="spike">
+                        <span class="material-symbols-outlined">warning</span>
+                        Spike
+                    </button>
+                    <button class="add-menu-btn" data-add="spinner">
+                        <span class="material-symbols-outlined">settings</span>
+                        Saw Blade
+                    </button>
+                </div>
+            </div>
             <button class="add-menu-btn" data-add="koreen">
                 <span class="material-symbols-outlined">device_hub</span>
                 Koreen
