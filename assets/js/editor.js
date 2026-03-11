@@ -4217,8 +4217,9 @@ class Editor {
         const targetPanel = panels[panel];
         const isActive = targetPanel.classList.contains('active');
 
-        // Close all panels
+        // Close all panels and add menu
         Object.values(panels).forEach(p => p.classList.remove('active'));
+        this.ui.addMenu.classList.remove('active');
 
         // Toggle target panel
         if (!isActive) {
@@ -4239,7 +4240,19 @@ class Editor {
     }
 
     toggleAddMenu() {
-        this.ui.addMenu.classList.toggle('active');
+        const isActive = this.ui.addMenu.classList.contains('active');
+        
+        // Close all panels
+        this.ui.configPanel.classList.remove('active');
+        this.ui.layersPanel.classList.remove('active');
+        this.ui.settingsPanel.classList.remove('active');
+        
+        // Toggle add menu
+        if (!isActive) {
+            this.ui.addMenu.classList.add('active');
+        } else {
+            this.ui.addMenu.classList.remove('active');
+        }
     }
 
     closeAddMenu() {
