@@ -10,7 +10,7 @@
     
     // Editor state
     let codeEditorOverlay = null;
-    let currentView = 'dashboard'; // 'dashboard', 'editTrigger', 'editAction'
+    let currentView = 'dashboard'; // 'dashboard', 'editTrigger', 'editAction', 'editVariable'
     let editingBlock = null;
     let hasUnsavedChanges = false;
     let keyCapturingElement = null; // For "Other" key capture
@@ -204,6 +204,8 @@
                 saveTrigger();
             } else if (currentView === 'editAction') {
                 // Save action when implemented
+            } else if (currentView === 'editVariable') {
+                saveVariable();
             }
         }
     };
@@ -343,11 +345,15 @@
             .code-block-icon.trigger {
                 background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
             }
-            
+
             .code-block-icon.action {
                 background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             }
-            
+
+            .code-block-icon.variable {
+                background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            }
+
             .code-block-icon .material-symbols-outlined {
                 font-size: 24px;
                 color: white;
@@ -1722,6 +1728,336 @@
             showToast('Action saved', 'success');
             showDashboard();
         });
+    };
+
+    // Show variable editor
+    const showVariableEditor = (variable) => {
+        currentView = 'editVariable';
+        editingBlock = variable;
+
+        // Update header
+        const backBtn = document.getElementById('code-editor-back');
+        if (backBtn) {
+            backBtn.querySelector('.material-symbols-outlined').textContent = 'arrow_back';
+            backBtn.title = 'Back (Escape)';
+        }
+
+        const title = document.querySelector('.code-editor-title');
+        if (title) {
+            title.innerHTML = `
+                <span class="material-symbols-outlined" style="color: #10b981;">data_object</span>
+                Edit Variable
+            `;
+        }
+
+        const newBtn = document.getElementById('code-new-block');
+        if (newBtn) newBtn.style.display = 'none';
+
+        const content = document.getElementById('code-editor-content');
+        if (!content) return;
+
+        // Get other variables for import option
+        const codeData = getCodeData();
+        const otherVariables = codeData.variables.filter(v => v.id !== variable.id);
+
+        const valueTypeOptions = CODE_VALUE_TYPES
+            .filter(v => v.id !== 'variable')
+            .map(v => `<option value="${v.id}" ${variable.valueType === v.id ? 'selected' : ''}>${v.label}</option>`)
+            .join('');
+
+        const isListType = variable.variableType === CODE_VARIABLE_TYPES.LIST;
+
+        content.innerHTML = `
+            <div class="trigger-editor">
+                <div class="trigger-form-group">
+                    <label class="trigger-form-label">Variable Name</label>
+                    <input type="text" class="trigger-form-input" id="variable-name" value="${escapeHtml(variable.name)}" spellcheck="false">
+                </div>
+
+                <div class="trigger-form-group">
+                    <label class="trigger-form-label">Variable Type</label>
+                    <div class="trigger-option-grid" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="trigger-option-btn ${!isListType ? 'selected' : ''}" data-var-type="variable">
+                            <span class="material-symbols-outlined">data_object</span>
+                            <span>Variable</span>
+                            <small>Single value</small>
+                        </div>
+                        <div class="trigger-option-btn ${isListType ? 'selected' : ''}" data-var-type="list">
+                            <span class="material-symbols-outlined">list</span>
+                            <span>List</span>
+                            <small>Array of values</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="variable-config-section">
+                    ${isListType ? renderListConfig(variable, otherVariables) : renderVariableConfig(variable)}
+                </div>
+
+                <button class="btn btn-primary trigger-save-btn" id="variable-save" style="width: 100%; margin-top: 24px;">
+                    <span class="material-symbols-outlined">save</span>
+                    Save Variable
+                </button>
+            </div>
+        `;
+
+        // Variable type selection
+        content.querySelectorAll('[data-var-type]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                content.querySelectorAll('[data-var-type]').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                variable.variableType = btn.dataset.varType;
+                
+                // Re-render config section
+                const configSection = document.getElementById('variable-config-section');
+                if (configSection) {
+                    const isList = variable.variableType === CODE_VARIABLE_TYPES.LIST;
+                    configSection.innerHTML = isList ? renderListConfig(variable, otherVariables) : renderVariableConfig(variable);
+                    attachVariableConfigListeners(variable, otherVariables);
+                }
+                markUnsaved();
+            });
+        });
+
+        attachVariableConfigListeners(variable, otherVariables);
+
+        // Save button
+        document.getElementById('variable-save').addEventListener('click', () => saveVariable());
+    };
+
+    // Render variable config (single value)
+    const renderVariableConfig = (variable) => {
+        const valueTypeOptions = CODE_VALUE_TYPES
+            .filter(v => v.id !== 'variable')
+            .map(v => `<option value="${v.id}" ${variable.valueType === v.id ? 'selected' : ''}>${v.label}</option>`)
+            .join('');
+
+        let defaultValueInput = '';
+        switch (variable.valueType) {
+            case 'boolean':
+                defaultValueInput = `
+                    <select class="trigger-form-input" id="variable-default-value">
+                        <option value="false" ${variable.defaultValue === false || variable.defaultValue === 'false' ? 'selected' : ''}>false</option>
+                        <option value="true" ${variable.defaultValue === true || variable.defaultValue === 'true' ? 'selected' : ''}>true</option>
+                    </select>
+                `;
+                break;
+            case 'integer':
+            case 'float':
+                defaultValueInput = `<input type="number" class="trigger-form-input" id="variable-default-value" value="${variable.defaultValue || 0}" ${variable.valueType === 'integer' ? 'step="1"' : 'step="0.01"'}>`;
+                break;
+            default: // string
+                defaultValueInput = `<input type="text" class="trigger-form-input" id="variable-default-value" value="${escapeHtml(variable.defaultValue || '')}" spellcheck="false">`;
+        }
+
+        return `
+            <div class="trigger-form-group">
+                <label class="trigger-form-label">Value Type</label>
+                <select class="trigger-form-input" id="variable-value-type">
+                    ${valueTypeOptions}
+                </select>
+            </div>
+            <div class="trigger-form-group">
+                <label class="trigger-form-label">Default Value</label>
+                ${defaultValueInput}
+            </div>
+        `;
+    };
+
+    // Render list config
+    const renderListConfig = (variable, otherVariables) => {
+        const listLength = variable.listLength || 0;
+        const listItems = variable.listItems || [];
+
+        let itemsHtml = '';
+        for (let i = 0; i < listLength; i++) {
+            const item = listItems[i] || { valueType: 'string', value: '' };
+            itemsHtml += renderListItem(i, item, otherVariables);
+        }
+
+        return `
+            <div class="trigger-form-group">
+                <label class="trigger-form-label">List Length</label>
+                <input type="number" class="trigger-form-input" id="list-length" value="${listLength}" min="0" max="100" step="1">
+            </div>
+            <div id="list-items-container">
+                ${itemsHtml}
+            </div>
+        `;
+    };
+
+    // Render a single list item
+    const renderListItem = (index, item, otherVariables) => {
+        const valueTypeOptions = CODE_VALUE_TYPES.map(v => {
+            if (v.id === 'variable' && otherVariables.length === 0) return '';
+            return `<option value="${v.id}" ${item.valueType === v.id ? 'selected' : ''}>${v.label}</option>`;
+        }).join('');
+
+        let valueInput = '';
+        if (item.valueType === 'variable') {
+            const varOptions = otherVariables.map(v => 
+                `<option value="${v.id}" ${item.value === v.id ? 'selected' : ''}>${escapeHtml(v.name)}</option>`
+            ).join('');
+            valueInput = `<select class="trigger-form-input list-item-value" data-index="${index}">${varOptions || '<option value="">No variables</option>'}</select>`;
+        } else if (item.valueType === 'boolean') {
+            valueInput = `
+                <select class="trigger-form-input list-item-value" data-index="${index}">
+                    <option value="false" ${item.value === false || item.value === 'false' ? 'selected' : ''}>false</option>
+                    <option value="true" ${item.value === true || item.value === 'true' ? 'selected' : ''}>true</option>
+                </select>
+            `;
+        } else if (item.valueType === 'integer' || item.valueType === 'float') {
+            valueInput = `<input type="number" class="trigger-form-input list-item-value" data-index="${index}" value="${item.value || 0}" ${item.valueType === 'integer' ? 'step="1"' : 'step="0.01"'}>`;
+        } else {
+            valueInput = `<input type="text" class="trigger-form-input list-item-value" data-index="${index}" value="${escapeHtml(item.value || '')}" spellcheck="false">`;
+        }
+
+        return `
+            <div class="list-item-row" data-index="${index}" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+                <span style="min-width: 30px; color: var(--text-muted);">[${index}]</span>
+                <select class="trigger-form-input list-item-type" data-index="${index}" style="width: 120px;">
+                    ${valueTypeOptions}
+                </select>
+                <div style="flex: 1;">${valueInput}</div>
+            </div>
+        `;
+    };
+
+    // Attach listeners for variable config
+    const attachVariableConfigListeners = (variable, otherVariables) => {
+        // Value type change (for single variable)
+        const valueTypeSelect = document.getElementById('variable-value-type');
+        if (valueTypeSelect) {
+            valueTypeSelect.addEventListener('change', (e) => {
+                variable.valueType = e.target.value;
+                // Reset default value to type default
+                const typeInfo = CODE_VALUE_TYPES.find(v => v.id === variable.valueType);
+                variable.defaultValue = typeInfo?.default ?? '';
+                
+                // Re-render config
+                const configSection = document.getElementById('variable-config-section');
+                if (configSection) {
+                    configSection.innerHTML = renderVariableConfig(variable);
+                    attachVariableConfigListeners(variable, otherVariables);
+                }
+                markUnsaved();
+            });
+        }
+
+        // Default value change
+        const defaultValueInput = document.getElementById('variable-default-value');
+        if (defaultValueInput) {
+            defaultValueInput.addEventListener('change', (e) => {
+                let value = e.target.value;
+                if (variable.valueType === 'integer') value = parseInt(value) || 0;
+                else if (variable.valueType === 'float') value = parseFloat(value) || 0;
+                else if (variable.valueType === 'boolean') value = value === 'true';
+                variable.defaultValue = value;
+                markUnsaved();
+            });
+        }
+
+        // List length change
+        const listLengthInput = document.getElementById('list-length');
+        if (listLengthInput) {
+            listLengthInput.addEventListener('change', (e) => {
+                const newLength = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                e.target.value = newLength;
+                variable.listLength = newLength;
+                
+                // Adjust list items array
+                if (!variable.listItems) variable.listItems = [];
+                while (variable.listItems.length < newLength) {
+                    variable.listItems.push({ valueType: 'string', value: '' });
+                }
+                variable.listItems = variable.listItems.slice(0, newLength);
+                
+                // Re-render list items
+                const container = document.getElementById('list-items-container');
+                if (container) {
+                    let itemsHtml = '';
+                    for (let i = 0; i < newLength; i++) {
+                        itemsHtml += renderListItem(i, variable.listItems[i], otherVariables);
+                    }
+                    container.innerHTML = itemsHtml;
+                    attachListItemListeners(variable, otherVariables);
+                }
+                markUnsaved();
+            });
+        }
+
+        attachListItemListeners(variable, otherVariables);
+    };
+
+    // Attach listeners for list items
+    const attachListItemListeners = (variable, otherVariables) => {
+        // List item type change
+        document.querySelectorAll('.list-item-type').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                if (!variable.listItems[index]) variable.listItems[index] = {};
+                variable.listItems[index].valueType = e.target.value;
+                
+                // Reset value to type default
+                const typeInfo = CODE_VALUE_TYPES.find(v => v.id === e.target.value);
+                variable.listItems[index].value = typeInfo?.default ?? '';
+                
+                // Re-render just this item's value
+                const row = e.target.closest('.list-item-row');
+                if (row) {
+                    const container = document.getElementById('list-items-container');
+                    if (container) {
+                        let itemsHtml = '';
+                        for (let i = 0; i < variable.listLength; i++) {
+                            itemsHtml += renderListItem(i, variable.listItems[i], otherVariables);
+                        }
+                        container.innerHTML = itemsHtml;
+                        attachListItemListeners(variable, otherVariables);
+                    }
+                }
+                markUnsaved();
+            });
+        });
+
+        // List item value change
+        document.querySelectorAll('.list-item-value').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                if (!variable.listItems[index]) variable.listItems[index] = { valueType: 'string' };
+                
+                let value = e.target.value;
+                const itemType = variable.listItems[index].valueType;
+                if (itemType === 'integer') value = parseInt(value) || 0;
+                else if (itemType === 'float') value = parseFloat(value) || 0;
+                else if (itemType === 'boolean') value = value === 'true';
+                
+                variable.listItems[index].value = value;
+                markUnsaved();
+            });
+        });
+    };
+
+    // Save variable
+    const saveVariable = () => {
+        const name = document.getElementById('variable-name')?.value.trim();
+
+        if (!isValidName(name)) {
+            showToast('Invalid name. Cannot use reserved names.', 'error');
+            return;
+        }
+
+        if (!name) {
+            showToast('Please enter a name', 'error');
+            return;
+        }
+
+        editingBlock.name = name;
+
+        const codeData = getCodeData();
+        saveCodeData(codeData);
+
+        showToast('Variable saved', 'success');
+        showDashboard();
     };
     
     // Open code editor
