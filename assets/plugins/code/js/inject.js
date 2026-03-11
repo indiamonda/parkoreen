@@ -11,11 +11,8 @@
     // Get plugin manager
     const getPluginManager = () => typeof pluginManager !== 'undefined' ? pluginManager : null;
     
-    // Check if plugin is enabled
-    const isEnabled = () => {
-        const pm = getPluginManager();
-        return pm && pm.isEnabled(pluginId);
-    };
+    // Mechanics system is always enabled (built into base game)
+    const isEnabled = () => true;
     
     // Get world's code data safely
     const getCodeData = (world) => {

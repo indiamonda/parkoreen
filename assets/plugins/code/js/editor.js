@@ -128,7 +128,7 @@
         });
     };
     
-    // Create the Code Editor overlay
+    // Create the Mechanics Editor overlay
     const createCodeEditorOverlay = () => {
         if (codeEditorOverlay) return codeEditorOverlay;
         
@@ -143,7 +143,7 @@
                     </button>
                     <h1 class="code-editor-title">
                         <span class="material-symbols-outlined">code</span>
-                        Code Editor
+                        Mechanics Editor
                         <span class="code-beta-badge">BETA</span>
                     </h1>
                     <button class="btn btn-primary code-new-btn" id="code-new-block">
@@ -804,7 +804,7 @@
         if (title) {
             title.innerHTML = `
                 <span class="material-symbols-outlined">code</span>
-                Code Editor
+                Mechanics Editor
                 <span class="code-beta-badge">BETA</span>
             `;
         }

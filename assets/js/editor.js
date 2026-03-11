@@ -18,6 +18,7 @@ const EditorTool = {
 const PlacementMode = {
     NONE: 'none',
     BLOCK: 'block',
+    SPIKE: 'spike',
     KOREEN: 'koreen',
     TEXT: 'text',
     TELEPORTAL: 'teleportal'
@@ -758,6 +759,14 @@ class Editor {
                     </button>
                 </div>
                 
+                <!-- Mechanics (always visible) -->
+                <div class="config-section" style="margin-top: 12px;">
+                    <button class="btn btn-secondary" id="btn-edit-mechanics" style="width: 100%; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); border: none; color: white;">
+                        <span class="material-symbols-outlined">code</span>
+                        Edit Mechanics
+                    </button>
+                </div>
+                
                 <!-- HP Section (hidden by default, shown when HP plugin enabled) -->
                 <div class="config-section collapsible hidden" id="config-section-hp">
                     <div class="config-section-header">
@@ -855,33 +864,7 @@ class Editor {
                     </div>
                 </div>
                 
-                <!-- Code Section (hidden by default, shown when Code plugin enabled) -->
-                <div class="config-section collapsible hidden" id="config-section-code">
-                    <div class="config-section-header">
-                        <span class="config-section-title" style="display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-outlined" style="font-size: 18px; color: #3b82f6;">code</span>
-                            Code
-                            <span style="font-size: 9px; font-weight: 700; background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); color: white; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px;">BETA</span>
-                        </span>
-                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
-                    </div>
-                    <div class="config-section-content">
-                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <span style="font-size: 13px;">Auto Respawn</span>
-                                <p style="margin: 2px 0 0; font-size: 10px; color: var(--text-muted);">Automatically respawn player when they die</p>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" id="config-code-autorespawn" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <button class="btn btn-secondary" id="btn-edit-code" style="width: 100%; margin-top: 16px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); border: none; color: white;">
-                            <span class="material-symbols-outlined">code</span>
-                            Edit Code
-                        </button>
-                    </div>
-                </div>
+                <!-- Code Section is now hidden (mechanics are built-in) -->
             </div>
         `;
         document.body.appendChild(configPanel);
@@ -950,30 +933,7 @@ class Editor {
                         </div>
                     </div>
                     
-                    <!-- Code Plugin -->
-                    <div class="plugin-card" data-plugin="code" style="background: var(--bg-light); border-radius: 12px; overflow: hidden;">
-                        <img src="assets/plugins/code/cover.png" alt="Code Plugin" style="width: 100%; height: auto; display: block;">
-                        <div style="padding: 16px 20px 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div style="flex: 1;">
-                                    <h3 style="margin: 0 0 8px 0; color: #3b82f6; display: flex; align-items: center; gap: 8px;">
-                                        Code
-                                        <span style="font-size: 10px; font-weight: 700; background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); color: white; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px;">BETA</span>
-                                    </h3>
-                                    <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
-                                        Add triggers and actions to your map. Create interactive experiences with player events, 
-                                        zones, and custom logic. Enables Zone placement.
-                                    </p>
-                                    <div style="font-size: 11px; color: var(--text-muted);">
-                                        <span style="color: #3b82f6;">Unlocks:</span> Zones, Triggers, Actions
-                                    </div>
-                                </div>
-                                <button class="btn plugin-toggle-btn" data-plugin="code" style="min-width: 80px; margin-left: 16px;">
-                                    Add
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Code Plugin is hidden (mechanics are built into the game) -->
                 </div>
             </div>
         `;
@@ -1010,6 +970,10 @@ class Editor {
             <button class="add-menu-btn" data-add="block">
                 <span class="material-symbols-outlined">square</span>
                 Block
+            </button>
+            <button class="add-menu-btn" data-add="spike">
+                <span class="material-symbols-outlined">warning</span>
+                Spike
             </button>
             <button class="add-menu-btn" data-add="koreen">
                 <span class="material-symbols-outlined">device_hub</span>
@@ -2636,7 +2600,7 @@ class Editor {
                 const container = btn.closest('.placement-option-btns');
                 container.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if (this.placementMode === PlacementMode.BLOCK) {
+                if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
                     this.placementSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.actingType = btn.dataset.acting;
@@ -2663,7 +2627,7 @@ class Editor {
                 document.querySelectorAll('[data-fill]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 const fillMode = btn.dataset.fill;
-                if (this.placementMode === PlacementMode.BLOCK) {
+                if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
                     this.placementSettings.fillMode = fillMode;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.fillMode = fillMode;
@@ -2697,7 +2661,7 @@ class Editor {
         document.getElementById('placement-opacity-input').addEventListener('change', (e) => {
             const opacity = Math.max(0, Math.min(100, parseInt(e.target.value) || 100));
             e.target.value = opacity;
-            if (this.placementMode === PlacementMode.BLOCK) {
+            if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
                 this.placementSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.opacity = opacity / 100;
@@ -3170,18 +3134,12 @@ class Editor {
             this.triggerMapChange();
         });
         
-        // Code plugin settings
-        document.getElementById('config-code-autorespawn')?.addEventListener('change', (e) => {
-            this.ensureCodeConfig();
-            this.world.plugins.code.autoRespawn = e.target.checked;
-            this.triggerMapChange();
-        });
-        
-        document.getElementById('btn-edit-code')?.addEventListener('click', () => {
+        // Edit Mechanics button (always available)
+        document.getElementById('btn-edit-mechanics')?.addEventListener('click', () => {
             if (typeof CodeEditor !== 'undefined' && CodeEditor.open) {
                 CodeEditor.open();
             } else {
-                console.warn('Code Editor not available');
+                console.warn('Mechanics Editor not available');
             }
         });
     }
@@ -3300,7 +3258,6 @@ class Editor {
     updatePluginConfigSections() {
         const hpSection = document.getElementById('config-section-hp');
         const hkSection = document.getElementById('config-section-hk');
-        const codeSection = document.getElementById('config-section-code');
         
         if (hpSection) {
             hpSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hp'));
@@ -3308,28 +3265,16 @@ class Editor {
         if (hkSection) {
             hkSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('hk'));
         }
-        if (codeSection) {
-            codeSection.classList.toggle('hidden', !this.world.plugins.enabled.includes('code'));
-        }
-        
-        // Update Zone button availability based on Code plugin
-        this.updateZoneButtonState();
+        // Code/Mechanics section is now always available (built into base game)
     }
     
     updateZoneButtonState() {
-        const codeEnabled = this.world.plugins.enabled.includes('code');
+        // Zone is always available now (mechanics built into base game)
         const zoneBtn = document.querySelector('[data-appearance="zone"]');
-        
         if (zoneBtn) {
-            if (codeEnabled) {
-                zoneBtn.disabled = false;
-                zoneBtn.style.opacity = '1';
-                zoneBtn.title = 'Zone';
-            } else {
-                zoneBtn.disabled = true;
-                zoneBtn.style.opacity = '0.4';
-                zoneBtn.title = 'Enable Code plugin to use zones';
-            }
+            zoneBtn.disabled = false;
+            zoneBtn.style.opacity = '1';
+            zoneBtn.title = 'Zone';
         }
     }
     
@@ -4102,7 +4047,20 @@ class Editor {
     // ========================================
     startPlacement(mode) {
         this.closeAddMenu();
-        this.placementMode = mode;
+        
+        // Spike mode uses block mode with spike appearance preset
+        if (mode === 'spike') {
+            this.placementMode = PlacementMode.SPIKE;
+            this.placementSettings.appearanceType = 'spike';
+            this.placementSettings.actingType = 'spike';
+        } else {
+            this.placementMode = mode;
+            // Reset block to ground if coming from spike mode
+            if (mode === 'block') {
+                this.placementSettings.appearanceType = 'ground';
+                this.placementSettings.actingType = 'ground';
+            }
+        }
         
         // Disable non-fly tools when entering placement mode
         this.disableNonFlyTools();
@@ -4194,6 +4152,38 @@ class Editor {
                 `;
             }
             actingBtns.innerHTML = blockActingHtml;
+            this.reattachActingListeners();
+            
+            // Update collision buttons
+            document.querySelectorAll('[data-collision]').forEach(btn => {
+                btn.classList.toggle('active', (btn.dataset.collision === 'true') === this.placementSettings.collision);
+            });
+        } else if (this.placementMode === PlacementMode.SPIKE) {
+            // Spike mode - similar to block but with spike preset
+            options.acting.classList.remove('hidden');
+            options.collision.classList.remove('hidden');
+            options.fill.classList.remove('hidden');
+            options.color.classList.remove('hidden');
+            options.opacity.classList.remove('hidden');
+
+            // Check if HK plugin is enabled for Soul Status option
+            const hkEnabledForSpike = this.world.plugins.enabled.includes('hk');
+
+            // Update acting type buttons for spike
+            const actingBtnsSpike = options.acting.querySelector('.placement-option-btns');
+            let spikeActingHtml = `
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
+            `;
+            if (hkEnabledForSpike) {
+                spikeActingHtml += `
+                <button class="placement-opt-btn ${this.placementSettings.actingType === 'soulStatus' ? 'active' : ''}" data-acting="soulStatus">Soul</button>
+                `;
+            }
+            actingBtnsSpike.innerHTML = spikeActingHtml;
             this.reattachActingListeners();
             
             // Update collision buttons
@@ -4362,12 +4352,7 @@ class Editor {
         
         newContainer.querySelectorAll('[data-appearance]').forEach(btn => {
             btn.addEventListener('click', () => {
-                // Check if trying to select Zone without Code plugin
-                if (btn.dataset.appearance === 'zone' && !this.world.plugins.enabled.includes('code')) {
-                    this.showPluginError('Code Plugin Required', 'Enable the Code plugin to use zones. Go to Plugins to enable it.');
-                    return;
-                }
-                
+                // Zones are always available (mechanics are built-in)
                 newContainer.querySelectorAll('[data-appearance]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 if (this.placementMode === PlacementMode.BLOCK) {
@@ -4427,7 +4412,7 @@ class Editor {
             btn.addEventListener('click', () => {
                 newContainer.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if (this.placementMode === PlacementMode.BLOCK) {
+                if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
                     this.placementSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.actingType = btn.dataset.acting;
@@ -4441,11 +4426,10 @@ class Editor {
     updateDefaultColor() {
         let color;
         if (this.placementMode === PlacementMode.BLOCK) {
-            if (this.placementSettings.appearanceType === 'spike') {
-                color = this.world.defaultSpikeColor;
-            } else {
-                color = this.world.defaultBlockColor;
-            }
+            color = this.world.defaultBlockColor;
+            this.placementSettings.color = color;
+        } else if (this.placementMode === PlacementMode.SPIKE) {
+            color = this.world.defaultSpikeColor;
             this.placementSettings.color = color;
         } else if (this.placementMode === PlacementMode.TEXT) {
             color = this.world.defaultTextColor;
@@ -5217,6 +5201,9 @@ class Editor {
         let settings, type;
 
         if (this.placementMode === PlacementMode.BLOCK) {
+            settings = this.placementSettings;
+            type = 'block';
+        } else if (this.placementMode === PlacementMode.SPIKE) {
             settings = this.placementSettings;
             type = 'block';
         } else if (this.placementMode === PlacementMode.KOREEN) {
