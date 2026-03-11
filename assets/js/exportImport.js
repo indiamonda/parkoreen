@@ -944,7 +944,7 @@ class CloudSyncManager {
         });
 
         this.handleUnauthorized(response);
-        
+
         if (!response.ok) {
             throw new Error('Failed to save to cloud');
         }
@@ -966,7 +966,7 @@ class CloudSyncManager {
         });
 
         this.handleUnauthorized(response);
-        
+
         if (!response.ok) {
             throw new Error('Failed to load from cloud');
         }

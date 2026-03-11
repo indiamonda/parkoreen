@@ -780,7 +780,7 @@ const BlockTextures = {
             if (this.image) return;
             this.image = new Image();
             this.image.onload = () => { this.loaded = true; };
-            this.image.src = 'assets/svg/block-brick.svg';
+            this.image.src = 'assets/svg/block-brick-pattern.svg';
         }
     }
 };
@@ -1204,21 +1204,6 @@ class WorldObject {
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
             ctx.stroke();
-        }
-        
-        // Teleportal name label
-        if (this.teleportalName) {
-            const tpFontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
-            ctx.font = `${Math.round(10 * tpFontScale)}px "Parkoreen Game", sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            
-            const textWidth = ctx.measureText(this.teleportalName).width;
-            const padding = 3;
-            
-            // Text
-            ctx.fillStyle = this.color;
-            ctx.fillText(this.teleportalName, centerX, y + h - 12);
         }
     }
 

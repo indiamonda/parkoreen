@@ -28,8 +28,8 @@ const PlacementMode = {
 // BLOCK TEXTURES
 // ============================================
 const BLOCK_TEXTURES = [
-    { id: 'solid', name: 'Solid', preview: null },
-    { id: 'brick', name: 'Brick', preview: 'assets/svg/block-brick.svg' },
+    { id: 'solid', name: 'Solid', preview: null, pattern: null },
+    { id: 'brick', name: 'Brick', preview: 'assets/svg/block-brick.svg', pattern: 'assets/svg/block-brick-pattern.svg' },
 ];
 
 // ============================================
@@ -3757,14 +3757,15 @@ class Editor {
             
             let previewHtml = '';
             if (texture.id === 'solid') {
-                previewHtml = `<div style="width: 100%; height: 100%; background: ${currentColor};"></div>`;
+                previewHtml = `<div style="width: 100%; height: 100%; background: ${currentColor}; border-radius: 4px;"></div>`;
             } else if (texture.preview) {
-                previewHtml = `<img src="${texture.preview}" alt="${texture.name}" style="background: ${currentColor};">`;
+                // Show the full texture preview image
+                previewHtml = `<img src="${texture.preview}" alt="${texture.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`;
             }
             
             html += `
                 <div class="texture-dropdown-item ${isSelected ? 'selected' : ''}" data-texture="${texture.id}">
-                    <div class="texture-dropdown-item-preview" style="background: ${currentColor};">
+                    <div class="texture-dropdown-item-preview">
                         ${previewHtml}
                     </div>
                     <span class="texture-dropdown-item-name">${texture.name}</span>
@@ -3798,8 +3799,9 @@ class Editor {
                     preview.style.background = currentColor;
                     preview.innerHTML = '';
                 } else if (texture.preview) {
-                    preview.style.background = currentColor;
-                    preview.innerHTML = `<img src="${texture.preview}" style="width: 100%; height: 100%;">`;
+                    // Show the brick preview image
+                    preview.style.background = 'transparent';
+                    preview.innerHTML = `<img src="${texture.preview}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 2px;">`;
                 }
             }
         }
@@ -3818,8 +3820,9 @@ class Editor {
                 preview.style.background = currentColor;
                 preview.innerHTML = '';
             } else if (texture?.preview) {
-                preview.style.background = currentColor;
-                preview.innerHTML = `<img src="${texture.preview}" style="width: 100%; height: 100%;">`;
+                // Show the brick preview image
+                preview.style.background = 'transparent';
+                preview.innerHTML = `<img src="${texture.preview}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 2px;">`;
             }
         }
     }
