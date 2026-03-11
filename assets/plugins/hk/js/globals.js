@@ -16,7 +16,7 @@ const HK_DEFAULTS = {
     attackDuration: 200, // ms
     attackCooldown: 100, // ms
     attackRange: 52,
-    pogoBouncePower: 0.4, // Fraction of normal jump
+    pogoBouncePower: 1.2, // Fraction of normal jump (higher than normal jump for satisfying bounce)
     monarchWingJumpPower: 0.9, // Fraction of normal jump
     // Camera smoothness - HK style: slow horizontal, slightly responsive vertical
     defaultCameraLerpX: 0.04, // Very smooth horizontal (tiny value)

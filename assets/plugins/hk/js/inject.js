@@ -281,8 +281,9 @@
                         
                         // Bounce based on attack direction
                         if (direction === 'down') {
-                            // Pogo bounce - jump up (50% of max jump height)
-                            player.vy = worldJumpForce * 0.5;
+                            // Pogo bounce - high jump (no key press needed, always full height)
+                            const pogoMultiplier = HK_CONFIG.pogoBouncePower || 1.2;
+                            player.vy = worldJumpForce * pogoMultiplier;
                             player.monarchWingsUsed = 0; // Reset monarch wing
                             player._pogoJumping = true; // Flag to prevent variable jump height interference
                         } else if (direction === 'up') {
@@ -293,18 +294,19 @@
                             // Forward hit - horizontal repel only, no vertical change
                             player.vx = -player.facingDirection * 5;
                         }
-                        
+
                         // Brief invincibility during bounce (200ms)
                         player.attackBounceUntil = now + 200;
                         break;
                     }
-                    
+
                     // Spike - just bounce, no soul
                     if (obj.actingType === 'spike' && obj.collision !== false) {
                         // Bounce based on attack direction
                         if (direction === 'down') {
-                            // Pogo bounce - jump up (50% of max jump height)
-                            player.vy = worldJumpForce * 0.5;
+                            // Pogo bounce - high jump (no key press needed, always full height)
+                            const pogoMultiplier = HK_CONFIG.pogoBouncePower || 1.2;
+                            player.vy = worldJumpForce * pogoMultiplier;
                             player.monarchWingsUsed = 0; // Reset monarch wing
                             player._pogoJumping = true; // Flag to prevent variable jump height interference
                         } else if (direction === 'up') {
@@ -315,7 +317,7 @@
                             // Forward hit - horizontal repel only, no vertical change
                             player.vx = -player.facingDirection * 5;
                         }
-                        
+
                         // Brief invincibility during bounce (200ms)
                         player.attackBounceUntil = now + 200;
                         break;
