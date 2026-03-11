@@ -1630,7 +1630,10 @@ a:hover {
 }
 
 .texture-dropdown-menu {
-    position: fixed;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
     background: var(--bg-medium);
     border: 2px solid var(--surface-light);
     border-radius: var(--border-radius);

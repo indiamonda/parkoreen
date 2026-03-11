@@ -261,7 +261,7 @@ class Editor {
             </button>
             <button class="toolbar-btn" data-tool="rotate" title="Rotate (drag)">
                 <span class="material-symbols-outlined">sync</span>
-                <span class="toolbar-btn-label">Rotate</span>
+                <span class="toolbar-btn-label">Rotate (R)</span>
             </button>
             <div class="toolbar-divider"></div>
             <button class="toolbar-btn" data-action="zoom-in" title="Zoom In">
@@ -3710,33 +3710,16 @@ class Editor {
         const trigger = document.getElementById('texture-dropdown-trigger');
         const dropdown = document.getElementById('texture-dropdown');
         const menu = document.getElementById('texture-dropdown-menu');
-        
+
         if (!trigger || !dropdown || !menu) return;
-        
+
         trigger.addEventListener('click', () => {
             dropdown.classList.toggle('active');
             if (dropdown.classList.contains('active')) {
-                // Position the menu to stay on screen
-                const rect = trigger.getBoundingClientRect();
-                const menuHeight = 400;
-                const menuWidth = 280;
-                
-                let top = rect.bottom + 4;
-                let left = rect.left;
-                
-                if (top + menuHeight > window.innerHeight) {
-                    top = rect.top - menuHeight - 4;
-                }
-                if (left + menuWidth > window.innerWidth) {
-                    left = window.innerWidth - menuWidth - 8;
-                }
-                
-                menu.style.top = top + 'px';
-                menu.style.left = left + 'px';
                 this.populateTextureDropdown();
             }
         });
-        
+
         document.addEventListener('click', (e) => {
             if (!dropdown.contains(e.target)) {
                 dropdown.classList.remove('active');
