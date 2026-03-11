@@ -25,6 +25,14 @@ const PlacementMode = {
 };
 
 // ============================================
+// BLOCK TEXTURES
+// ============================================
+const BLOCK_TEXTURES = [
+    { id: 'solid', name: 'Solid', preview: null },
+    { id: 'brick', name: 'Brick', preview: 'assets/svg/block-brick.svg' },
+];
+
+// ============================================
 // CUSTOM FONTS (loaded from assets/ttf/)
 // ============================================
 const CUSTOM_FONTS = [
@@ -80,6 +88,7 @@ class Editor {
         this.placementSettings = {
             appearanceType: 'ground',
             actingType: 'ground',
+            texture: 'solid', // solid, brick, stone, etc.
             collision: true,
             fillMode: 'add',
             color: '#787878',
@@ -1003,8 +1012,23 @@ class Editor {
         placementToolbar.className = 'placement-toolbar';
         placementToolbar.id = 'placement-toolbar';
         placementToolbar.innerHTML = `
-            <!-- Block Options -->
-            <div class="placement-option" id="placement-appearance">
+            <!-- Block Texture Option -->
+            <div class="placement-option" id="placement-texture">
+                <span class="placement-option-label">Texture</span>
+                <div class="texture-dropdown" id="texture-dropdown">
+                    <button class="texture-dropdown-trigger" id="texture-dropdown-trigger">
+                        <div class="texture-preview" id="texture-preview-solid" style="width: 24px; height: 24px; background: #787878; border-radius: 4px;"></div>
+                        <span id="texture-dropdown-value">Solid</span>
+                        <span class="material-symbols-outlined">expand_more</span>
+                    </button>
+                    <div class="texture-dropdown-menu" id="texture-dropdown-menu">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hidden appearance for backwards compatibility -->
+            <div class="placement-option hidden" id="placement-appearance">
                 <span class="placement-option-label">Appearance</span>
                 <div class="placement-option-btns">
                     <button class="placement-opt-btn active" data-appearance="ground">Ground</button>
@@ -2576,6 +2600,9 @@ class Editor {
 
         // Font dropdown
         this.attachFontDropdownListeners();
+        
+        // Texture dropdown
+        this.attachTextureDropdownListeners();
     }
 
     attachPlacementListeners() {
@@ -2651,7 +2678,9 @@ class Editor {
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.color = color;
                 } else {
-                this.placementSettings.color = color;
+                    this.placementSettings.color = color;
+                    // Update texture preview with new background color
+                    this.updateTexturePreview();
                 }
                 document.getElementById('placement-color-preview').style.background = color;
             }
@@ -3677,6 +3706,124 @@ class Editor {
         this.addRecentFont(font);
     }
     
+    attachTextureDropdownListeners() {
+        const trigger = document.getElementById('texture-dropdown-trigger');
+        const dropdown = document.getElementById('texture-dropdown');
+        const menu = document.getElementById('texture-dropdown-menu');
+        
+        if (!trigger || !dropdown || !menu) return;
+        
+        trigger.addEventListener('click', () => {
+            dropdown.classList.toggle('active');
+            if (dropdown.classList.contains('active')) {
+                // Position the menu to stay on screen
+                const rect = trigger.getBoundingClientRect();
+                const menuHeight = 400;
+                const menuWidth = 280;
+                
+                let top = rect.bottom + 4;
+                let left = rect.left;
+                
+                if (top + menuHeight > window.innerHeight) {
+                    top = rect.top - menuHeight - 4;
+                }
+                if (left + menuWidth > window.innerWidth) {
+                    left = window.innerWidth - menuWidth - 8;
+                }
+                
+                menu.style.top = top + 'px';
+                menu.style.left = left + 'px';
+                this.populateTextureDropdown();
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+    }
+    
+    populateTextureDropdown() {
+        const menu = document.getElementById('texture-dropdown-menu');
+        if (!menu) return;
+        
+        const currentColor = this.placementSettings.color || '#787878';
+        
+        let html = '<div class="texture-dropdown-grid">';
+        
+        for (const texture of BLOCK_TEXTURES) {
+            const isSelected = this.placementSettings.texture === texture.id;
+            
+            let previewHtml = '';
+            if (texture.id === 'solid') {
+                previewHtml = `<div style="width: 100%; height: 100%; background: ${currentColor};"></div>`;
+            } else if (texture.preview) {
+                previewHtml = `<img src="${texture.preview}" alt="${texture.name}" style="background: ${currentColor};">`;
+            }
+            
+            html += `
+                <div class="texture-dropdown-item ${isSelected ? 'selected' : ''}" data-texture="${texture.id}">
+                    <div class="texture-dropdown-item-preview" style="background: ${currentColor};">
+                        ${previewHtml}
+                    </div>
+                    <span class="texture-dropdown-item-name">${texture.name}</span>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        menu.innerHTML = html;
+        
+        // Attach event listeners
+        menu.querySelectorAll('.texture-dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                this.selectTexture(item.dataset.texture);
+            });
+        });
+    }
+    
+    selectTexture(textureId) {
+        this.placementSettings.texture = textureId;
+        
+        const texture = BLOCK_TEXTURES.find(t => t.id === textureId);
+        if (texture) {
+            document.getElementById('texture-dropdown-value').textContent = texture.name;
+            
+            // Update preview
+            const preview = document.querySelector('#texture-dropdown-trigger .texture-preview');
+            if (preview) {
+                const currentColor = this.placementSettings.color || '#787878';
+                if (texture.id === 'solid') {
+                    preview.style.background = currentColor;
+                    preview.innerHTML = '';
+                } else if (texture.preview) {
+                    preview.style.background = currentColor;
+                    preview.innerHTML = `<img src="${texture.preview}" style="width: 100%; height: 100%;">`;
+                }
+            }
+        }
+        
+        document.getElementById('texture-dropdown').classList.remove('active');
+    }
+    
+    updateTexturePreview() {
+        const currentColor = this.placementSettings.color || '#787878';
+        const currentTexture = this.placementSettings.texture || 'solid';
+        
+        const preview = document.querySelector('#texture-dropdown-trigger .texture-preview');
+        if (preview) {
+            const texture = BLOCK_TEXTURES.find(t => t.id === currentTexture);
+            if (texture?.id === 'solid') {
+                preview.style.background = currentColor;
+                preview.innerHTML = '';
+            } else if (texture?.preview) {
+                preview.style.background = currentColor;
+                preview.innerHTML = `<img src="${texture.preview}" style="width: 100%; height: 100%;">`;
+            }
+        }
+    }
+    
     populateObjectEditFontDropdown(currentFont) {
         const menu = document.getElementById('object-edit-font-menu');
         if (!menu) return;
@@ -4099,6 +4246,7 @@ class Editor {
 
     updatePlacementOptions() {
         const options = {
+            texture: document.getElementById('placement-texture'),
             appearance: document.getElementById('placement-appearance'),
             acting: document.getElementById('placement-acting'),
             collision: document.getElementById('placement-collision'),
@@ -4116,10 +4264,10 @@ class Editor {
         };
 
         // Hide all first
-        Object.values(options).forEach(el => el.classList.add('hidden'));
+        Object.values(options).forEach(el => el && el.classList.add('hidden'));
 
         if (this.placementMode === PlacementMode.BLOCK) {
-            options.appearance.classList.remove('hidden');
+            options.texture.classList.remove('hidden'); // Show texture dropdown
             options.acting.classList.remove('hidden');
             options.collision.classList.remove('hidden');
             options.fill.classList.remove('hidden');
@@ -4129,13 +4277,8 @@ class Editor {
             // Check if HK plugin is enabled for Soul Status option
             const hkEnabledForBlock = this.world.plugins.enabled.includes('hk');
 
-            // Update appearance buttons for block
-            const appearanceBtns = options.appearance.querySelector('.placement-option-btns');
-            appearanceBtns.innerHTML = `
-                <button class="placement-opt-btn ${this.placementSettings.appearanceType === 'ground' ? 'active' : ''}" data-appearance="ground">Ground</button>
-                <button class="placement-opt-btn ${this.placementSettings.appearanceType === 'spike' ? 'active' : ''}" data-appearance="spike">Spike</button>
-            `;
-            this.reattachAppearanceListeners();
+            // Update texture preview
+            this.updateTexturePreview();
 
             // Update acting type buttons for block
             const actingBtns = options.acting.querySelector('.placement-option-btns');
@@ -4437,9 +4580,14 @@ class Editor {
         } else {
             return;
         }
-        
+
         document.getElementById('placement-color-preview').style.background = color;
         document.getElementById('placement-color-input').value = color;
+        
+        // Update texture preview with new color
+        if (this.placementMode === PlacementMode.BLOCK) {
+            this.updateTexturePreview();
+        }
     }
     
     syncActingTypeUI(actingType) {
@@ -4764,6 +4912,8 @@ class Editor {
                 this.koreenSettings.color = hex;
             } else {
                 this.placementSettings.color = hex;
+                // Update texture preview with new background color
+                this.updateTexturePreview();
             }
             document.getElementById('placement-color-preview').style.background = hex;
             document.getElementById('placement-color-input').value = hex;
@@ -5258,6 +5408,7 @@ class Editor {
             type: type,
             appearanceType: settings.appearanceType || 'ground',
             actingType: settings.actingType || 'ground',
+            texture: settings.texture || 'solid',
             collision: settings.collision !== undefined ? settings.collision : true,
             color: settings.color || '#787878',
             opacity: settings.opacity !== undefined ? settings.opacity : 1,

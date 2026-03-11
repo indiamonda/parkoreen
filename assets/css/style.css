@@ -1598,6 +1598,111 @@ a:hover {
 }
 
 /* ====================================
+   TEXTURE DROPDOWN
+   ==================================== */
+.texture-dropdown {
+    position: relative;
+}
+
+.texture-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--surface);
+    border: 2px solid var(--surface-light);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all var(--transition);
+    min-width: 140px;
+}
+
+.texture-dropdown-trigger:hover {
+    border-color: var(--primary);
+}
+
+.texture-dropdown-trigger .material-symbols-outlined {
+    margin-left: auto;
+    font-size: 18px;
+    color: var(--text-muted);
+}
+
+.texture-dropdown-menu {
+    position: fixed;
+    background: var(--bg-medium);
+    border: 2px solid var(--surface-light);
+    border-radius: var(--border-radius);
+    width: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1001;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.texture-dropdown.active .texture-dropdown-menu {
+    display: block;
+}
+
+.texture-dropdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px;
+}
+
+.texture-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 2px solid transparent;
+}
+
+.texture-dropdown-item:hover {
+    background: var(--surface);
+}
+
+.texture-dropdown-item.selected {
+    border-color: var(--primary);
+    background: rgba(45, 90, 39, 0.2);
+}
+
+.texture-dropdown-item-preview {
+    width: 56px;
+    height: 56px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    border: 1px solid var(--surface-light);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.texture-dropdown-item-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.texture-dropdown-item-name {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.texture-dropdown-item.selected .texture-dropdown-item-name {
+    color: var(--primary-light);
+    font-weight: 600;
+}
+
+/* ====================================
    TOUCHSCREEN CONTROLS - Multi-touch
    ==================================== */
 .touch-controls {

@@ -771,9 +771,24 @@ const PortalImage = {
     }
 };
 
+// Block Textures
+const BlockTextures = {
+    brick: {
+        image: null,
+        loaded: false,
+        load() {
+            if (this.image) return;
+            this.image = new Image();
+            this.image.onload = () => { this.loaded = true; };
+            this.image.src = 'assets/svg/block-brick.svg';
+        }
+    }
+};
+
 // Load images immediately
 SpikeImage.load();
 PortalImage.load();
+BlockTextures.brick.load();
 
 // ============================================
 // WORLD OBJECT CLASS
@@ -895,17 +910,42 @@ class WorldObject {
     }
 
     renderBlock(ctx, x, y, w, h) {
+        const texture = this.texture || 'solid';
+        
+        // Draw background color first
         ctx.fillStyle = this.color;
         ctx.fillRect(x, y, w, h);
         
-        // Pixel art shading
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
-        ctx.fillRect(x + 4, y + h - 4, w - 4, 4);
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.fillRect(x, y, w - 4, 4);
-        ctx.fillRect(x, y, 4, h - 4);
+        // Draw texture pattern if not solid
+        if (texture !== 'solid' && BlockTextures[texture]?.loaded && BlockTextures[texture]?.image) {
+            const textureImg = BlockTextures[texture].image;
+            const tileSize = 64; // Texture tile size
+            
+            // Create a pattern from the texture
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.clip();
+            
+            // Tile the texture across the block
+            for (let ty = y; ty < y + h; ty += tileSize) {
+                for (let tx = x; tx < x + w; tx += tileSize) {
+                    const drawW = Math.min(tileSize, x + w - tx);
+                    const drawH = Math.min(tileSize, y + h - ty);
+                    ctx.drawImage(textureImg, 0, 0, drawW, drawH, tx, ty, drawW, drawH);
+                }
+            }
+            ctx.restore();
+        } else if (texture === 'solid') {
+            // Pixel art shading for solid blocks
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
+            ctx.fillRect(x + 4, y + h - 4, w - 4, 4);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(x, y, w - 4, 4);
+            ctx.fillRect(x, y, 4, h - 4);
+        }
     }
 
     renderSpike(ctx, x, y, w, h) {
