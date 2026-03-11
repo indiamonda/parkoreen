@@ -951,6 +951,13 @@ a:hover {
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-toolbar);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toolbar.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+    pointer-events: none;
 }
 
 .toolbar-btn {
@@ -972,6 +979,11 @@ a:hover {
 .toolbar-btn:hover {
     background: var(--surface-light);
     color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.toolbar-btn:active {
+    transform: translateY(0);
 }
 
 .toolbar-btn.active {
@@ -1009,12 +1021,20 @@ a:hover {
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-panel);
-    display: none;
+    display: flex;
     flex-direction: column;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(20px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+    pointer-events: none;
 }
 
 .layers-panel.active {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    pointer-events: auto;
 }
 
 .layer-item {
@@ -1026,7 +1046,12 @@ a:hover {
     border-radius: var(--border-radius);
     margin-bottom: var(--spacing-xs);
     cursor: grab;
-    transition: background var(--transition);
+    transition: background var(--transition), transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.layer-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Alternating layer colors for groups */
@@ -1181,11 +1206,18 @@ a:hover {
     padding: var(--spacing-sm);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-panel);
-    display: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.95);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
 }
 
 .add-menu.active {
-    display: block;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
 }
 
 .add-menu-btn {
@@ -1200,12 +1232,17 @@ a:hover {
     border-radius: var(--border-radius);
     color: var(--text-primary);
     cursor: pointer;
-    transition: background var(--transition);
+    transition: background var(--transition), transform 0.15s ease;
     text-align: left;
 }
 
 .add-menu-btn:hover {
     background: var(--surface);
+    transform: translateX(4px);
+}
+
+.add-menu-btn:active {
+    transform: translateX(2px);
 }
 
 .add-menu-btn .material-symbols-outlined {
@@ -1249,12 +1286,21 @@ a:hover {
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-panel);
-    display: none;
+    display: flex;
     flex-direction: column;
     overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-20px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+    pointer-events: none;
 }
 
 .config-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    pointer-events: auto;
     display: flex;
 }
 
@@ -1269,12 +1315,21 @@ a:hover {
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-panel);
-    display: none;
+    display: flex;
     flex-direction: column;
     overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(20px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+    pointer-events: none;
 }
 
 .settings-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    pointer-events: auto;
     display: flex;
 }
 
@@ -1345,8 +1400,8 @@ a:hover {
     position: fixed;
     bottom: var(--spacing-lg);
     left: 50%;
-    transform: translateX(-50%);
-    display: none;
+    transform: translateX(-50%) translateY(20px);
+    display: flex;
     gap: var(--spacing-sm);
     background: var(--surface);
     padding: var(--spacing-md);
@@ -1356,10 +1411,17 @@ a:hover {
     flex-wrap: wrap;
     max-width: 90vw;
     justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
 }
 
 .placement-toolbar.active {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
 }
 
 /* Erase Toolbar */
@@ -1455,18 +1517,24 @@ a:hover {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.9);
     background: var(--bg-medium);
     border-radius: var(--border-radius-lg);
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-lg);
     z-index: var(--z-popup);
-    display: none;
     min-width: 280px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
 }
 
 .color-picker-popup.active {
-    display: block;
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
 }
 
 .color-picker-header {
@@ -1663,13 +1731,20 @@ a:hover {
     width: 280px;
     max-height: 400px;
     overflow-y: auto;
-    display: none;
     z-index: 1001;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
 }
 
 .texture-dropdown.active .texture-dropdown-menu {
-    display: block;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 .texture-dropdown-grid {
@@ -1692,6 +1767,7 @@ a:hover {
 
 .texture-dropdown-item:hover {
     background: var(--surface);
+    transform: scale(1.05);
 }
 
 .texture-dropdown-item.selected {
