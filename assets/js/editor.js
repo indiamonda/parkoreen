@@ -18,8 +18,7 @@ const EditorTool = {
 const PlacementMode = {
     NONE: 'none',
     BLOCK: 'block',
-    SPIKE: 'spike',
-    SPINNER: 'spinner',
+    OBSTACLE: 'obstacle',
     KOREEN: 'koreen',
     TEXT: 'text',
     TELEPORTAL: 'teleportal'
@@ -74,6 +73,7 @@ class Editor {
         this.isFlying = true; // Start with fly mode enabled by default
         this.isErasing = false;
         this.isPlacing = false; // Track if we're actively placing blocks (brush mode)
+        this.flyClickStart = null; // Track mouse position for fly mode click detection
         
         // Selection state
         this.selectedObject = null;
@@ -105,14 +105,17 @@ class Editor {
             opacity: 1
         };
         
-        // Spinner settings
-        this.spinnerSettings = {
+        // Obstacle settings (spike or saw blade)
+        this.obstacleSettings = {
+            appearanceType: 'spike', // spike or spinner (saw blade)
             actingType: 'spike',
-            width: 2,  // in grid units
-            height: 2, // in grid units
-            color: '#ffffff',
+            collision: true,
+            fillMode: 'add',
+            width: 2,  // in grid units (for spinner)
+            height: 2, // in grid units (for spinner)
+            color: '#ff4444',
             opacity: 1,
-            spinSpeed: 1 // rotations per second
+            spinSpeed: 1 // rotations per second (for spinner)
         };
 
         // Zone placement state
@@ -124,8 +127,8 @@ class Editor {
             endY: 0
         };
 
-        // Spinner placement state (similar to zone)
-        this.spinnerPlacement = {
+        // Obstacle placement state for saw blade (similar to zone)
+        this.obstaclePlacement = {
             isPlacing: false,
             startX: 0,
             startY: 0,
@@ -1000,19 +1003,10 @@ class Editor {
                 <span class="material-symbols-outlined">square</span>
                 Block
             </button>
-            <div class="add-menu-section">
-                <span class="add-menu-section-label">Spikes</span>
-                <div class="add-menu-section-items">
-                    <button class="add-menu-btn" data-add="spike">
-                        <span class="material-symbols-outlined">warning</span>
-                        Spike
-                    </button>
-                    <button class="add-menu-btn" data-add="spinner">
-                        <span class="material-symbols-outlined">settings</span>
-                        Saw Blade
-                    </button>
-                </div>
-            </div>
+            <button class="add-menu-btn" data-add="obstacle">
+                <span class="material-symbols-outlined">warning</span>
+                Obstacle
+            </button>
             <button class="add-menu-btn" data-add="koreen">
                 <span class="material-symbols-outlined">device_hub</span>
                 Koreen
@@ -1898,7 +1892,7 @@ class Editor {
     }
 
     completeSpinnerPlacement() {
-        const { startX, startY, endX, endY } = this.spinnerPlacement;
+        const { startX, startY, endX, endY } = this.obstaclePlacement;
 
         // Calculate rectangle bounds
         const x = Math.min(startX, endX);
@@ -1919,11 +1913,11 @@ class Editor {
             height: finalHeight,
             type: 'spinner',
             appearanceType: 'spinner',
-            actingType: this.spinnerSettings.actingType || 'spike',
+            actingType: this.obstacleSettings.actingType || 'spike',
             collision: true,
-            color: this.spinnerSettings.color || '#ffffff',
-            opacity: this.spinnerSettings.opacity || 1,
-            spinSpeed: this.spinnerSettings.spinSpeed || 1,
+            color: this.obstacleSettings.color || '#ff4444',
+            opacity: this.obstacleSettings.opacity || 1,
+            spinSpeed: this.obstacleSettings.spinSpeed || 1,
             rotation: 0
         });
 
@@ -2692,10 +2686,10 @@ class Editor {
                 const container = btn.closest('.placement-option-btns');
                 container.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
+                if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.actingType = btn.dataset.acting;
-                } else if (this.placementMode === PlacementMode.SPINNER) {
-                    this.spinnerSettings.actingType = btn.dataset.acting;
+                } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                    this.obstacleSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.TEXT) {
@@ -2711,7 +2705,12 @@ class Editor {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('[data-collision]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                this.placementSettings.collision = btn.dataset.collision === 'true';
+                const collision = btn.dataset.collision === 'true';
+                if (this.placementMode === PlacementMode.OBSTACLE) {
+                    this.obstacleSettings.collision = collision;
+                } else {
+                    this.placementSettings.collision = collision;
+                }
             });
         });
 
@@ -2721,8 +2720,10 @@ class Editor {
                 document.querySelectorAll('[data-fill]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 const fillMode = btn.dataset.fill;
-                if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
+                if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.fillMode = fillMode;
+                } else if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spike') {
+                    this.obstacleSettings.fillMode = fillMode;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.fillMode = fillMode;
                 }
@@ -2742,8 +2743,8 @@ class Editor {
                     this.textSettings.color = color;
                 } else if (this.placementMode === PlacementMode.TELEPORTAL) {
                     this.teleportalSettings.color = color;
-                } else if (this.placementMode === PlacementMode.SPINNER) {
-                    this.spinnerSettings.color = color;
+                } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                    this.obstacleSettings.color = color;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.color = color;
                 } else {
@@ -2759,10 +2760,10 @@ class Editor {
         document.getElementById('placement-opacity-input').addEventListener('change', (e) => {
             const opacity = Math.max(0, Math.min(100, parseInt(e.target.value) || 100));
             e.target.value = opacity;
-            if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
+            if (this.placementMode === PlacementMode.BLOCK) {
                 this.placementSettings.opacity = opacity / 100;
-            } else if (this.placementMode === PlacementMode.SPINNER) {
-                this.spinnerSettings.opacity = opacity / 100;
+            } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                this.obstacleSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.TEXT) {
@@ -4265,16 +4266,16 @@ class Editor {
     startPlacement(mode) {
         this.closeAddMenu();
 
-        // Spike mode uses block mode with spike appearance preset
-        if (mode === 'spike') {
-            this.placementMode = PlacementMode.SPIKE;
-            this.placementSettings.appearanceType = 'spike';
-            this.placementSettings.actingType = 'spike';
-        } else if (mode === 'spinner') {
-            this.placementMode = PlacementMode.SPINNER;
+        // Obstacle mode for spike and saw blade
+        if (mode === 'obstacle') {
+            this.placementMode = PlacementMode.OBSTACLE;
+            // Default to spike appearance
+            if (!this.obstacleSettings.appearanceType) {
+                this.obstacleSettings.appearanceType = 'spike';
+            }
         } else {
             this.placementMode = mode;
-            // Reset block to ground if coming from spike mode
+            // Reset block to ground if coming from obstacle mode
             if (mode === 'block') {
                 this.placementSettings.appearanceType = 'ground';
                 this.placementSettings.actingType = 'ground';
@@ -4373,38 +4374,56 @@ class Editor {
             document.querySelectorAll('[data-collision]').forEach(btn => {
                 btn.classList.toggle('active', (btn.dataset.collision === 'true') === this.placementSettings.collision);
             });
-        } else if (this.placementMode === PlacementMode.SPIKE) {
-            // Spike mode - similar to block but with spike preset
+        } else if (this.placementMode === PlacementMode.OBSTACLE) {
+            // Obstacle mode - appearance selection (spike or saw blade)
+            options.appearance.classList.remove('hidden');
             options.acting.classList.remove('hidden');
-            options.collision.classList.remove('hidden');
-            options.fill.classList.remove('hidden');
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
-
-            // Check if HK plugin is enabled for Soul Status option
-            const hkEnabledForSpike = this.world.plugins.enabled.includes('hk');
-
-            // Update acting type buttons for spike
-            const actingBtnsSpike = options.acting.querySelector('.placement-option-btns');
-            let spikeActingHtml = `
-                <button class="placement-opt-btn ${this.placementSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
-                <button class="placement-opt-btn ${this.placementSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
-                <button class="placement-opt-btn ${this.placementSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
-                <button class="placement-opt-btn ${this.placementSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
-                <button class="placement-opt-btn ${this.placementSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
-            `;
-            if (hkEnabledForSpike) {
-                spikeActingHtml += `
-                <button class="placement-opt-btn ${this.placementSettings.actingType === 'soulStatus' ? 'active' : ''}" data-acting="soulStatus">Soul</button>
-                `;
-            }
-            actingBtnsSpike.innerHTML = spikeActingHtml;
-            this.reattachActingListeners();
             
+            // Show fill and collision options only for spike appearance
+            if (this.obstacleSettings.appearanceType === 'spike') {
+                options.fill.classList.remove('hidden');
+                options.collision.classList.remove('hidden');
+            }
+
+            // Check if HK plugin is enabled for Soul Statue option
+            const hkEnabledForObstacle = this.world.plugins.enabled.includes('hk');
+
+            // Update appearance buttons for obstacle
+            const appearanceBtnsObstacle = options.appearance.querySelector('.placement-option-btns');
+            appearanceBtnsObstacle.innerHTML = `
+                <button class="placement-opt-btn ${this.obstacleSettings.appearanceType === 'spike' ? 'active' : ''}" data-appearance="spike">Spike</button>
+                <button class="placement-opt-btn ${this.obstacleSettings.appearanceType === 'spinner' ? 'active' : ''}" data-appearance="spinner">Saw Blade</button>
+            `;
+            this.reattachAppearanceListeners();
+
+            // Update acting type buttons for obstacle
+            const actingBtnsObstacle = options.acting.querySelector('.placement-option-btns');
+            let obstacleActingHtml = `
+                <button class="placement-opt-btn ${this.obstacleSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
+                <button class="placement-opt-btn ${this.obstacleSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
+                <button class="placement-opt-btn ${this.obstacleSettings.actingType === 'portal' ? 'active' : ''}" data-acting="portal">Portal</button>
+            `;
+            if (hkEnabledForObstacle) {
+                obstacleActingHtml += `<button class="placement-opt-btn ${this.obstacleSettings.actingType === 'soulStatue' ? 'active' : ''}" data-acting="soulStatue">Soul</button>`;
+            }
+            actingBtnsObstacle.innerHTML = obstacleActingHtml;
+            this.reattachActingListeners();
+
             // Update collision buttons
             document.querySelectorAll('[data-collision]').forEach(btn => {
-                btn.classList.toggle('active', (btn.dataset.collision === 'true') === this.placementSettings.collision);
+                btn.classList.toggle('active', (btn.dataset.collision === 'true') === this.obstacleSettings.collision);
             });
+
+            // Sync color picker with obstacle settings
+            const obstacleColor = this.obstacleSettings.color || '#ff4444';
+            document.getElementById('placement-color-preview').style.background = obstacleColor;
+            document.getElementById('placement-color-input').value = obstacleColor;
+
+            // Sync opacity
+            const obstacleOpacity = Math.round((this.obstacleSettings.opacity || 1) * 100);
+            document.getElementById('placement-opacity-input').value = obstacleOpacity;
         } else if (this.placementMode === PlacementMode.KOREEN) {
             options.appearance.classList.remove('hidden');
             options.acting.classList.remove('hidden');
@@ -4537,36 +4556,6 @@ class Editor {
             // Sync opacity
             const teleportalOpacity = Math.round((this.teleportalSettings.opacity || 1) * 100);
             document.getElementById('placement-opacity-input').value = teleportalOpacity;
-        } else if (this.placementMode === PlacementMode.SPINNER) {
-            // Spinner options - acting type, color, and opacity
-            options.acting.classList.remove('hidden');
-            options.color.classList.remove('hidden');
-            options.opacity.classList.remove('hidden');
-
-            // Check if HK plugin is enabled for Soul Statue option
-            const hkEnabledForSpinner = this.world.plugins.enabled.includes('hk');
-
-            // Update acting type buttons for spinner
-            const actingBtnsSpinner = options.acting.querySelector('.placement-option-btns');
-            let spinnerActingHtml = `
-                <button class="placement-opt-btn ${this.spinnerSettings.actingType === 'spike' ? 'active' : ''}" data-acting="spike">Spike</button>
-                <button class="placement-opt-btn ${this.spinnerSettings.actingType === 'ground' ? 'active' : ''}" data-acting="ground">Ground</button>
-                <button class="placement-opt-btn ${this.spinnerSettings.actingType === 'portal' ? 'active' : ''}" data-acting="portal">Portal</button>
-            `;
-            if (hkEnabledForSpinner) {
-                spinnerActingHtml += `<button class="placement-opt-btn ${this.spinnerSettings.actingType === 'soulStatue' ? 'active' : ''}" data-acting="soulStatue">Soul</button>`;
-            }
-            actingBtnsSpinner.innerHTML = spinnerActingHtml;
-            this.reattachActingListeners();
-
-            // Sync color picker with spinner settings
-            const spinnerColor = this.spinnerSettings.color || '#ffffff';
-            document.getElementById('placement-color-preview').style.background = spinnerColor;
-            document.getElementById('placement-color-input').value = spinnerColor;
-
-            // Sync opacity
-            const spinnerOpacity = Math.round((this.spinnerSettings.opacity || 1) * 100);
-            document.getElementById('placement-opacity-input').value = spinnerOpacity;
         }
     }
 
@@ -4605,6 +4594,10 @@ class Editor {
                     // Sync acting type with appearance type for blocks
                     this.placementSettings.actingType = btn.dataset.appearance;
                     this.syncActingTypeUI(btn.dataset.appearance);
+                } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                    this.obstacleSettings.appearanceType = btn.dataset.appearance;
+                    // Refresh placement options to update UI based on new appearance
+                    this.updatePlacementOptions();
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.appearanceType = btn.dataset.appearance;
                     
@@ -4657,8 +4650,10 @@ class Editor {
             btn.addEventListener('click', () => {
                 newContainer.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if (this.placementMode === PlacementMode.BLOCK || this.placementMode === PlacementMode.SPIKE) {
+                if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.actingType = btn.dataset.acting;
+                } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                    this.obstacleSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.actingType = btn.dataset.acting;
                 } else if (this.placementMode === PlacementMode.TEXT) {
@@ -4673,9 +4668,9 @@ class Editor {
         if (this.placementMode === PlacementMode.BLOCK) {
             color = this.world.defaultBlockColor;
             this.placementSettings.color = color;
-        } else if (this.placementMode === PlacementMode.SPIKE) {
+        } else if (this.placementMode === PlacementMode.OBSTACLE) {
             color = this.world.defaultSpikeColor;
-            this.placementSettings.color = color;
+            this.obstacleSettings.color = color;
         } else if (this.placementMode === PlacementMode.TEXT) {
             color = this.world.defaultTextColor;
             this.textSettings.color = color;
@@ -5010,8 +5005,8 @@ class Editor {
                 this.textSettings.color = hex;
             } else if (this.placementMode === PlacementMode.TELEPORTAL) {
                 this.teleportalSettings.color = hex;
-            } else if (this.placementMode === PlacementMode.SPINNER) {
-                this.spinnerSettings.color = hex;
+            } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                this.obstacleSettings.color = hex;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.color = hex;
             } else {
@@ -5146,9 +5141,9 @@ class Editor {
             return;
         }
 
-        // Cancel spinner placement
-        if (this.spinnerPlacement.isPlacing) {
-            this.spinnerPlacement.isPlacing = false;
+        // Cancel obstacle placement (spinner)
+        if (this.obstaclePlacement.isPlacing) {
+            this.obstaclePlacement.isPlacing = false;
             return;
         }
 
@@ -5192,10 +5187,10 @@ class Editor {
             return; // Don't do anything else during zone drawing
         }
 
-        // Spinner placement - update end corner
-        if (this.spinnerPlacement.isPlacing) {
-            this.spinnerPlacement.endX = gridPos.x;
-            this.spinnerPlacement.endY = gridPos.y;
+        // Obstacle (spinner) placement - update end corner
+        if (this.obstaclePlacement.isPlacing) {
+            this.obstaclePlacement.endX = gridPos.x;
+            this.obstaclePlacement.endY = gridPos.y;
             return; // Don't do anything else during spinner drawing
         }
         
@@ -5211,8 +5206,9 @@ class Editor {
             this.camera.targetY -= e.movementY / this.camera.zoom;
         }
 
-        // Brush-like placement - continue placing while mouse is held (except for teleportal and spinner)
-        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && this.placementMode !== PlacementMode.SPINNER && !this.isOverUI(e)) {
+        // Brush-like placement - continue placing while mouse is held (except for teleportal and obstacle with spinner appearance)
+        const isSpinnerMode = this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spinner';
+        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && !isSpinnerMode && !this.isOverUI(e)) {
             this.placeObject(gridPos.x, gridPos.y);
         }
 
@@ -5294,13 +5290,13 @@ class Editor {
             return;
         }
 
-        // Spinner placement mode - start drawing region (like zone)
-        if (this.placementMode === PlacementMode.SPINNER) {
-            this.spinnerPlacement.isPlacing = true;
-            this.spinnerPlacement.startX = gridPos.x;
-            this.spinnerPlacement.startY = gridPos.y;
-            this.spinnerPlacement.endX = gridPos.x;
-            this.spinnerPlacement.endY = gridPos.y;
+        // Obstacle placement mode with spinner appearance - start drawing region (like zone)
+        if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spinner') {
+            this.obstaclePlacement.isPlacing = true;
+            this.obstaclePlacement.startX = gridPos.x;
+            this.obstaclePlacement.startY = gridPos.y;
+            this.obstaclePlacement.endX = gridPos.x;
+            this.obstaclePlacement.endY = gridPos.y;
             return;
         }
 
@@ -5354,8 +5350,10 @@ class Editor {
             
             case EditorTool.NONE:
                 // If no tool is active, open edit popup on click
-                // (fly mode camera dragging is handled in handleMouseMove)
-                if (!this.isFlying) {
+                if (this.isFlying) {
+                    // In fly mode, record click start to detect click vs drag
+                    this.flyClickStart = { x: e.clientX, y: e.clientY, worldPos: { ...worldPos } };
+                } else {
                     const objToEdit = this.world.getObjectAt(worldPos.x, worldPos.y);
                     if (objToEdit) {
                         this.openObjectEditPopup(objToEdit);
@@ -5366,6 +5364,21 @@ class Editor {
     }
 
     handleMouseUp(e) {
+        // Handle fly mode click (vs drag) - open object popup if minimal movement
+        if (this.flyClickStart && this.currentTool === EditorTool.NONE) {
+            const dx = e.clientX - this.flyClickStart.x;
+            const dy = e.clientY - this.flyClickStart.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // If mouse moved less than 5 pixels, treat as a click
+            if (distance < 5) {
+                const objToEdit = this.world.getObjectAt(this.flyClickStart.worldPos.x, this.flyClickStart.worldPos.y);
+                if (objToEdit) {
+                    this.openObjectEditPopup(objToEdit);
+                }
+            }
+            this.flyClickStart = null;
+        }
         // Complete zone placement
         if (this.zonePlacement.isPlacing) {
             this.zonePlacement.isPlacing = false;
@@ -5373,9 +5386,9 @@ class Editor {
             return;
         }
 
-        // Complete spinner placement
-        if (this.spinnerPlacement.isPlacing) {
-            this.spinnerPlacement.isPlacing = false;
+        // Complete obstacle (spinner) placement
+        if (this.obstaclePlacement.isPlacing) {
+            this.obstaclePlacement.isPlacing = false;
             this.completeSpinnerPlacement();
             return;
         }
@@ -5487,8 +5500,8 @@ class Editor {
         if (this.placementMode === PlacementMode.BLOCK) {
             settings = this.placementSettings;
             type = 'block';
-        } else if (this.placementMode === PlacementMode.SPIKE) {
-            settings = this.placementSettings;
+        } else if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spike') {
+            settings = this.obstacleSettings;
             type = 'block';
         } else if (this.placementMode === PlacementMode.KOREEN) {
             settings = this.koreenSettings;
@@ -6938,9 +6951,9 @@ class Editor {
                 ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
                 ctx.strokeRect(screenX, screenY, screenW, screenH);
                 ctx.setLineDash([]);
-            } else if (this.spinnerPlacement.isPlacing) {
+            } else if (this.obstaclePlacement.isPlacing) {
                 // Spinner placement preview (oval/rectangle)
-                const { startX, startY, endX, endY } = this.spinnerPlacement;
+                const { startX, startY, endX, endY } = this.obstaclePlacement;
                 const x = Math.min(startX, endX);
                 const y = Math.min(startY, endY);
                 const width = Math.max(Math.abs(endX - startX) + GRID_SIZE, GRID_SIZE * 2);
