@@ -2497,7 +2497,7 @@ class GameEngine {
                 left: this.keys['KeyA'],
                 right: this.keys['KeyD'],
                 up: this.keys['ArrowUp'],
-                down: this.keys['ArrowDown'],
+                down: this.keys['KeyS'] || this.keys['ArrowDown'],
                 jump: this.keys['KeyW'],
                 shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
                 // Plugin inputs
