@@ -2175,9 +2175,10 @@ class Editor {
             document.getElementById('object-edit-flip-horizontal').checked = obj.flipHorizontal || false;
         }
         
-        // Show/hide spike options
+        // Show/hide spike options (not for spinners/saw blades)
         const spikeGroup = document.getElementById('object-edit-spike-group');
-        if (obj.appearanceType === 'spike' || obj.actingType === 'spike') {
+        const isSpinner = obj.type === 'spinner' || obj.appearanceType === 'spinner';
+        if (!isSpinner && (obj.appearanceType === 'spike' || obj.actingType === 'spike')) {
             spikeGroup.style.display = 'block';
             document.getElementById('object-edit-spike-touchbox').value = obj.spikeTouchbox || '';
             this.updateSpikeTouchboxEditDescription(obj.spikeTouchbox || '');
@@ -3220,6 +3221,7 @@ class Editor {
         document.getElementById('config-hk-dash')?.addEventListener('change', (e) => {
             this.ensureHKConfig();
             this.world.plugins.hk.dash = e.target.checked;
+            this.refreshTouchControls();
             this.triggerMapChange();
         });
         
@@ -3344,6 +3346,7 @@ class Editor {
         this.updatePluginsPopupState();
         this.updatePluginConfigSections();
         this.updateKeyboardLayoutOptions();
+        this.refreshTouchControls();
         this.updateTouchButtonVisibility();
         this.triggerMapChange();
     }
@@ -5607,8 +5610,10 @@ class Editor {
         this.inspectBoxContent = document.getElementById('inspect-box-content');
         
         // Toggle button
-        document.getElementById('inspect-toggle-btn').addEventListener('click', () => {
-            container.classList.toggle('hidden');
+        const toggleBtn = document.getElementById('inspect-toggle-btn');
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = container.classList.toggle('hidden');
+            toggleBtn.title = isHidden ? 'Show Inspector' : 'Hide Inspector';
         });
     }
     
@@ -5664,7 +5669,9 @@ class Editor {
             data['Zone Name'] = obj.zoneName || '-';
         }
         
-        if (obj.appearanceType === 'spike' || obj.actingType === 'spike') {
+        // Show spike settings only for actual spikes, not spinners
+        const isSpinnerObj = obj.type === 'spinner' || obj.appearanceType === 'spinner';
+        if (!isSpinnerObj && (obj.appearanceType === 'spike' || obj.actingType === 'spike')) {
             data['Touchbox'] = obj.spikeTouchbox || 'default';
             data['Drop Hurt Only'] = obj.dropHurtOnly === true ? 'Yes' : (obj.dropHurtOnly === false ? 'No' : 'World Default');
         }
@@ -6599,8 +6606,16 @@ class Editor {
                 touchControls.id = 'touch-controls';
                 touchControls.className = 'touch-controls active';
                 
-                // Check if HK plugin is enabled for extra buttons
+                // Check if HK plugin is enabled and which abilities are active
                 const hkEnabled = window.PluginManager?.isEnabled('hk');
+                const hkConfig = this.world?.plugins?.hk || {};
+                
+                // Attack is always available when HK is enabled
+                const hasAttack = hkEnabled;
+                // Dash requires the dash ability to be enabled
+                const hasDash = hkEnabled && hkConfig.dash;
+                // Heal is always available when HK is enabled (uses soul)
+                const hasHeal = hkEnabled;
                 
                 touchControls.innerHTML = `
                     <div class="touch-joystick-container">
@@ -6612,13 +6627,17 @@ class Editor {
                         <button class="touch-btn touch-jump" data-action="jump">
                             <span class="material-symbols-outlined">keyboard_double_arrow_up</span>
                         </button>
-                        ${hkEnabled ? `
+                        ${hasAttack ? `
                         <button class="touch-btn touch-attack" data-action="attack">
                             <span class="material-symbols-outlined">swords</span>
                         </button>
+                        ` : ''}
+                        ${hasDash ? `
                         <button class="touch-btn touch-dash" data-action="dash">
                             <span class="material-symbols-outlined">bolt</span>
                         </button>
+                        ` : ''}
+                        ${hasHeal ? `
                         <button class="touch-btn touch-heal" data-action="heal">
                             <span class="material-symbols-outlined">favorite</span>
                         </button>
@@ -6826,32 +6845,53 @@ class Editor {
         }
     }
     
-    // Update which touch buttons are visible based on enabled plugins
+    // Update which touch buttons are visible based on enabled plugins and abilities
     updateTouchButtonVisibility() {
         const touchControls = document.getElementById('touch-controls');
         if (!touchControls) return;
         
         const hkEnabled = window.PluginManager?.isEnabled('hk');
+        const hkConfig = this.world?.plugins?.hk || {};
         const buttonsContainer = touchControls.querySelector('.touch-buttons-right');
         
         if (buttonsContainer) {
-            // Check if HK buttons exist
             const attackBtn = buttonsContainer.querySelector('.touch-attack');
             const dashBtn = buttonsContainer.querySelector('.touch-dash');
             const healBtn = buttonsContainer.querySelector('.touch-heal');
             
-            // If HK is enabled but buttons don't exist, recreate touch controls
-            if (hkEnabled && !attackBtn) {
-                // Remove old controls and recreate
+            // Check what should be visible
+            const shouldShowAttack = hkEnabled;
+            const shouldShowDash = hkEnabled && hkConfig.dash;
+            const shouldShowHeal = hkEnabled;
+            
+            // Check if we need to recreate (button exists but shouldn't, or should exist but doesn't)
+            const needsRecreate = 
+                (shouldShowAttack && !attackBtn) || 
+                (!shouldShowAttack && attackBtn) ||
+                (shouldShowDash && !dashBtn) || 
+                (!shouldShowDash && dashBtn) ||
+                (shouldShowHeal && !healBtn) || 
+                (!shouldShowHeal && healBtn);
+            
+            if (needsRecreate) {
                 touchControls.remove();
                 this.updateTouchControls();
                 return;
             }
             
-            // If HK is disabled but buttons exist, just hide them
-            if (attackBtn) attackBtn.style.display = hkEnabled ? '' : 'none';
-            if (dashBtn) dashBtn.style.display = hkEnabled ? '' : 'none';
-            if (healBtn) healBtn.style.display = hkEnabled ? '' : 'none';
+            // Update visibility of existing buttons
+            if (attackBtn) attackBtn.style.display = shouldShowAttack ? '' : 'none';
+            if (dashBtn) dashBtn.style.display = shouldShowDash ? '' : 'none';
+            if (healBtn) healBtn.style.display = shouldShowHeal ? '' : 'none';
+        }
+    }
+    
+    // Called when plugin settings change to refresh touch controls
+    refreshTouchControls() {
+        const touchControls = document.getElementById('touch-controls');
+        if (touchControls && this.engine.touchscreenMode) {
+            touchControls.remove();
+            this.updateTouchControls();
         }
     }
 

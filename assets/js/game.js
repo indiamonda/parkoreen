@@ -254,7 +254,8 @@ class Player {
             
             // Variable jump height - cut upward velocity when jump key is released
             // This allows for shorter jumps by tapping vs holding
-            if (this.vy < 0 && !this.isOnGround) {
+            // Only enabled when Hollow Knight plugin is active
+            if (world.hasPlugin('hk') && this.vy < 0 && !this.isOnGround) {
                 this.vy = Math.max(this.vy, jumpForce * 0.4); // Cap at 40% of jump force
             }
         }
@@ -333,12 +334,16 @@ class Player {
             // Skip teleportals - they don't act as ground, only trigger teleportation
             if (obj.type === 'teleportal') continue;
             
-            // Handle spike ground collision based on mode
+            // Handle spike collision based on mode and dropHurtOnly
             if (obj.actingType === 'spike') {
                 // Use per-object spikeTouchbox if set, otherwise use world default
                 const spikeMode = obj.spikeTouchbox || worldSpikeMode;
                 
-                // If spike is attached to ground, skip ground collision for this spike
+                // Get dropHurtOnly setting (per-object or world default)
+                const worldDropHurtOnly = world?.dropHurtOnly || false;
+                const useDropHurtOnly = obj.dropHurtOnly !== undefined ? obj.dropHurtOnly : worldDropHurtOnly;
+                
+                // If spike is attached to ground, skip collision for this spike
                 // (the attached ground block will handle it)
                 if (world.isSpikeAttachedToGround(obj)) {
                     continue;
@@ -347,11 +352,24 @@ class Player {
                 // In 'air' mode, spikes have no interaction
                 if (spikeMode === 'air') continue;
                 
-                // In 'full' mode, spikes don't act as ground
-                if (spikeMode === 'full') continue;
+                // When dropHurtOnly is DISABLED, spikes have full collision (player can't walk through)
+                // When dropHurtOnly is ENABLED, only the flat part has collision
+                if (!useDropHurtOnly || spikeMode === 'full') {
+                    if (this.boxIntersects(box, obj)) {
+                        // For horizontal checks, block movement
+                        if (direction === 'horizontal') {
+                            collisions.push(obj);
+                        }
+                        // For vertical checks, block hitting from below but not landing
+                        else if (direction === 'vertical' && this.vy < 0) {
+                            collisions.push(obj);
+                        }
+                    }
+                    continue;
+                }
                 
-                // For normal, tip, ground, flag modes - check flat part collision
-            if (this.boxIntersects(box, obj)) {
+                // For normal, tip, ground, flag modes with dropHurtOnly enabled - check flat part collision
+                if (this.boxIntersects(box, obj)) {
                     const flatBox = this.getSpikeFlat(obj);
                     if (this.boxIntersects(box, flatBox)) {
                         // Flat part acts as ground in normal, tip, ground, flag modes
@@ -2069,6 +2087,11 @@ class GameEngine {
         // Particle system
         this.particles = [];
         
+        // Cloud system
+        this.clouds = [];
+        this.cloudsGenerated = false;
+        this.cloudTime = 0; // For slow cloud drift
+        
         this.setupCanvas();
         this.setupInput();
         this.audioManager.loadVolumeFromStorage();
@@ -2125,6 +2148,149 @@ class GameEngine {
             this.ctx.fill();
             this.ctx.restore();
         }
+    }
+    
+    // Generate a single cloud shape (multiple rectangles combined with flat bottom)
+    generateCloudShape() {
+        const rects = [];
+        // Random number of rectangles (3-7)
+        const numRects = 3 + Math.floor(Math.random() * 5);
+        
+        // Base width for the cloud
+        const baseWidth = 80 + Math.random() * 200;
+        const maxHeight = 40 + Math.random() * 60;
+        
+        // Generate rectangles that sit on a flat bottom
+        let currentX = 0;
+        for (let i = 0; i < numRects; i++) {
+            const rectWidth = (baseWidth / numRects) * (0.6 + Math.random() * 0.8);
+            const rectHeight = maxHeight * (0.4 + Math.random() * 0.6);
+            
+            rects.push({
+                x: currentX,
+                y: maxHeight - rectHeight, // Align to flat bottom
+                width: rectWidth,
+                height: rectHeight
+            });
+            
+            // Overlap rectangles slightly for continuous look
+            currentX += rectWidth * (0.5 + Math.random() * 0.4);
+        }
+        
+        // Calculate total width
+        const totalWidth = currentX + (rects.length > 0 ? rects[rects.length - 1].width * 0.5 : 0);
+        
+        return { rects, totalWidth, totalHeight: maxHeight };
+    }
+    
+    // Generate all clouds for the current session
+    generateClouds() {
+        this.clouds = [];
+        const numClouds = 15 + Math.floor(Math.random() * 10); // 15-25 clouds
+        
+        for (let i = 0; i < numClouds; i++) {
+            const shape = this.generateCloudShape();
+            
+            // Random base position (spread across a large area)
+            const baseX = (Math.random() - 0.5) * 8000;
+            const baseY = -800 + Math.random() * 600; // Upper portion of screen
+            
+            // Size multiplier (0.5 to 2.0) - affects parallax
+            const scale = 0.5 + Math.random() * 1.5;
+            
+            // Parallax factor: bigger clouds move MORE relative to player movement
+            // This creates depth where larger clouds feel closer
+            const parallaxFactor = 0.02 + scale * 0.03; // 0.02 to 0.065
+            
+            // Slow drift speed (independent of player)
+            const driftSpeed = 0.5 + Math.random() * 1.5; // pixels per second
+            
+            this.clouds.push({
+                baseX,
+                baseY,
+                scale,
+                shape,
+                parallaxFactor,
+                driftSpeed,
+                driftOffset: Math.random() * 10000 // Random starting drift position
+            });
+        }
+        
+        // Sort by scale (smaller clouds render first, appear further back)
+        this.clouds.sort((a, b) => a.scale - b.scale);
+        
+        this.cloudsGenerated = true;
+    }
+    
+    // Render clouds with parallax effect
+    renderClouds() {
+        const background = this.world?.background;
+        if (background === 'custom') return; // No clouds on custom backgrounds
+        
+        // Generate clouds if not yet done
+        if (!this.cloudsGenerated) {
+            this.generateClouds();
+        }
+        
+        // Update cloud drift time
+        this.cloudTime += 1 / 60; // Assuming 60fps updates
+        
+        // Determine cloud color based on background
+        let cloudColor;
+        if (background === 'galaxy') {
+            cloudColor = 'rgba(147, 130, 168, 0.6)'; // Grayish purple for galaxy
+        } else {
+            cloudColor = 'rgba(255, 255, 255, 0.85)'; // White for sky
+        }
+        
+        // Get player position for parallax (use camera if no player)
+        const playerX = this.localPlayer?.x ?? this.camera.x;
+        const playerY = this.localPlayer?.y ?? this.camera.y;
+        
+        this.ctx.save();
+        
+        for (const cloud of this.clouds) {
+            // Calculate cloud position with parallax
+            // Bigger clouds (higher parallaxFactor) move more with player movement
+            const driftX = cloud.driftOffset + this.cloudTime * cloud.driftSpeed;
+            const parallaxX = cloud.baseX + driftX - playerX * cloud.parallaxFactor;
+            const parallaxY = cloud.baseY - playerY * cloud.parallaxFactor * 0.3; // Less vertical parallax
+            
+            // Convert to screen coordinates
+            const screenX = parallaxX - this.camera.x + this.camera.width / (2 * this.camera.zoom);
+            const screenY = parallaxY - this.camera.y + this.camera.height / (3 * this.camera.zoom);
+            
+            // Cull clouds outside visible area (with margin for large clouds)
+            const cloudWidth = cloud.shape.totalWidth * cloud.scale;
+            const cloudHeight = cloud.shape.totalHeight * cloud.scale;
+            const margin = 200;
+            
+            if (screenX + cloudWidth < -margin || screenX > this.camera.width / this.camera.zoom + margin ||
+                screenY + cloudHeight < -margin || screenY > this.camera.height / this.camera.zoom + margin) {
+                continue;
+            }
+            
+            // Draw cloud
+            this.ctx.fillStyle = cloudColor;
+            this.ctx.globalAlpha = 0.7 + cloud.scale * 0.15; // Bigger clouds slightly more opaque
+            
+            for (const rect of cloud.shape.rects) {
+                this.ctx.fillRect(
+                    screenX + rect.x * cloud.scale,
+                    screenY + rect.y * cloud.scale,
+                    rect.width * cloud.scale,
+                    rect.height * cloud.scale
+                );
+            }
+        }
+        
+        this.ctx.restore();
+    }
+    
+    // Regenerate clouds (call when starting new game or resetting)
+    regenerateClouds() {
+        this.cloudsGenerated = false;
+        this.cloudTime = 0;
     }
 
     setupCanvas() {
@@ -2192,10 +2358,10 @@ class GameEngine {
         this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
         this.canvas.addEventListener('wheel', (e) => this.onWheel(e));
         
-        // Touch
-        this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e));
-        this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e));
-        this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e));
+        // Touch (passive: false to allow preventDefault for placement modes)
+        this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
         
         // Prevent context menu
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -2411,19 +2577,88 @@ class GameEngine {
             this.mouse.x = touch.clientX;
             this.mouse.y = touch.clientY;
             this.mouse.down = true;
+            this.mouse.button = 0; // Simulate left click
+            
+            // Store last touch position for movement calculation
+            this._lastTouchX = touch.clientX;
+            this._lastTouchY = touch.clientY;
+            
+            // Prevent scrolling in editor mode
+            if (this.state === GameState.EDITOR) {
+                e.preventDefault();
+            }
+            
+            // Call editor callback with synthetic mouse event
+            if (this.onMouseDownCallback) {
+                const syntheticEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                    button: 0,
+                    movementX: 0,
+                    movementY: 0,
+                    preventDefault: () => e.preventDefault(),
+                    stopPropagation: () => e.stopPropagation()
+                };
+                this.onMouseDownCallback(syntheticEvent);
+            }
         }
     }
 
     onTouchMove(e) {
         if (e.touches.length === 1) {
             const touch = e.touches[0];
+            const movementX = touch.clientX - (this._lastTouchX || touch.clientX);
+            const movementY = touch.clientY - (this._lastTouchY || touch.clientY);
+            
             this.mouse.x = touch.clientX;
             this.mouse.y = touch.clientY;
+            
+            this._lastTouchX = touch.clientX;
+            this._lastTouchY = touch.clientY;
+            
+            // Prevent scrolling in editor mode
+            if (this.state === GameState.EDITOR) {
+                e.preventDefault();
+            }
+            
+            // Call editor callback with synthetic mouse event
+            if (this.onMouseMoveCallback) {
+                const syntheticEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                    movementX: movementX,
+                    movementY: movementY,
+                    preventDefault: () => e.preventDefault(),
+                    stopPropagation: () => e.stopPropagation()
+                };
+                this.onMouseMoveCallback(syntheticEvent);
+            }
         }
     }
 
     onTouchEnd(e) {
         this.mouse.down = false;
+        
+        // Prevent scrolling in editor mode
+        if (this.state === GameState.EDITOR) {
+            e.preventDefault();
+        }
+        
+        // Call editor callback with synthetic mouse event
+        if (this.onMouseUpCallback) {
+            const syntheticEvent = {
+                clientX: this._lastTouchX || this.mouse.x,
+                clientY: this._lastTouchY || this.mouse.y,
+                button: 0,
+                preventDefault: () => e.preventDefault(),
+                stopPropagation: () => e.stopPropagation()
+            };
+            this.onMouseUpCallback(syntheticEvent);
+        }
+        
+        // Clear last touch position
+        this._lastTouchX = null;
+        this._lastTouchY = null;
     }
 
     setTouchInput(direction, pressed) {
@@ -2462,10 +2697,12 @@ class GameEngine {
         if (this.isRunning) return;
         
         this.isRunning = true;
-        this.lastTime = performance.now();
+        this.lastTime = null; // Will be set on first frame to match rAF timing
         this.accumulator = 0;
         // Fixed timestep: 60 ticks per second
         this.fixedDeltaTime = 1 / 60;
+        // Maximum physics updates per frame to prevent spiral of death
+        this.maxUpdatesPerFrame = 5;
         // Bind once to avoid creating new functions every frame
         this._boundGameLoop = this._boundGameLoop || this.gameLoop.bind(this);
         requestAnimationFrame(this._boundGameLoop);
@@ -2478,22 +2715,36 @@ class GameEngine {
     gameLoop(currentTime) {
         if (!this.isRunning) return;
         
-        // Use performance.now() if not provided (first call)
-        currentTime = currentTime || performance.now();
+        // On first frame, initialize lastTime to current frame time
+        // This prevents large deltaTime on first frame due to timing mismatch
+        if (this.lastTime === null) {
+            this.lastTime = currentTime;
+            requestAnimationFrame(this._boundGameLoop);
+            return;
+        }
         
         let deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
         
-        // Cap deltaTime to prevent spiral of death on slow frames
-        if (deltaTime > 0.25) deltaTime = 0.25;
+        // Cap deltaTime to prevent large jumps (e.g., after tab switch)
+        if (deltaTime > 0.1) deltaTime = 0.1;
         
         // Accumulate time for fixed timestep physics
         this.accumulator += deltaTime;
         
-        // Run physics at fixed 60Hz
-        while (this.accumulator >= this.fixedDeltaTime) {
+        // Cap accumulator to prevent spiral of death (max 5 updates per frame)
+        const maxAccumulator = this.fixedDeltaTime * this.maxUpdatesPerFrame;
+        if (this.accumulator > maxAccumulator) {
+            this.accumulator = maxAccumulator;
+        }
+        
+        // Run physics at fixed 60Hz - exactly the same number of updates
+        // regardless of display refresh rate
+        let updateCount = 0;
+        while (this.accumulator >= this.fixedDeltaTime && updateCount < this.maxUpdatesPerFrame) {
             this.update(this.fixedDeltaTime);
             this.accumulator -= this.fixedDeltaTime;
+            updateCount++;
         }
         
         this.render();
@@ -2780,6 +3031,9 @@ class GameEngine {
         this.ctx.save();
         this.ctx.scale(this.camera.zoom, this.camera.zoom);
         
+        // Render clouds (behind everything, parallax effect)
+        this.renderClouds();
+        
         // Render world objects behind player
         const { layers, checkpointColors } = this.world.render(this.ctx, this.camera);
         
@@ -2862,10 +3116,13 @@ class GameEngine {
         this.lastCheckpoint = null;
         this.gameStartTime = Date.now();
         
+        // Regenerate clouds for new game session
+        this.regenerateClouds();
+
         // Set zoom limits for play mode (can only zoom in from default)
         this.camera.setZoomLimits('play');
         this.camera.resetZoom();
-        
+
         // Reset checkpoint states
         for (const obj of this.world.objects) {
             if (obj.actingType === 'checkpoint') {
@@ -2906,6 +3163,9 @@ class GameEngine {
         this.state = GameState.TESTING;
         this.lastCheckpoint = null;
         this.gameStartTime = Date.now();
+        
+        // Regenerate clouds for test session
+        this.regenerateClouds();
         
         // Set zoom limits for test mode (zoom freely)
         this.camera.setZoomLimits('test');

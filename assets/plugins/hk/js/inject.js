@@ -47,6 +47,7 @@
         player.dashStartTime = 0;
         player.dashCooldown = 0;
         player.dashDirection = 1;
+        player.dashTrail = []; // Trail of recent positions for dash effect
         
         // Super Dash
         player.hasSuperDash = config.superDash || false;
@@ -83,7 +84,8 @@
         // Attack hit flags (prevent variable jump height interference)
         player._pogoJumping = false;
         player._hitUpward = false;
-        
+        player._attackHitThisSwing = false;
+
         return data;
     }, pluginId, 5); // Run before HP plugin
     
@@ -170,17 +172,19 @@
                 const playerSpeed = world?.playerSpeed ?? 5;
                 
                 // Horizontal push only happens during the first half of the bounce
+                // Use reduced speed (30% of player speed) for gentler wall repel
                 if (now < player.wallBounceMidTime) {
-                    player.vx = player.wallBounceDirection * playerSpeed;
+                    player.vx = player.wallBounceDirection * playerSpeed * 0.3;
                 }
                 // After midpoint, player regains horizontal control (vx handled by normal physics)
                 
-                // Normal gravity applies during bounce
-                const worldGravity = world?.gravity ?? 0.5;
+                // Normal gravity applies during bounce (0.5 is the default from game.js)
+                const DEFAULT_GRAVITY = 0.5;
+                const worldGravity = world?.gravity ?? DEFAULT_GRAVITY;
                 player.vy += worldGravity;
                 
-                // Cap fall speed
-                const maxFallSpeed = 20 * (worldGravity / 0.5);
+                // Cap fall speed (same formula as main physics)
+                const maxFallSpeed = 20 * (worldGravity / DEFAULT_GRAVITY);
                 if (player.vy > maxFallSpeed) player.vy = maxFallSpeed;
                 
                 // Don't call moveWithCollision here - game engine will call it when skipPhysics is true
@@ -193,7 +197,8 @@
         
         // Handle wall cling physics - use skipPhysics to control fall speed
         if (player.isWallClinging) {
-            const worldGravity = world?.gravity ?? 0.5;
+            const DEFAULT_GRAVITY_CLING = 0.5;
+            const worldGravity = world?.gravity ?? DEFAULT_GRAVITY_CLING;
             const worldJumpForce = world?.jumpForce ?? -11;
             const playerSpeed = world?.playerSpeed ?? 5;
             
@@ -203,12 +208,12 @@
                 player.isWallClinging = false;
                 player.isWallBouncing = true;
                 player.wallBounceDirection = -player.wallClingDirection;
-                const bounceDuration = 150; // Wall bounce total duration (150ms)
+                const bounceDuration = 60; // Wall bounce total duration (60ms) - very short
                 player.wallBounceEndTime = now + bounceDuration;
                 player.wallBounceMidTime = now + bounceDuration / 2; // Horizontal push stops at half duration
                 
-                // Horizontal push away from wall (same as player move speed)
-                player.vx = player.wallBounceDirection * playerSpeed;
+                // Horizontal push away from wall (30% of player speed for gentle repel)
+                player.vx = player.wallBounceDirection * playerSpeed * 0.3;
                 
                 // Wall jump is 50% of normal jump (no gravity scaling - consistent height)
                 player.vy = worldJumpForce * 0.5;
@@ -261,67 +266,53 @@
             player.isAttacking = true;
             player.attackDirection = direction;
             player.attackStartTime = now;
-            
-            // Check for object collision with attack hitbox
-            const hitbox = getAttackHitbox(player, direction);
+            player._attackHitThisSwing = false; // Reset hit flag for new attack
+        }
+        
+        // Continuous collision check during attack (for pogo bounce to work mid-attack)
+        if (player.isAttacking && !player._attackHitThisSwing) {
+            const hitbox = getAttackHitbox(player, player.attackDirection);
             const worldJumpForce = world?.jumpForce ?? -11;
             
-            for (const obj of world.objects) {
+            // Only check objects that can be hit (spike or soulStatus)
+            for (let i = 0; i < world.objects.length; i++) {
+                const obj = world.objects[i];
+                // Quick reject: only check hittable objects
+                const isHittable = obj.actingType === 'soulStatus' || (obj.actingType === 'spike' && obj.collision !== false);
+                if (!isHittable) continue;
+                
+                // Quick reject: rough bounding box check before precise check
+                if (obj.x > hitbox.x + hitbox.width + 50 || obj.x + obj.width < hitbox.x - 50 ||
+                    obj.y > hitbox.y + hitbox.height + 50 || obj.y + obj.height < hitbox.y - 50) {
+                    continue;
+                }
+                
                 if (boxIntersects(hitbox, obj)) {
+                    player._attackHitThisSwing = true;
+                    
                     // Soul Statue - hit sound now, soul + getSoul sound 0.5s later
                     if (obj.actingType === 'soulStatus') {
-                        // Play hit sound immediately
                         pluginManager.playSound(pluginId, 'hitSoulStatus');
-                        
-                        // Delay soul gain and getSoul sound by 0.5 seconds
                         setTimeout(() => {
                             player.soul = Math.min(player.maxSoul, player.soul + 16.5);
                             pluginManager.playSound(pluginId, 'getSoul');
                         }, 500);
-                        
-                        // Bounce based on attack direction
-                        if (direction === 'down') {
-                            // Pogo bounce - high jump (no key press needed, always full height)
-                            const pogoMultiplier = HK_CONFIG.pogoBouncePower || 1.2;
-                            player.vy = worldJumpForce * pogoMultiplier;
-                            player.monarchWingsUsed = 0; // Reset monarch wing
-                            player._pogoJumping = true; // Flag to prevent variable jump height interference
-                        } else if (direction === 'up') {
-                            // Hit upward - immediately start falling
-                            player.vy = 2; // Small downward velocity to start fall
-                            player._hitUpward = true; // Flag to prevent variable jump height interference
-                        } else {
-                            // Forward hit - horizontal repel only, no vertical change
-                            player.vx = -player.facingDirection * 5;
-                        }
-
-                        // Brief invincibility during bounce (200ms)
-                        player.attackBounceUntil = now + 200;
-                        break;
                     }
-
-                    // Spike - just bounce, no soul
-                    if (obj.actingType === 'spike' && obj.collision !== false) {
-                        // Bounce based on attack direction
-                        if (direction === 'down') {
-                            // Pogo bounce - high jump (no key press needed, always full height)
-                            const pogoMultiplier = HK_CONFIG.pogoBouncePower || 1.2;
-                            player.vy = worldJumpForce * pogoMultiplier;
-                            player.monarchWingsUsed = 0; // Reset monarch wing
-                            player._pogoJumping = true; // Flag to prevent variable jump height interference
-                        } else if (direction === 'up') {
-                            // Hit upward - immediately start falling
-                            player.vy = 2; // Small downward velocity to start fall
-                            player._hitUpward = true; // Flag to prevent variable jump height interference
-                        } else {
-                            // Forward hit - horizontal repel only, no vertical change
-                            player.vx = -player.facingDirection * 5;
-                        }
-
-                        // Brief invincibility during bounce (200ms)
-                        player.attackBounceUntil = now + 200;
-                        break;
+                    
+                    // Bounce based on attack direction
+                    if (player.attackDirection === 'down') {
+                        const pogoMultiplier = HK_CONFIG.pogoBouncePower || 1.2;
+                        player.vy = worldJumpForce * pogoMultiplier;
+                        player.monarchWingsUsed = 0;
+                        player._pogoJumping = true;
+                    } else if (player.attackDirection === 'up') {
+                        player.vy = 2;
+                        player._hitUpward = true;
+                    } else {
+                        player.vx = -player.facingDirection * 5;
                     }
+                    player.attackBounceUntil = now + 200;
+                    break;
                 }
             }
         }
@@ -329,6 +320,7 @@
         // Update attack state
         if (player.isAttacking && now - player.attackStartTime >= 200) {
             player.isAttacking = false;
+            player._attackHitThisSwing = false; // Reset for next attack
             player.attackCooldown = now + 100;
         }
         
@@ -352,9 +344,29 @@
                 player.isDashing = false;
                 player.dashCooldown = now + 400;
             } else {
+                // Add trail position every 25ms (not every frame) - max 6 positions
+                const lastTrail = player.dashTrail[player.dashTrail.length - 1];
+                if (!lastTrail || now - lastTrail.time >= 25) {
+                    // Limit to 6 trail positions max
+                    if (player.dashTrail.length >= 6) {
+                        player.dashTrail.shift();
+                    }
+                    player.dashTrail.push({
+                        x: player.x,
+                        y: player.y,
+                        time: now
+                    });
+                }
+                
                 player.vx = player.dashDirection * 12; // Dash speed
                 player.vy = 0;
                 return { ...data, skipPhysics: true };
+            }
+        } else if (player.dashTrail.length > 0) {
+            // Clean up old trail only when there are items and not dashing
+            const oldest = player.dashTrail[0];
+            if (oldest && now - oldest.time > 200) {
+                player.dashTrail.shift();
             }
         }
         
@@ -540,6 +552,7 @@
         player.soul = 0;
         player.isAttacking = false;
         player.isDashing = false;
+        player.dashTrail = [];
         player.isSuperDashing = false;
         player.superDashCharging = false;
         player._playedCharge2 = false;
@@ -564,6 +577,32 @@
     pluginManager.registerHook('render.player', (data) => {
         const { ctx, player, camera } = data;
         
+        // Draw dash trail effect (optimized)
+        if (player.dashTrail && player.dashTrail.length > 0) {
+            const now = Date.now();
+            const color = player.color || '#45B7D1';
+            
+            ctx.save();
+            ctx.fillStyle = color;
+            
+            for (let i = 0; i < player.dashTrail.length; i++) {
+                const trail = player.dashTrail[i];
+                const age = now - trail.time;
+                if (age > 200) continue; // Skip expired trails
+                
+                const alpha = (1 - age / 200) * 0.4;
+                ctx.globalAlpha = alpha;
+                ctx.fillRect(
+                    trail.x - camera.x,
+                    trail.y - camera.y,
+                    player.width,
+                    player.height
+                );
+            }
+            
+            ctx.restore();
+        }
+        
         // Draw attack slash effect
         if (player.isAttacking) {
             const hitbox = getAttackHitbox(player, player.attackDirection);
@@ -577,33 +616,40 @@
             ctx.save();
             ctx.globalAlpha = 1 - progress * 0.5; // Fade out as attack progresses
             
-            // Draw slash arc based on direction
+            // Draw oval attack effect
             ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 2;
+
             if (player.attackDirection === 'up') {
-                // Upward slash - horizontal arc above player
+                // Upward attack - vertical oval above player
                 const centerX = screenX + hitbox.width / 2;
-                const centerY = screenY + hitbox.height;
+                const centerY = screenY + hitbox.height / 2;
+                const radiusX = hitbox.width / 2;
+                const radiusY = hitbox.height / 2;
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, hitbox.height * 0.8, Math.PI + 0.3, Math.PI * 2 - 0.3);
+                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.stroke();
             } else if (player.attackDirection === 'down') {
-                // Downward slash - horizontal arc below player
+                // Downward attack - vertical oval below player
                 const centerX = screenX + hitbox.width / 2;
-                const centerY = screenY;
+                const centerY = screenY + hitbox.height / 2;
+                const radiusX = hitbox.width / 2;
+                const radiusY = hitbox.height / 2;
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, hitbox.height * 0.8, 0.3, Math.PI - 0.3);
+                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.stroke();
             } else {
-                // Forward slash - vertical arc in front of player
-                const centerX = player.facingDirection > 0 ? screenX : screenX + hitbox.width;
+                // Forward attack - horizontal oval in front of player
+                const centerX = screenX + hitbox.width / 2;
                 const centerY = screenY + hitbox.height / 2;
-                const startAngle = player.facingDirection > 0 ? -Math.PI / 2 - 0.5 : Math.PI / 2 - 0.5;
-                const endAngle = player.facingDirection > 0 ? Math.PI / 2 + 0.5 : -Math.PI / 2 + 0.5;
+                const radiusX = hitbox.width / 2;
+                const radiusY = hitbox.height / 2;
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, hitbox.width * 0.8, startAngle, endAngle);
+                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.stroke();
             }
             
@@ -702,31 +748,30 @@
     // ============================================
     
     function getAttackHitbox(player, direction) {
-        const attackRange = 64; // How far the attack reaches
-        const attackWidth = 28; // Width for up/down attacks
-        const attackHeight = 28; // Height for forward attacks
-        
+        const attackLength = 72; // How far the attack reaches (length of oval)
+        const attackWidth = 20; // Width of oval (shorter axis)
+
         if (direction === 'up') {
             return {
                 x: player.x + (player.width - attackWidth) / 2,
-                y: player.y - attackRange,
+                y: player.y - attackLength,
                 width: attackWidth,
-                height: attackRange
+                height: attackLength
             };
         } else if (direction === 'down') {
             return {
                 x: player.x + (player.width - attackWidth) / 2,
                 y: player.y + player.height,
                 width: attackWidth,
-                height: attackRange
+                height: attackLength
             };
         } else {
             // Forward attack - extends in the direction player is facing
             return {
-                x: player.facingDirection > 0 ? player.x + player.width : player.x - attackRange,
-                y: player.y + (player.height - attackHeight) / 2,
-                width: attackRange,
-                height: attackHeight
+                x: player.facingDirection > 0 ? player.x + player.width : player.x - attackLength,
+                y: player.y + (player.height - attackWidth) / 2,
+                width: attackLength,
+                height: attackWidth
             };
         }
     }
