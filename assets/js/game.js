@@ -97,6 +97,7 @@ class Player {
             down: false,
             jump: false,
             shift: false,
+            space: false,
             // Plugin inputs (HK controls)
             attack: false,
             heal: false,
@@ -107,8 +108,8 @@ class Player {
         // Touchboxes - positioned lower on the player sprite
         // Ground touchbox: used for ground collision (full width for partial ground contact)
         this.groundTouchbox = { x: 0, y: 8, width: PLAYER_SIZE, height: PLAYER_SIZE - 8 };
-        // Hurt touchbox: used for spike damage detection (slightly inset from visual)
-        this.hurtTouchbox = { x: 2, y: 4, width: PLAYER_SIZE - 4, height: PLAYER_SIZE - 6 };
+        // Hurt touchbox: used for spike damage detection (moderately inset from visual)
+        this.hurtTouchbox = { x: 4, y: 6, width: PLAYER_SIZE - 8, height: PLAYER_SIZE - 8 };
         
         this.isLocal = false;
         this.isDead = false;
@@ -474,7 +475,7 @@ class Player {
     
     getSpikeFlat(spike) {
         const r = spike.rotation || 0;
-        const fd = spike.height * 0.35;
+        const fd = spike.height * 0.22;
         const b = this._spikeFlat || (this._spikeFlat = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
             b.x = spike.x; b.y = spike.y + spike.height - fd; b.width = spike.width; b.height = fd;
@@ -492,24 +493,20 @@ class Player {
         const r = spike.rotation || 0;
         const w = spike.width;
         const h = spike.height;
-        // Spike visual starts at ~44% from the tip side.
-        // Flat safe zone is 35% from the base side (starts at 65% from tip).
-        // Danger zone: from 44% to 62% from tip (3% gap before flat zone).
-        const visStart = 0.44;
-        const dangerLen = 0.18;
+        // Danger zone covers the main body of the spike, positioned low (close to base).
+        // Flat safe zone is 22% from base side. Danger starts at 30% from tip, ends at 76%.
+        // For a 32px spike: danger is ~14.7px tall, starting 9.6px from tip.
+        const dangerStart = 0.30;
+        const dangerLen = 0.46;
         const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
-            // tip up, flat at bottom
-            b.x = spike.x; b.y = spike.y + h * visStart; b.width = w; b.height = h * dangerLen;
+            b.x = spike.x; b.y = spike.y + h * dangerStart; b.width = w; b.height = h * dangerLen;
         } else if (r === 90) {
-            // tip right, flat at left
-            b.x = spike.x + w * (1 - visStart - dangerLen); b.y = spike.y; b.width = w * dangerLen; b.height = h;
+            b.x = spike.x + w * (1 - dangerStart - dangerLen); b.y = spike.y; b.width = w * dangerLen; b.height = h;
         } else if (r === 180) {
-            // tip down, flat at top
-            b.x = spike.x; b.y = spike.y + h * (1 - visStart - dangerLen); b.width = w; b.height = h * dangerLen;
+            b.x = spike.x; b.y = spike.y + h * (1 - dangerStart - dangerLen); b.width = w; b.height = h * dangerLen;
         } else {
-            // tip left, flat at right
-            b.x = spike.x + w * visStart; b.y = spike.y; b.width = w * dangerLen; b.height = h;
+            b.x = spike.x + w * dangerStart; b.y = spike.y; b.width = w * dangerLen; b.height = h;
         }
         return b;
     }
@@ -644,7 +641,7 @@ class Player {
             const fs = Math.round(16 * fontScale);
             const posText = `(${Math.round(this.x)}, ${Math.round(this.y)})`;
             const tx = screenX + this.width / 2;
-            ctx.font = `${fs}px monospace`;
+            ctx.font = `${fs}px "Parkoreen Game", sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillText(posText, tx + 1, screenY - 9);
@@ -655,7 +652,7 @@ class Player {
         const nfs = Math.round(14 * fontScale);
         const nameY = screenY + this.height + Math.round(16 * fontScale);
         const nameX = screenX + this.width / 2;
-        ctx.font = `${nfs}px monospace`;
+        ctx.font = `${nfs}px "Parkoreen Game", sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillText(this.name, nameX + 1, nameY + 1);
@@ -2360,12 +2357,12 @@ class GameEngine {
     
     // Spawn circular particles (for checkpoint touch effect)
     spawnCheckpointParticles(x, y, color = '#4CAF50') {
-        const particleCount = 12;
+        const particleCount = 14;
         for (let i = 0; i < particleCount; i++) {
             const angle = (Math.PI * 2 / particleCount) * i + (Math.random() - 0.5) * 0.5;
-            const speed = 80 + Math.random() * 60;
-            const size = 4 + Math.random() * 4;
-            
+            const speed = 70 + Math.random() * 50;
+            const size = 3 + Math.random() * 4;
+
             this.particles.push({
                 x: x,
                 y: y,
@@ -2375,7 +2372,8 @@ class GameEngine {
                 color: color,
                 alpha: 1,
                 life: 1,
-                decay: 0.02 + Math.random() * 0.01
+                decay: 0.018 + Math.random() * 0.01,
+                shape: 'circle'
             });
         }
     }
@@ -2402,8 +2400,7 @@ class GameEngine {
         const cx = this.camera.x;
         const cy = this.camera.y;
         const zoom = this.camera.zoom;
-        
-        // Group by color to minimize state changes, draw as rects for speed
+
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
             const screenX = (p.x - cx) * zoom;
@@ -2411,7 +2408,13 @@ class GameEngine {
             const size = p.size * zoom;
             ctx.globalAlpha = p.alpha;
             ctx.fillStyle = p.color;
-            ctx.fillRect(screenX - size, screenY - size, size * 2, size * 2);
+            if (p.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillRect(screenX - size, screenY - size, size * 2, size * 2);
+            }
         }
         ctx.globalAlpha = 1;
     }
@@ -2467,8 +2470,8 @@ class GameEngine {
             
             const screenX = (i / numClouds) * cloudAreaWidth - cloudAreaWidth / 3 + (Math.random() - 0.5) * 200;
             
-            // Each cloud's Y is 50-500px different from the previous one
-            const yOffset = (50 + Math.random() * 450) * (Math.random() < 0.5 ? -1 : 1);
+            // Each cloud's Y is 50-1000px different from the previous one
+            const yOffset = (50 + Math.random() * 950) * (Math.random() < 0.5 ? -1 : 1);
             let screenY = lastY + yOffset;
             // Keep within the cloud area
             if (screenY < 15) screenY = 15 + Math.random() * 100;
