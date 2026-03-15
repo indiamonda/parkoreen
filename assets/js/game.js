@@ -151,7 +151,7 @@ class Player {
         let dx = 0, dy = 0;
         if (this.input.left) dx -= 1;
         if (this.input.right) dx += 1;
-        if (this.input.up) dy -= 1;
+        if (this.input.up || this.input.jump) dy -= 1;
         if (this.input.down || this.input.shift) dy += 1;
         
         // Normalize so diagonal movement isn't faster
