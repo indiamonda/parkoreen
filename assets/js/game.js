@@ -334,6 +334,12 @@ class Player {
             // Skip teleportals - they don't act as ground, only trigger teleportation
             if (obj.type === 'teleportal') continue;
             
+            // Spinners (saw blades) acting as spikes have no ground collision
+            // They only damage - player should not stand on them
+            if ((obj.type === 'spinner' || obj.appearanceType === 'spinner') && obj.actingType === 'spike') {
+                continue;
+            }
+            
             // Handle spike collision based on mode and dropHurtOnly
             if (obj.actingType === 'spike') {
                 // Use per-object spikeTouchbox if set, otherwise use world default
@@ -397,44 +403,52 @@ class Player {
         for (const obj of world.objects) {
             // Only check objects that act as spikes and have collision enabled
             if (obj.actingType === 'spike' && obj.collision !== false) {
-                // Use per-object spikeTouchbox if set, otherwise use world default
-                const spikeMode = obj.spikeTouchbox || worldSpikeMode;
-                
-                // In 'air', 'ground', or 'flag' mode, spikes don't damage
-                if (spikeMode === 'air' || spikeMode === 'ground' || spikeMode === 'flag') continue;
-                
-                // Check dropHurtOnly - if enabled, only hurt when player moves toward spike tip
-                // Use per-object dropHurtOnly if set, otherwise use world default
-                const useDropHurtOnly = obj.dropHurtOnly !== undefined ? obj.dropHurtOnly : dropHurtOnly;
-                if (useDropHurtOnly && !this.isMovingTowardSpikeTip(obj)) {
-                    continue;
-                }
-                
                 let gotHit = false;
                 
-                // In 'full' mode, any contact with spike = damage
-                if (spikeMode === 'full') {
-                if (this.boxIntersects(hurtBox, obj)) {
+                // Spinners (saw blades) damage on ANY contact - no touchbox modes apply
+                if (obj.type === 'spinner' || obj.appearanceType === 'spinner') {
+                    if (this.boxIntersects(hurtBox, obj)) {
                         gotHit = true;
                     }
-                }
-                
-                // In 'normal' mode, flat part is safe, rest damages
-                if (spikeMode === 'normal') {
-                    const flatBox = this.getSpikeFlat(obj);
-                    const dangerBox = this.getSpikeDanger(obj);
+                } else {
+                    // Regular spike - apply touchbox modes
+                    // Use per-object spikeTouchbox if set, otherwise use world default
+                    const spikeMode = obj.spikeTouchbox || worldSpikeMode;
                     
-                    // Check if touching danger zone (not in flat area)
-                    if (this.boxIntersects(hurtBox, dangerBox) && !this.boxIntersects(hurtBox, flatBox)) {
-                        gotHit = true;
+                    // In 'air', 'ground', or 'flag' mode, spikes don't damage
+                    if (spikeMode === 'air' || spikeMode === 'ground' || spikeMode === 'flag') continue;
+                    
+                    // Check dropHurtOnly - if enabled, only hurt when player moves toward spike tip
+                    // Use per-object dropHurtOnly if set, otherwise use world default
+                    const useDropHurtOnly = obj.dropHurtOnly !== undefined ? obj.dropHurtOnly : dropHurtOnly;
+                    if (useDropHurtOnly && !this.isMovingTowardSpikeTip(obj)) {
+                        continue;
                     }
-                }
-                
-                // In 'tip' mode, only the very tip damages
-                if (spikeMode === 'tip') {
-                    const tipBox = this.getSpikeTip(obj);
-                    if (this.boxIntersects(hurtBox, tipBox)) {
-                        gotHit = true;
+                    
+                    // In 'full' mode, any contact with spike = damage
+                    if (spikeMode === 'full') {
+                        if (this.boxIntersects(hurtBox, obj)) {
+                            gotHit = true;
+                        }
+                    }
+                    
+                    // In 'normal' mode, flat part is safe, rest damages
+                    if (spikeMode === 'normal') {
+                        const flatBox = this.getSpikeFlat(obj);
+                        const dangerBox = this.getSpikeDanger(obj);
+                        
+                        // Check if touching danger zone (not in flat area)
+                        if (this.boxIntersects(hurtBox, dangerBox) && !this.boxIntersects(hurtBox, flatBox)) {
+                            gotHit = true;
+                        }
+                    }
+                    
+                    // In 'tip' mode, only the very tip damages
+                    if (spikeMode === 'tip') {
+                        const tipBox = this.getSpikeTip(obj);
+                        if (this.boxIntersects(hurtBox, tipBox)) {
+                            gotHit = true;
+                        }
                     }
                 }
                 
@@ -3246,7 +3260,15 @@ class GameEngine {
         this.state = GameState.EDITOR;
         this.localPlayer = null;
         this.remotePlayers.clear();
-        
+
+        // Reset checkpoint states back to default
+        for (const obj of this.world.objects) {
+            if (obj.actingType === 'checkpoint') {
+                obj.checkpointState = 'default';
+            }
+        }
+        this.lastCheckpoint = null;
+
         // Set zoom limits for editor mode (zoom freely)
         this.camera.setZoomLimits('editor');
         

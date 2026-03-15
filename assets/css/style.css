@@ -1021,6 +1021,78 @@ a:hover {
     margin: var(--spacing-xs) var(--spacing-sm);
 }
 
+/* Selection Toolbar */
+.selection-toolbar {
+    bottom: var(--spacing-lg);
+}
+
+.selection-mouse-toolbar {
+    bottom: calc(var(--spacing-lg) + 80px);
+}
+
+.sel-toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.sel-toolbar-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    padding: 0 2px;
+}
+
+.sel-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: 0 var(--spacing-sm);
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: center;
+}
+
+.sel-cancel-btn {
+    background: var(--danger) !important;
+    border-color: var(--danger) !important;
+}
+
+/* MIXED overlay for multi-edit booleans/selects */
+.multi-mixed-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    z-index: 2;
+    transition: background var(--transition);
+}
+
+.multi-mixed-overlay:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.multi-mixed-select {
+    top: auto;
+    bottom: 0;
+    height: 36px;
+    border-radius: var(--border-radius);
+}
+
 /* ====================================
    LAYERS PANEL
    ==================================== */

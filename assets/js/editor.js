@@ -12,7 +12,19 @@ const EditorTool = {
     MOVE: 'move',
     DUPLICATE: 'duplicate',
     ROTATE: 'rotate',
-    ERASE: 'erase'
+    ERASE: 'erase',
+    SELECT: 'select'
+};
+
+const SelectionMode = {
+    QUOT: 'quot',
+    MULTI: 'multi',
+    MOUSE: 'mouse'
+};
+
+const SelectionAction = {
+    SELECT: 'select',
+    DESELECT: 'deselect'
 };
 
 const PlacementMode = {
@@ -157,6 +169,18 @@ class Editor {
             vSpacing: 0
         };
         
+        // Multi-selection state
+        this.selectedObjects = new Set();
+        this.selectionMode = SelectionMode.QUOT;
+        this.selectionAction = SelectionAction.SELECT;
+        this.selectionRect = null; // {startX, startY, endX, endY} for Quot mode drag
+        this.isSelectionActive = false; // Whether we're in "select tool" mode
+        this.selectionMovingObjects = null; // Array of {obj, offsetX, offsetY} during move
+        this.selectionMoveStart = null; // {x, y} world pos where move started
+        
+        // Grid visibility
+        this.showGrid = true;
+        
         // Erase settings
         this.eraseSettings = {
             eraseType: 'all', // 'all', 'top', 'bottom'
@@ -290,6 +314,14 @@ class Editor {
                 <span class="material-symbols-outlined">sync</span>
                 <span class="toolbar-btn-label">Rotate (R)</span>
             </button>
+            <button class="toolbar-btn" data-tool="select" title="Select (V)">
+                <span class="material-symbols-outlined">select_all</span>
+                <span class="toolbar-btn-label">Select (V)</span>
+            </button>
+            <button class="toolbar-btn active" data-action="toggle-grid" title="Toggle Grid (H)">
+                <span class="material-symbols-outlined">grid_on</span>
+                <span class="toolbar-btn-label">Grid (H)</span>
+            </button>
             <div class="toolbar-divider"></div>
             <button class="toolbar-btn" data-action="zoom-in" title="Zoom In">
                 <span class="material-symbols-outlined">zoom_in</span>
@@ -307,6 +339,123 @@ class Editor {
         `;
         document.body.appendChild(toolbar);
         this.ui.toolbar = toolbar;
+        
+        this.createSelectionToolbar();
+    }
+    
+    createSelectionToolbar() {
+        // Main selection toolbar (modes and selection actions)
+        const selToolbar = document.createElement('div');
+        selToolbar.className = 'toolbar selection-toolbar hidden';
+        selToolbar.id = 'selection-toolbar';
+        selToolbar.innerHTML = `
+            <div class="sel-toolbar-section">
+                <span class="sel-toolbar-label">Mode</span>
+                <button class="toolbar-btn active" data-sel-mode="quot" title="Rectangle Select">
+                    <span class="material-symbols-outlined">select</span>
+                    <span class="toolbar-btn-label">Quot</span>
+                </button>
+                <button class="toolbar-btn" data-sel-mode="multi" title="Multi Select">
+                    <span class="material-symbols-outlined">library_add_check</span>
+                    <span class="toolbar-btn-label">Multi</span>
+                </button>
+                <button class="toolbar-btn" data-sel-mode="mouse" title="Mouse (interact)">
+                    <span class="material-symbols-outlined">arrow_selector_tool</span>
+                    <span class="toolbar-btn-label">Mouse</span>
+                </button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="sel-toolbar-section">
+                <span class="sel-toolbar-label">Action</span>
+                <button class="toolbar-btn active" data-sel-action="select" title="Select objects">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span class="toolbar-btn-label">Select</span>
+                </button>
+                <button class="toolbar-btn" data-sel-action="deselect" title="Deselect objects">
+                    <span class="material-symbols-outlined">remove_circle</span>
+                    <span class="toolbar-btn-label">Deselect</span>
+                </button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn" data-sel-cmd="select-all" title="Select All">
+                <span class="material-symbols-outlined">select_all</span>
+                <span class="toolbar-btn-label">All</span>
+            </button>
+            <button class="toolbar-btn" data-sel-cmd="deselect-all" title="Deselect All">
+                <span class="material-symbols-outlined">deselect</span>
+                <span class="toolbar-btn-label">None</span>
+            </button>
+            <button class="toolbar-btn" data-sel-cmd="reverse" title="Reverse Selection">
+                <span class="material-symbols-outlined">swap_horiz</span>
+                <span class="toolbar-btn-label">Reverse</span>
+            </button>
+            <div class="toolbar-divider"></div>
+            <span class="sel-count" id="sel-count">0 selected</span>
+        `;
+        document.body.appendChild(selToolbar);
+        this.ui.selectionToolbar = selToolbar;
+        
+        // Mouse mode action toolbar (appears above selection toolbar)
+        const mouseToolbar = document.createElement('div');
+        mouseToolbar.className = 'toolbar selection-mouse-toolbar hidden';
+        mouseToolbar.id = 'selection-mouse-toolbar';
+        mouseToolbar.innerHTML = `
+            <button class="toolbar-btn" data-sel-mouse="move" title="Move Selected">
+                <span class="material-symbols-outlined">open_with</span>
+                <span class="toolbar-btn-label">Move</span>
+            </button>
+            <button class="toolbar-btn" data-sel-mouse="duplicate" title="Duplicate Selected">
+                <span class="material-symbols-outlined">content_copy</span>
+                <span class="toolbar-btn-label">Duplicate</span>
+            </button>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn" data-sel-mouse="rotate-left" title="Rotate Left 90°">
+                <span class="material-symbols-outlined">rotate_left</span>
+                <span class="toolbar-btn-label">Left 90°</span>
+            </button>
+            <button class="toolbar-btn" data-sel-mouse="rotate-right" title="Rotate Right 90°">
+                <span class="material-symbols-outlined">rotate_right</span>
+                <span class="toolbar-btn-label">Right 90°</span>
+            </button>
+            <button class="toolbar-btn" data-sel-mouse="rotate-180" title="Rotate 180°">
+                <span class="material-symbols-outlined">sync</span>
+                <span class="toolbar-btn-label">180°</span>
+            </button>
+        `;
+        document.body.appendChild(mouseToolbar);
+        this.ui.selectionMouseToolbar = mouseToolbar;
+        
+        this.attachSelectionToolbarListeners();
+    }
+    
+    attachSelectionToolbarListeners() {
+        // Mode buttons
+        this.ui.selectionToolbar.querySelectorAll('[data-sel-mode]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.setSelectionMode(btn.dataset.selMode);
+            });
+        });
+        
+        // Action buttons (Select / Deselect)
+        this.ui.selectionToolbar.querySelectorAll('[data-sel-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.setSelectionAction(btn.dataset.selAction);
+            });
+        });
+        
+        // Command buttons (All, None, Reverse)
+        this.ui.selectionToolbar.querySelectorAll('[data-sel-cmd]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.handleSelectionCommand(btn.dataset.selCmd);
+            });
+        });
+        
+        // Mouse mode action buttons
+        this.ui.selectionMouseToolbar.querySelectorAll('[data-sel-mouse]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.handleSelectionMouseAction(btn.dataset.selMouse);
+            });
+        });
     }
 
     createPanels() {
@@ -2626,6 +2775,11 @@ class Editor {
         
         this.ui.btnAdd.addEventListener('click', (e) => {
             e.stopPropagation();
+            // If in selection mode, exit it
+            if (this.isSelectionActive) {
+                this.exitSelectionMode();
+                return;
+            }
             // If in erase mode, stop it
             if (this.isErasing) {
                 this.setTool(EditorTool.ERASE); // Toggle off
@@ -4084,11 +4238,26 @@ class Editor {
             return;
         }
         
+        // Select tool enters selection mode
+        if (tool === EditorTool.SELECT) {
+            if (this.isSelectionActive) {
+                this.exitSelectionMode();
+            } else {
+                this.enterSelectionMode();
+            }
+            return;
+        }
+
         // If in placement mode, non-fly tools are disabled
         if (this.placementMode !== PlacementMode.NONE) {
             return;
         }
         
+        // Exit selection mode if switching to another tool
+        if (this.isSelectionActive) {
+            this.exitSelectionMode();
+        }
+
         // Other tools are mutually exclusive
         // Deactivate previous non-fly tool
         if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
@@ -4246,6 +4415,17 @@ class Editor {
             case 'rotate-right':
                 this.rotateObjectUnderMouse(90);
                 break;
+            case 'toggle-grid':
+                this.toggleGrid();
+                break;
+        }
+    }
+    
+    toggleGrid() {
+        this.showGrid = !this.showGrid;
+        const gridBtn = this.ui.toolbar.querySelector('[data-action="toggle-grid"]');
+        if (gridBtn) {
+            gridBtn.classList.toggle('active', this.showGrid);
         }
     }
 
@@ -4258,6 +4438,650 @@ class Editor {
         }
     }
 
+    // ========================================
+    // MULTI-SELECTION SYSTEM
+    // ========================================
+    enterSelectionMode() {
+        this.isSelectionActive = true;
+        this.selectedObjects.clear();
+        this.selectionMode = SelectionMode.QUOT;
+        this.selectionAction = SelectionAction.SELECT;
+        this.selectionRect = null;
+        this.selectionMovingObjects = null;
+        
+        // Hide main toolbar, show selection toolbar
+        this.ui.toolbar.classList.add('hidden');
+        this.ui.selectionToolbar.classList.remove('hidden');
+        
+        // Replace Add button with Cancel button
+        this.ui.btnAdd.querySelector('.material-symbols-outlined').textContent = 'close';
+        this.ui.btnAdd.title = 'Exit Selection';
+        this.ui.btnAdd.classList.add('sel-cancel-btn');
+        
+        // Close any open panels/menus
+        this.ui.addMenu.classList.remove('active');
+        this.cancelPlacement();
+        
+        this.updateSelectionCount();
+        this.updateSelectionModeUI();
+    }
+    
+    exitSelectionMode() {
+        this.isSelectionActive = false;
+        this.selectedObjects.clear();
+        this.selectionRect = null;
+        this.selectionMovingObjects = null;
+        this.selectionMoveStart = null;
+        
+        // Restore toolbars
+        this.ui.toolbar.classList.remove('hidden');
+        this.ui.selectionToolbar.classList.add('hidden');
+        this.ui.selectionMouseToolbar.classList.add('hidden');
+        
+        // Restore Add button
+        this.ui.btnAdd.querySelector('.material-symbols-outlined').textContent = 'add';
+        this.ui.btnAdd.title = 'Add';
+        this.ui.btnAdd.classList.remove('sel-cancel-btn');
+        
+        // Restore tool
+        this.setTool(EditorTool.NONE);
+    }
+    
+    setSelectionMode(mode) {
+        this.selectionMode = mode;
+        this.selectionRect = null;
+        this.selectionMovingObjects = null;
+        this.selectionMoveStart = null;
+        this.updateSelectionModeUI();
+    }
+    
+    setSelectionAction(action) {
+        this.selectionAction = action;
+        // Update UI
+        this.ui.selectionToolbar.querySelectorAll('[data-sel-action]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.selAction === action);
+        });
+    }
+    
+    updateSelectionModeUI() {
+        // Update mode button active states
+        this.ui.selectionToolbar.querySelectorAll('[data-sel-mode]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.selMode === this.selectionMode);
+        });
+        
+        // Show/hide mouse action toolbar
+        if (this.selectionMode === SelectionMode.MOUSE) {
+            this.ui.selectionMouseToolbar.classList.remove('hidden');
+        } else {
+            this.ui.selectionMouseToolbar.classList.add('hidden');
+        }
+    }
+    
+    updateSelectionCount() {
+        const countEl = document.getElementById('sel-count');
+        if (countEl) {
+            countEl.textContent = `${this.selectedObjects.size} selected`;
+        }
+    }
+    
+    handleSelectionCommand(cmd) {
+        switch (cmd) {
+            case 'select-all':
+                for (const obj of this.world.objects) {
+                    this.selectedObjects.add(obj);
+                }
+                break;
+            case 'deselect-all':
+                this.selectedObjects.clear();
+                break;
+            case 'reverse': {
+                const newSelection = new Set();
+                for (const obj of this.world.objects) {
+                    if (!this.selectedObjects.has(obj)) {
+                        newSelection.add(obj);
+                    }
+                }
+                this.selectedObjects = newSelection;
+                break;
+            }
+        }
+        this.updateSelectionCount();
+    }
+    
+    handleSelectionMouseAction(action) {
+        if (this.selectedObjects.size === 0) return;
+        
+        switch (action) {
+            case 'move':
+                this.showToast('Click and drag to move selected objects', 'info');
+                break;
+            case 'duplicate':
+                this.duplicateSelectedObjects();
+                break;
+            case 'rotate-left':
+                this.rotateSelectedObjects(-90);
+                break;
+            case 'rotate-right':
+                this.rotateSelectedObjects(90);
+                break;
+            case 'rotate-180':
+                this.rotateSelectedObjects(180);
+                break;
+        }
+    }
+    
+    duplicateSelectedObjects() {
+        if (this.selectedObjects.size === 0) return;
+        
+        const newSelection = new Set();
+        for (const obj of this.selectedObjects) {
+            const clone = obj.clone();
+            clone.x += GRID_SIZE;
+            clone.y += GRID_SIZE;
+            this.world.addObject(clone);
+            newSelection.add(clone);
+        }
+        this.selectedObjects = newSelection;
+        this.updateSelectionCount();
+        this.updateLayersList();
+        this.triggerMapChange();
+        this.showToast(`Duplicated ${newSelection.size} objects`, 'success');
+    }
+    
+    rotateSelectedObjects(degrees) {
+        for (const obj of this.selectedObjects) {
+            obj.rotation = (obj.rotation + degrees + 360) % 360;
+        }
+        this.triggerMapChange();
+    }
+    
+    // Handle Quot mode rectangle selection
+    handleQuotSelectionDown(worldX, worldY) {
+        const gridPos = this.engine.getGridAlignedPos(worldX, worldY);
+        this.selectionRect = {
+            startX: gridPos.x,
+            startY: gridPos.y,
+            endX: gridPos.x,
+            endY: gridPos.y
+        };
+    }
+    
+    handleQuotSelectionMove(worldX, worldY) {
+        if (!this.selectionRect) return;
+        const gridPos = this.engine.getGridAlignedPos(worldX, worldY);
+        this.selectionRect.endX = gridPos.x;
+        this.selectionRect.endY = gridPos.y;
+    }
+    
+    handleQuotSelectionUp() {
+        if (!this.selectionRect) return;
+        
+        const { startX, startY, endX, endY } = this.selectionRect;
+        const rectX = Math.min(startX, endX);
+        const rectY = Math.min(startY, endY);
+        const rectW = Math.abs(endX - startX) + GRID_SIZE;
+        const rectH = Math.abs(endY - startY) + GRID_SIZE;
+        
+        const rect = { x: rectX, y: rectY, width: rectW, height: rectH };
+        
+        for (const obj of this.world.objects) {
+            const objRect = { x: obj.x, y: obj.y, width: obj.width, height: obj.height };
+            if (this.rectsOverlap(rect, objRect)) {
+                if (this.selectionAction === SelectionAction.SELECT) {
+                    this.selectedObjects.add(obj);
+                } else {
+                    this.selectedObjects.delete(obj);
+                }
+            }
+        }
+        
+        this.selectionRect = null;
+        this.updateSelectionCount();
+    }
+    
+    rectsOverlap(a, b) {
+        return a.x < b.x + b.width && a.x + a.width > b.x &&
+               a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+    
+    // Handle Multi-Select mode click
+    handleMultiSelectClick(worldX, worldY) {
+        const obj = this.world.getObjectAt(worldX, worldY);
+        if (!obj) return;
+        
+        if (this.selectionAction === SelectionAction.SELECT) {
+            this.selectedObjects.add(obj);
+        } else {
+            this.selectedObjects.delete(obj);
+        }
+        this.updateSelectionCount();
+    }
+    
+    // Handle Mouse mode click (config or move)
+    handleMouseModeDown(worldX, worldY) {
+        const obj = this.world.getObjectAt(worldX, worldY);
+        
+        if (obj && this.selectedObjects.has(obj)) {
+            // Start moving all selected objects
+            const gridPos = this.engine.getGridAlignedPos(worldX, worldY);
+            this.selectionMoveStart = { x: gridPos.x, y: gridPos.y };
+            this.selectionMovingObjects = [];
+            for (const selObj of this.selectedObjects) {
+                this.selectionMovingObjects.push({
+                    obj: selObj,
+                    offsetX: selObj.x - gridPos.x,
+                    offsetY: selObj.y - gridPos.y
+                });
+            }
+        }
+    }
+    
+    handleMouseModeMove(worldX, worldY) {
+        if (!this.selectionMovingObjects) return;
+        const gridPos = this.engine.getGridAlignedPos(worldX, worldY);
+        for (const item of this.selectionMovingObjects) {
+            item.obj.x = gridPos.x + item.offsetX;
+            item.obj.y = gridPos.y + item.offsetY;
+        }
+    }
+    
+    handleMouseModeUp(worldX, worldY) {
+        if (this.selectionMovingObjects) {
+            // Check if we actually moved
+            const gridPos = this.engine.getGridAlignedPos(worldX, worldY);
+            const didMove = this.selectionMoveStart && 
+                (gridPos.x !== this.selectionMoveStart.x || gridPos.y !== this.selectionMoveStart.y);
+            
+            if (!didMove) {
+                // It was a click, not a drag — open config for selected objects
+                const obj = this.world.getObjectAt(worldX, worldY);
+                if (obj && this.selectedObjects.has(obj)) {
+                    this.openMultiObjectEditPopup();
+                }
+            } else {
+                // Snap all moved objects to grid
+                for (const item of this.selectionMovingObjects) {
+                    item.obj.snapToGrid();
+                }
+                this.triggerMapChange();
+            }
+            
+            this.selectionMovingObjects = null;
+            this.selectionMoveStart = null;
+        }
+    }
+    
+    // ========================================
+    // MULTI-OBJECT CONFIG POPUP
+    // ========================================
+    openMultiObjectEditPopup() {
+        const objects = Array.from(this.selectedObjects);
+        if (objects.length === 0) return;
+        
+        if (objects.length === 1) {
+            this.openObjectEditPopup(objects[0]);
+            return;
+        }
+        
+        // Build a popup for editing common properties
+        let popup = document.getElementById('multi-object-edit-popup');
+        if (popup) popup.remove();
+        
+        popup = document.createElement('div');
+        popup.className = 'object-edit-popup modal-overlay';
+        popup.id = 'multi-object-edit-popup';
+        
+        // Determine which fields are common across all selected objects
+        const commonFields = this.getCommonEditFields(objects);
+        
+        // Track which fields the user has touched
+        const touchedFields = new Set();
+        
+        let fieldsHTML = '';
+        
+        for (const field of commonFields) {
+            fieldsHTML += this.renderMultiEditField(field, objects);
+        }
+        
+        popup.innerHTML = `
+            <div class="object-edit-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Edit ${objects.length} Objects</span>
+                    <button class="btn btn-icon btn-ghost" id="multi-edit-close">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    ${fieldsHTML}
+                    <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                        <button class="btn btn-danger" id="multi-edit-delete" style="width: 100%;">
+                            <span class="material-symbols-outlined">delete</span>
+                            Delete ${objects.length} Objects
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        popup.classList.add('active');
+        
+        // Attach listeners
+        document.getElementById('multi-edit-close').addEventListener('click', () => {
+            popup.classList.remove('active');
+            setTimeout(() => popup.remove(), 200);
+        });
+        
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                popup.classList.remove('active');
+                setTimeout(() => popup.remove(), 200);
+            }
+        });
+        
+        document.getElementById('multi-edit-delete').addEventListener('click', () => {
+            for (const obj of objects) {
+                this.world.removeObject(obj.id);
+            }
+            this.selectedObjects.clear();
+            this.updateSelectionCount();
+            this.updateLayersList();
+            this.triggerMapChange();
+            popup.classList.remove('active');
+            setTimeout(() => popup.remove(), 200);
+            this.showToast(`Deleted ${objects.length} objects`, 'success');
+        });
+        
+        // Attach field-specific listeners
+        this.attachMultiEditListeners(popup, objects, commonFields, touchedFields);
+    }
+    
+    getCommonEditFields(objects) {
+        const fields = [];
+        
+        // Name is always available
+        fields.push({ key: 'name', label: 'Name', type: 'text' });
+        
+        // Color — available on all objects
+        fields.push({ key: 'color', label: 'Color', type: 'color' });
+        
+        // Opacity — available on all objects
+        fields.push({ key: 'opacity', label: 'Opacity', type: 'range', min: 0, max: 100, toValue: v => Math.round(v * 100), fromValue: v => v / 100 });
+        
+        // Rotation — available on all objects
+        fields.push({ key: 'rotation', label: 'Rotation', type: 'rotation' });
+        
+        // Collision — available on all objects
+        fields.push({ key: 'collision', label: 'Collision', type: 'boolean' });
+        
+        // Flip — available on non-zone objects
+        const allNonZone = objects.every(o => o.appearanceType !== 'zone');
+        if (allNonZone) {
+            fields.push({ key: 'flipHorizontal', label: 'Flip Horizontal', type: 'boolean' });
+        }
+        
+        // Spike touchbox — only if ALL objects are spikes (and not spinners)
+        const allSpikesNotSpinner = objects.every(o => 
+            (o.appearanceType === 'spike' || o.actingType === 'spike') && 
+            o.type !== 'spinner' && o.appearanceType !== 'spinner'
+        );
+        if (allSpikesNotSpinner) {
+            fields.push({ key: 'spikeTouchbox', label: 'Spike Touchbox', type: 'select', options: [
+                { value: '', label: 'Use World Default' },
+                { value: 'full', label: 'Full Spike' },
+                { value: 'normal', label: 'Normal Spike' },
+                { value: 'tip', label: 'Tip Spike' },
+                { value: 'ground', label: 'Ground' },
+                { value: 'flag', label: 'Flag' },
+                { value: 'air', label: 'Air' }
+            ]});
+            fields.push({ key: 'dropHurtOnly', label: 'Drop Hurt Only', type: 'select', options: [
+                { value: '', label: 'Use World Default' },
+                { value: 'true', label: 'Enabled' },
+                { value: 'false', label: 'Disabled' }
+            ]});
+        }
+        
+        // Text content — only if ALL objects are text
+        const allText = objects.every(o => o.type === 'text');
+        if (allText) {
+            fields.push({ key: 'content', label: 'Text Content', type: 'textarea' });
+            fields.push({ key: 'font', label: 'Font', type: 'text' });
+        }
+        
+        return fields;
+    }
+    
+    getMultiFieldValue(objects, field) {
+        const key = field.key;
+        const toValue = field.toValue || (v => v);
+        const normalize = v => (v === undefined || v === null) ? '' : v;
+        
+        let firstVal = toValue(objects[0][key]);
+        let allSame = true;
+        for (let i = 1; i < objects.length; i++) {
+            if (normalize(toValue(objects[i][key])) !== normalize(firstVal)) {
+                allSame = false;
+                break;
+            }
+        }
+        return { value: firstVal, isMixed: !allSame };
+    }
+    
+    renderMultiEditField(field, objects) {
+        const { value, isMixed } = this.getMultiFieldValue(objects, field);
+        const mixedStr = isMixed ? 'MIXED' : '';
+        
+        switch (field.type) {
+            case 'text':
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${field.label}</label>
+                        <input type="text" class="form-input" data-multi-field="${field.key}" 
+                            value="${isMixed ? '' : (value || '')}" placeholder="${isMixed ? 'MIXED' : ''}">
+                    </div>`;
+                    
+            case 'textarea':
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${field.label}</label>
+                        <textarea class="form-input" data-multi-field="${field.key}" rows="3" 
+                            placeholder="${isMixed ? 'MIXED' : ''}" style="resize: vertical;">${isMixed ? '' : (value || '')}</textarea>
+                    </div>`;
+                    
+            case 'color':
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${field.label}</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" data-multi-color-preview="${field.key}" 
+                                style="background: ${isMixed ? 'linear-gradient(135deg, #ff6b6b 25%, #4ecdc4 25%, #4ecdc4 50%, #ff6b6b 50%, #ff6b6b 75%, #4ecdc4 75%)' : value}"></div>
+                            <input type="text" class="form-input form-input-sm color-input" data-multi-field="${field.key}" 
+                                value="${isMixed ? '' : value}" placeholder="${isMixed ? 'MIXED' : ''}">
+                        </div>
+                    </div>`;
+                    
+            case 'range': {
+                const displayVal = isMixed ? 'MIXED' : `${value}%`;
+                const rangeVal = isMixed ? field.min : value;
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${field.label}</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" data-multi-field="${field.key}" 
+                                min="${field.min}" max="${field.max}" value="${rangeVal}" style="flex: 1;">
+                            <span data-multi-range-label="${field.key}" style="font-size: 12px; min-width: 45px;">${displayVal}</span>
+                        </div>
+                    </div>`;
+            }
+            
+            case 'rotation':
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${field.label}</label>
+                        <div class="placement-option-btns" style="justify-content: flex-start;">
+                            <button class="placement-opt-btn" data-multi-rotate="-90" title="Rotate Left">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">rotate_left</span>
+                            </button>
+                            <button class="placement-opt-btn" data-multi-rotate="90" title="Rotate Right">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">rotate_right</span>
+                            </button>
+                            <span data-multi-rotation-label style="font-size: 12px; margin-left: 8px;">${isMixed ? 'MIXED' : value + '°'}</span>
+                        </div>
+                    </div>`;
+            
+            case 'boolean': {
+                const checked = isMixed ? false : !!value;
+                return `
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label">${field.label}</label>
+                        <label class="toggle" style="position: relative;">
+                            <input type="checkbox" data-multi-field="${field.key}" ${checked ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                            ${isMixed ? `<div class="multi-mixed-overlay" data-multi-mixed="${field.key}">MIXED</div>` : ''}
+                        </label>
+                    </div>`;
+            }
+            
+            case 'select': {
+                const normalizeVal = v => v === undefined || v === null ? '' : String(v);
+                const optionsHTML = field.options.map(o => 
+                    `<option value="${o.value}" ${!isMixed && normalizeVal(value) === normalizeVal(o.value) ? 'selected' : ''}>${o.label}</option>`
+                ).join('');
+                return `
+                    <div class="form-group" style="position: relative;">
+                        <label class="form-label">${field.label}</label>
+                        <select class="form-select" data-multi-field="${field.key}">
+                            ${optionsHTML}
+                        </select>
+                        ${isMixed ? `<div class="multi-mixed-overlay multi-mixed-select" data-multi-mixed="${field.key}">MIXED</div>` : ''}
+                    </div>`;
+            }
+            
+            default:
+                return '';
+        }
+    }
+    
+    attachMultiEditListeners(popup, objects, fields, touchedFields) {
+        // Text / textarea / color inputs
+        popup.querySelectorAll('input[data-multi-field], textarea[data-multi-field]').forEach(input => {
+            const key = input.dataset.multiField;
+            const field = fields.find(f => f.key === key);
+            if (!field) return;
+            
+            const handler = () => {
+                touchedFields.add(key);
+                let val = input.type === 'checkbox' ? input.checked : input.value;
+                
+                // Remove mixed overlay if present
+                const mixedOverlay = popup.querySelector(`[data-multi-mixed="${key}"]`);
+                if (mixedOverlay) mixedOverlay.remove();
+                
+                if (field.type === 'range') {
+                    const fromValue = field.fromValue || (v => v);
+                    const rangeLabel = popup.querySelector(`[data-multi-range-label="${key}"]`);
+                    if (rangeLabel) rangeLabel.textContent = val + '%';
+                    val = fromValue(parseFloat(val));
+                }
+                
+                if (field.type === 'color') {
+                    const preview = popup.querySelector(`[data-multi-color-preview="${key}"]`);
+                    if (preview) preview.style.background = val;
+                }
+                
+                for (const obj of objects) {
+                    obj[key] = val;
+                }
+                this.triggerMapChange();
+            };
+            
+            if (input.type === 'range') {
+                input.addEventListener('input', handler);
+            } else if (input.type === 'checkbox') {
+                input.addEventListener('change', handler);
+            } else {
+                input.addEventListener('change', handler);
+            }
+        });
+        
+        // Select fields
+        popup.querySelectorAll('select[data-multi-field]').forEach(select => {
+            const key = select.dataset.multiField;
+            select.addEventListener('change', () => {
+                touchedFields.add(key);
+                const mixedOverlay = popup.querySelector(`[data-multi-mixed="${key}"]`);
+                if (mixedOverlay) mixedOverlay.remove();
+                
+                let val = select.value;
+                if (val === 'true') val = true;
+                else if (val === 'false') val = false;
+                else if (val === '') val = undefined;
+                
+                for (const obj of objects) {
+                    obj[key] = val;
+                }
+                this.triggerMapChange();
+            });
+        });
+        
+        // Mixed overlays — clicking removes them and marks field as touched
+        popup.querySelectorAll('[data-multi-mixed]').forEach(overlay => {
+            overlay.addEventListener('click', () => {
+                const key = overlay.dataset.multiMixed;
+                touchedFields.add(key);
+                overlay.remove();
+            });
+        });
+        
+        // Rotation buttons
+        popup.querySelectorAll('[data-multi-rotate]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                touchedFields.add('rotation');
+                const deg = parseInt(btn.dataset.multiRotate);
+                for (const obj of objects) {
+                    obj.rotation = (obj.rotation + deg + 360) % 360;
+                }
+                // Update label
+                const label = popup.querySelector('[data-multi-rotation-label]');
+                if (label) {
+                    const { value: newVal, isMixed: newMixed } = this.getMultiFieldValue(objects, { key: 'rotation' });
+                    label.textContent = newMixed ? 'MIXED' : newVal + '°';
+                }
+                this.triggerMapChange();
+            });
+        });
+        
+        // Color preview click to open color picker
+        popup.querySelectorAll('[data-multi-color-preview]').forEach(preview => {
+            preview.addEventListener('click', () => {
+                const key = preview.dataset.multiColorPreview;
+                const input = popup.querySelector(`input[data-multi-field="${key}"]`);
+                if (input) {
+                    // Create a temporary color input
+                    const colorPicker = document.createElement('input');
+                    colorPicker.type = 'color';
+                    colorPicker.value = input.value || '#787878';
+                    colorPicker.style.position = 'fixed';
+                    colorPicker.style.opacity = '0';
+                    document.body.appendChild(colorPicker);
+                    colorPicker.click();
+                    colorPicker.addEventListener('input', () => {
+                        input.value = colorPicker.value;
+                        preview.style.background = colorPicker.value;
+                        for (const obj of objects) {
+                            obj[key] = colorPicker.value;
+                        }
+                        this.triggerMapChange();
+                    });
+                    colorPicker.addEventListener('change', () => {
+                        setTimeout(() => colorPicker.remove(), 100);
+                    });
+                }
+            });
+        });
+    }
+    
     // ========================================
     // PANEL MANAGEMENT
     // ========================================
@@ -5188,10 +6012,24 @@ class Editor {
                 e.preventDefault();
                 this.setTool(EditorTool.ROTATE);
                 break;
+            case 'KeyH':
+                e.preventDefault();
+                this.toggleGrid();
+                break;
+            case 'KeyV':
+                e.preventDefault();
+                this.setTool(EditorTool.SELECT);
+                break;
         }
     }
 
     handleEscape() {
+        // Exit selection mode
+        if (this.isSelectionActive) {
+            this.exitSelectionMode();
+            return;
+        }
+        
         // Cancel zone adjustment mode
         if (this.zoneAdjustment.active) {
             this.exitZoneAdjustmentMode();
@@ -5242,6 +6080,24 @@ class Editor {
 
         const worldPos = this.engine.getMouseWorldPos();
         const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+        
+        // Selection mode handling
+        if (this.isSelectionActive && this.engine.mouse.down) {
+            if (this.selectionMode === SelectionMode.QUOT && this.selectionRect) {
+                this.handleQuotSelectionMove(worldPos.x, worldPos.y);
+                return;
+            }
+            if (this.selectionMode === SelectionMode.MOUSE && this.selectionMovingObjects) {
+                this.handleMouseModeMove(worldPos.x, worldPos.y);
+                return;
+            }
+            // In selection mode, allow camera pan with fly when not interacting with objects
+            if (this.isFlying) {
+                this.camera.targetX -= e.movementX / this.camera.zoom;
+                this.camera.targetY -= e.movementY / this.camera.zoom;
+            }
+            return;
+        }
         
         // Zone placement - update end corner
         if (this.zonePlacement.isPlacing) {
@@ -5328,6 +6184,23 @@ class Editor {
     handleMouseDown(e) {
         if (this.engine.state !== GameState.EDITOR) return;
         if (this.isOverUI(e)) return;
+        
+        // Selection mode handling
+        if (this.isSelectionActive) {
+            const worldPos = this.engine.getMouseWorldPos();
+            
+            switch (this.selectionMode) {
+                case SelectionMode.QUOT:
+                    this.handleQuotSelectionDown(worldPos.x, worldPos.y);
+                    return;
+                case SelectionMode.MULTI:
+                    this.handleMultiSelectClick(worldPos.x, worldPos.y);
+                    return;
+                case SelectionMode.MOUSE:
+                    this.handleMouseModeDown(worldPos.x, worldPos.y);
+                    return;
+            }
+        }
         
         // Handle zone adjustment draggers
         if (this.zoneAdjustment.active) {
@@ -5427,6 +6300,19 @@ class Editor {
     }
 
     handleMouseUp(e) {
+        // Selection mode handling
+        if (this.isSelectionActive) {
+            const worldPos = this.engine.getMouseWorldPos();
+            if (this.selectionMode === SelectionMode.QUOT && this.selectionRect) {
+                this.handleQuotSelectionUp();
+                return;
+            }
+            if (this.selectionMode === SelectionMode.MOUSE) {
+                this.handleMouseModeUp(worldPos.x, worldPos.y);
+                return;
+            }
+        }
+        
         // Handle fly mode click (vs drag) - open object popup if minimal movement
         if (this.flyClickStart && this.currentTool === EditorTool.NONE) {
             const dx = e.clientX - this.flyClickStart.x;
@@ -6977,6 +7863,48 @@ class Editor {
             this.renderGrid(ctx, camera);
             this.renderDieLine(ctx, camera);
         }
+        
+        // Selection highlights
+        if (this.isSelectionActive && this.selectedObjects.size > 0 && this.engine.state === GameState.EDITOR) {
+            ctx.save();
+            for (const obj of this.selectedObjects) {
+                const sx = obj.x - camera.x;
+                const sy = obj.y - camera.y;
+                const w = obj.width;
+                const h = obj.height;
+                
+                // Fill with semi-transparent blue
+                ctx.fillStyle = 'rgba(66, 133, 244, 0.2)';
+                ctx.fillRect(sx, sy, w, h);
+                
+                // Border
+                ctx.strokeStyle = '#4285f4';
+                ctx.lineWidth = 2 / camera.zoom;
+                ctx.setLineDash([6 / camera.zoom, 3 / camera.zoom]);
+                ctx.strokeRect(sx, sy, w, h);
+            }
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        
+        // Quot selection rectangle preview
+        if (this.isSelectionActive && this.selectionRect && this.engine.state === GameState.EDITOR) {
+            const { startX, startY, endX, endY } = this.selectionRect;
+            const rx = Math.min(startX, endX) - camera.x;
+            const ry = Math.min(startY, endY) - camera.y;
+            const rw = Math.abs(endX - startX) + GRID_SIZE;
+            const rh = Math.abs(endY - startY) + GRID_SIZE;
+            
+            const isDeselect = this.selectionAction === SelectionAction.DESELECT;
+            
+            ctx.fillStyle = isDeselect ? 'rgba(244, 67, 54, 0.15)' : 'rgba(66, 133, 244, 0.15)';
+            ctx.fillRect(rx, ry, rw, rh);
+            ctx.strokeStyle = isDeselect ? '#f44336' : '#4285f4';
+            ctx.lineWidth = 2 / camera.zoom;
+            ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
+            ctx.strokeRect(rx, ry, rw, rh);
+            ctx.setLineDash([]);
+        }
 
         // Hover highlight (from canvas hover)
         // Note: ctx already has camera.zoom applied via ctx.scale()
@@ -7190,30 +8118,77 @@ class Editor {
     }
 
     renderGrid(ctx, camera) {
+        if (!this.showGrid) return;
+        
         // Note: ctx already has camera.zoom applied via ctx.scale()
         const startX = Math.floor(camera.x / GRID_SIZE) * GRID_SIZE;
         const startY = Math.floor(camera.y / GRID_SIZE) * GRID_SIZE;
         const endX = camera.x + camera.width / camera.zoom + GRID_SIZE;
         const endY = camera.y + camera.height / camera.zoom + GRID_SIZE;
+        
+        const viewStartX = -camera.x;
+        const viewStartY = -camera.y;
+        const viewEndX = viewStartX + camera.width / camera.zoom;
+        const viewEndY = viewStartY + camera.height / camera.zoom;
 
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1 / camera.zoom;
+        // Draw minor grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 0.5 / camera.zoom;
 
+        ctx.beginPath();
         for (let x = startX; x < endX; x += GRID_SIZE) {
+            // Skip lines that will be drawn as major lines
+            if (x % (GRID_SIZE * 5) === 0) continue;
             const screenX = x - camera.x;
-            ctx.beginPath();
-            ctx.moveTo(screenX, -camera.y);
-            ctx.lineTo(screenX, -camera.y + camera.height / camera.zoom);
-            ctx.stroke();
+            ctx.moveTo(screenX, viewStartY);
+            ctx.lineTo(screenX, viewEndY);
         }
-
         for (let y = startY; y < endY; y += GRID_SIZE) {
+            if (y % (GRID_SIZE * 5) === 0) continue;
             const screenY = y - camera.y;
-            ctx.beginPath();
-            ctx.moveTo(-camera.x, screenY);
-            ctx.lineTo(-camera.x + camera.width / camera.zoom, screenY);
-            ctx.stroke();
+            ctx.moveTo(viewStartX, screenY);
+            ctx.lineTo(viewEndX, screenY);
         }
+        ctx.stroke();
+        
+        // Draw major grid lines (every 5 cells)
+        const majorStart = Math.floor(camera.x / (GRID_SIZE * 5)) * GRID_SIZE * 5;
+        const majorStartY = Math.floor(camera.y / (GRID_SIZE * 5)) * GRID_SIZE * 5;
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1 / camera.zoom;
+        
+        ctx.beginPath();
+        for (let x = majorStart; x < endX; x += GRID_SIZE * 5) {
+            const screenX = x - camera.x;
+            ctx.moveTo(screenX, viewStartY);
+            ctx.lineTo(screenX, viewEndY);
+        }
+        for (let y = majorStartY; y < endY; y += GRID_SIZE * 5) {
+            const screenY = y - camera.y;
+            ctx.moveTo(viewStartX, screenY);
+            ctx.lineTo(viewEndX, screenY);
+        }
+        ctx.stroke();
+        
+        // Draw origin lines (x=0 and y=0) in a distinct color
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1.5 / camera.zoom;
+        
+        ctx.beginPath();
+        // Y-axis (x=0)
+        if (0 >= camera.x - GRID_SIZE && 0 <= camera.x + camera.width / camera.zoom + GRID_SIZE) {
+            const originScreenX = 0 - camera.x;
+            ctx.moveTo(originScreenX, viewStartY);
+            ctx.lineTo(originScreenX, viewEndY);
+        }
+        // X-axis (y=0)
+        if (0 >= camera.y - GRID_SIZE && 0 <= camera.y + camera.height / camera.zoom + GRID_SIZE) {
+            const originScreenY = 0 - camera.y;
+            ctx.moveTo(viewStartX, originScreenY);
+            ctx.lineTo(viewEndX, originScreenY);
+        }
+        ctx.stroke();
     }
 
     // ========================================
