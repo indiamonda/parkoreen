@@ -360,7 +360,28 @@ class Editor {
                                 <option value="custom">Custom</option>
                         </select>
                     </div>
-                        
+                    
+                        <!-- Cloud Colors -->
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label class="form-label">Cloud Colors</label>
+                            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: block;">Sky</label>
+                                    <div class="color-picker-option">
+                                        <div class="color-preview" id="config-cloud-sky-preview" style="background: #ffffff"></div>
+                                        <input type="text" class="form-input color-input" id="config-cloud-sky" value="#ffffff" style="font-size: 11px;">
+                                    </div>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: block;">Galaxy</label>
+                                    <div class="color-picker-option">
+                                        <div class="color-preview" id="config-cloud-galaxy-preview" style="background: #9382a8"></div>
+                                        <input type="text" class="form-input color-input" id="config-cloud-galaxy" value="#9382a8" style="font-size: 11px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Custom Background Options -->
                         <div id="custom-bg-options" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
                     <div class="form-group">
@@ -2859,7 +2880,7 @@ class Editor {
         // Background
         document.getElementById('config-background').addEventListener('change', (e) => {
             this.world.background = e.target.value;
-            
+
             // Show/hide custom background options
             const customOptions = document.getElementById('custom-bg-options');
             if (e.target.value === 'custom') {
@@ -2869,9 +2890,31 @@ class Editor {
                 // Disable custom background when switching away
                 this.world.customBackground.enabled = false;
             }
-            
+
             this.updateBackground();
             this.triggerMapChange();
+        });
+        
+        // Cloud colors
+        ['sky', 'galaxy'].forEach(type => {
+            const preview = document.getElementById(`config-cloud-${type}-preview`);
+            const input = document.getElementById(`config-cloud-${type}`);
+            
+            if (preview && input) {
+                preview.addEventListener('click', () => {
+                    this.openColorPicker(`config-cloud-${type}`);
+                });
+                
+                input.addEventListener('change', (e) => {
+                    const color = e.target.value;
+                    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                        preview.style.background = color;
+                        if (type === 'sky') this.world.cloudColorSky = color;
+                        else if (type === 'galaxy') this.world.cloudColorGalaxy = color;
+                        this.triggerMapChange();
+                    }
+                });
+            }
         });
         
         // Custom background file upload
@@ -5035,12 +5078,22 @@ class Editor {
             }
         } else if (target && target.startsWith('config-')) {
             const type = target.replace('config-', '');
-            document.getElementById(`config-${type}-color`).value = hex;
-            document.getElementById(`config-${type}-color-preview`).style.background = hex;
             
-            if (type === 'block') this.world.defaultBlockColor = hex;
-            else if (type === 'spike') this.world.defaultSpikeColor = hex;
-            else if (type === 'text') this.world.defaultTextColor = hex;
+            // Handle cloud colors (config-cloud-sky, config-cloud-galaxy)
+            if (type.startsWith('cloud-')) {
+                document.getElementById(`config-${type}`).value = hex;
+                document.getElementById(`config-${type}-preview`).style.background = hex;
+                
+                if (type === 'cloud-sky') this.world.cloudColorSky = hex;
+                else if (type === 'cloud-galaxy') this.world.cloudColorGalaxy = hex;
+            } else {
+                document.getElementById(`config-${type}-color`).value = hex;
+                document.getElementById(`config-${type}-color-preview`).style.background = hex;
+            
+                if (type === 'block') this.world.defaultBlockColor = hex;
+                else if (type === 'spike') this.world.defaultSpikeColor = hex;
+                else if (type === 'text') this.world.defaultTextColor = hex;
+            }
         }
     }
 
@@ -5967,6 +6020,17 @@ class Editor {
         if (textColor) textColor.value = this.world.defaultTextColor;
         if (textPreview) textPreview.style.background = this.world.defaultTextColor;
         
+        // Cloud colors
+        const cloudSkyColor = document.getElementById('config-cloud-sky');
+        const cloudSkyPreview = document.getElementById('config-cloud-sky-preview');
+        if (cloudSkyColor) cloudSkyColor.value = this.world.cloudColorSky || '#ffffff';
+        if (cloudSkyPreview) cloudSkyPreview.style.background = this.world.cloudColorSky || '#ffffff';
+        
+        const cloudGalaxyColor = document.getElementById('config-cloud-galaxy');
+        const cloudGalaxyPreview = document.getElementById('config-cloud-galaxy-preview');
+        if (cloudGalaxyColor) cloudGalaxyColor.value = this.world.cloudColorGalaxy || '#9382a8';
+        if (cloudGalaxyPreview) cloudGalaxyPreview.style.background = this.world.cloudColorGalaxy || '#9382a8';
+
         // Checkpoint colors
         const cpDefaultColor = document.getElementById('config-checkpoint-default');
         const cpDefaultPreview = document.getElementById('config-checkpoint-default-preview');

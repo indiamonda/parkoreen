@@ -1480,6 +1480,10 @@ class World {
         this.defaultSpikeColor = '#c45a3f';
         this.defaultTextColor = '#000000';
         
+        // Cloud color settings (null = auto based on background)
+        this.cloudColorSky = '#ffffff';      // White for sky background
+        this.cloudColorGalaxy = '#9382a8';   // Grayish purple for galaxy background
+
         // Checkpoint color settings
         this.checkpointDefaultColor = '#808080'; // Gray - default state
         this.checkpointActiveColor = '#4CAF50';  // Green - current checkpoint
@@ -1860,6 +1864,8 @@ class World {
             defaultBlockColor: this.defaultBlockColor,
             defaultSpikeColor: this.defaultSpikeColor,
             defaultTextColor: this.defaultTextColor,
+            cloudColorSky: this.cloudColorSky,
+            cloudColorGalaxy: this.cloudColorGalaxy,
             checkpointDefaultColor: this.checkpointDefaultColor,
             checkpointActiveColor: this.checkpointActiveColor,
             checkpointTouchedColor: this.checkpointTouchedColor,
@@ -1899,6 +1905,8 @@ class World {
         this.defaultBlockColor = data.defaultBlockColor || '#787878';
         this.defaultSpikeColor = data.defaultSpikeColor || '#c45a3f';
         this.defaultTextColor = data.defaultTextColor || '#000000';
+        this.cloudColorSky = data.cloudColorSky || '#ffffff';
+        this.cloudColorGalaxy = data.cloudColorGalaxy || '#9382a8';
         this.checkpointDefaultColor = data.checkpointDefaultColor || '#808080';
         this.checkpointActiveColor = data.checkpointActiveColor || '#4CAF50';
         this.checkpointTouchedColor = data.checkpointTouchedColor || '#2196F3';
@@ -2153,18 +2161,18 @@ class GameEngine {
     // Generate a single cloud shape (multiple rectangles combined with flat bottom)
     generateCloudShape() {
         const rects = [];
-        // Random number of rectangles (3-6)
-        const numRects = 3 + Math.floor(Math.random() * 4);
+        // Random number of rectangles (3-8)
+        const numRects = 3 + Math.floor(Math.random() * 6);
         
-        // Base dimensions - keep width/height ratio reasonable (2:1 to 4:1)
-        const maxHeight = 30 + Math.random() * 40; // 30-70 height
-        const baseWidth = maxHeight * (2 + Math.random() * 2); // 2-4x height ratio
+        // Base dimensions - no limits, varied sizes
+        const maxHeight = 40 + Math.random() * 120; // 40-160 height
+        const baseWidth = maxHeight * (1.5 + Math.random() * 3); // 1.5-4.5x height ratio
         
         // Generate rectangles that sit on a flat bottom
         let currentX = 0;
         for (let i = 0; i < numRects; i++) {
-            const rectWidth = (baseWidth / numRects) * (0.7 + Math.random() * 0.6);
-            const rectHeight = maxHeight * (0.5 + Math.random() * 0.5);
+            const rectWidth = (baseWidth / numRects) * (0.6 + Math.random() * 0.8);
+            const rectHeight = maxHeight * (0.4 + Math.random() * 0.6);
             
             rects.push({
                 x: currentX,
@@ -2174,7 +2182,7 @@ class GameEngine {
             });
             
             // Overlap rectangles for continuous look
-            currentX += rectWidth * (0.6 + Math.random() * 0.3);
+            currentX += rectWidth * (0.5 + Math.random() * 0.4);
         }
         
         // Calculate total width
@@ -2186,43 +2194,45 @@ class GameEngine {
     // Generate all clouds for the current session
     generateClouds() {
         this.clouds = [];
-        const numClouds = 12 + Math.floor(Math.random() * 8); // 12-20 clouds
+        const numClouds = 30 + Math.floor(Math.random() * 15); // 30-45 clouds
         
-        // Create a grid-based distribution to ensure spacing
-        const gridCols = 6;
-        const gridRows = 3;
-        const cellWidth = 2000; // Wide spacing between clouds
-        const cellHeight = 300;
+        // Screen-relative positioning - clouds distributed across viewport width + extra for scrolling
+        // Use a wide horizontal range so clouds are always visible as they drift
+        const screenWidth = this.camera.width / this.camera.zoom;
+        const screenHeight = this.camera.height / this.camera.zoom;
+        
+        // Spread clouds across 3x screen width (1x buffer on each side for drift)
+        const cloudAreaWidth = screenWidth * 3;
+        const cloudAreaHeight = screenHeight * 0.6; // Upper 60% of screen
         
         for (let i = 0; i < numClouds; i++) {
             const shape = this.generateCloudShape();
             
-            // Distribute clouds across a grid with random offset within each cell
-            const col = i % gridCols;
-            const row = Math.floor(i / gridCols) % gridRows;
+            // Position clouds in screen-relative coordinates
+            // X: distributed across the cloud area with some randomness
+            // Y: upper portion of screen with spacing
+            const screenX = (i / numClouds) * cloudAreaWidth - cloudAreaWidth / 3 + (Math.random() - 0.5) * 300;
+            const screenY = Math.random() * cloudAreaHeight * 0.8 + 20; // 20px from top to 48% of screen
             
-            // Base position with grid + random offset (ensures spacing)
-            const baseX = (col - gridCols / 2) * cellWidth + (Math.random() - 0.5) * cellWidth * 0.6;
-            const baseY = -600 + row * cellHeight + (Math.random() - 0.5) * cellHeight * 0.5;
-            
-            // Size multiplier (0.6 to 1.4) - more uniform sizes
-            const scale = 0.6 + Math.random() * 0.8;
+            // Size multiplier - more variation at larger sizes
+            const baseScale = 0.6 + Math.random() * 1.8; // 0.6 to 2.4
+            const scale = baseScale * (0.8 + Math.random() * 0.4); // Additional 0.8-1.2x variation
 
-            // Parallax factor: clouds move LESS than player (background effect)
+            // Parallax factor: clouds move LESS than camera (background effect)
             // Lower factor = moves less = appears further away
-            const parallaxFactor = 0.85 + Math.random() * 0.1; // 0.85-0.95 of camera movement
+            const parallaxFactor = 0.05 + Math.random() * 0.1; // 0.05-0.15 (very subtle parallax)
             
-            // Drift speed to the LEFT (negative) - doubled
+            // Drift speed to the LEFT (negative)
             const driftSpeed = -(16 + Math.random() * 24); // -16 to -40 pixels per second
             
             this.clouds.push({
-                baseX,
-                baseY,
+                screenX,  // Screen-relative X position
+                screenY,  // Screen-relative Y position
                 scale,
                 shape,
                 parallaxFactor,
                 driftSpeed,
-                driftOffset: Math.random() * 10000 // Random starting position
+                driftOffset: Math.random() * 5000 // Random starting drift offset
             });
         }
         
@@ -2245,51 +2255,54 @@ class GameEngine {
         // Update cloud drift time
         this.cloudTime += 1 / 60; // Assuming 60fps updates
         
-        // Determine cloud color based on background
+        // Determine cloud color based on background (use world settings)
         let cloudColor;
         if (background === 'galaxy') {
-            cloudColor = 'rgb(147, 130, 168)'; // Grayish purple for galaxy
+            cloudColor = this.world?.cloudColorGalaxy || '#9382a8';
         } else {
-            cloudColor = 'rgb(255, 255, 255)'; // White for sky
+            cloudColor = this.world?.cloudColorSky || '#ffffff';
         }
         
-        // Get camera position for parallax
+        // Get viewport dimensions
+        const viewWidth = this.camera.width / this.camera.zoom;
+        const viewHeight = this.camera.height / this.camera.zoom;
+        
+        // Get camera position for subtle parallax
         const cameraX = this.camera.x;
         const cameraY = this.camera.y;
         
+        // Wrap width - clouds wrap around when they drift off screen
+        const wrapWidth = viewWidth * 2;
+        
         this.ctx.save();
         this.ctx.fillStyle = cloudColor;
+        this.ctx.globalAlpha = 1.0;
         
         for (const cloud of this.clouds) {
-            // Calculate cloud position with parallax
-            // Clouds move with camera but LESS than 100%, creating depth
-            // parallaxFactor < 1 means clouds move less than camera = appear distant
-            const driftX = cloud.driftOffset + this.cloudTime * cloud.driftSpeed;
-            
-            // Screen position: cloud stays mostly fixed relative to screen
-            // but shifts slightly as camera moves (parallax effect)
-            const parallaxOffsetX = cameraX * (1 - cloud.parallaxFactor);
-            const parallaxOffsetY = cameraY * (1 - cloud.parallaxFactor) * 0.5;
-            
-            const screenX = cloud.baseX + driftX - cameraX + parallaxOffsetX + this.camera.width / (2 * this.camera.zoom);
-            const screenY = cloud.baseY - cameraY + parallaxOffsetY + this.camera.height / (4 * this.camera.zoom);
-            
-            // Cull clouds outside visible area
             const cloudWidth = cloud.shape.totalWidth * cloud.scale;
             const cloudHeight = cloud.shape.totalHeight * cloud.scale;
-            const margin = 300;
             
-            const viewWidth = this.camera.width / this.camera.zoom;
-            const viewHeight = this.camera.height / this.camera.zoom;
+            // Calculate drift (clouds move left over time)
+            const driftX = cloud.driftOffset + this.cloudTime * cloud.driftSpeed;
             
-            if (screenX + cloudWidth < -margin || screenX > viewWidth + margin ||
-                screenY + cloudHeight < -margin || screenY > viewHeight + margin) {
+            // Subtle parallax - clouds shift slightly opposite to camera movement
+            // This creates depth without moving clouds off-screen
+            const parallaxX = -cameraX * cloud.parallaxFactor;
+            const parallaxY = -cameraY * cloud.parallaxFactor * 0.3;
+            
+            // Calculate screen position
+            let screenX = cloud.screenX + driftX + parallaxX;
+            const screenY = cloud.screenY + parallaxY;
+            
+            // Wrap horizontally - when cloud drifts off left, it reappears on right
+            screenX = ((screenX % wrapWidth) + wrapWidth) % wrapWidth - viewWidth * 0.5;
+            
+            // Skip if cloud is off screen vertically
+            if (screenY + cloudHeight < -50 || screenY > viewHeight + 50) {
                 continue;
             }
             
-            // Draw cloud at 100% opacity
-            this.ctx.globalAlpha = 1.0;
-            
+            // Draw cloud
             for (const rect of cloud.shape.rects) {
                 this.ctx.fillRect(
                     screenX + rect.x * cloud.scale,
