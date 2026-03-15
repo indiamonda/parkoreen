@@ -312,27 +312,6 @@ class Editor {
                 <span class="material-symbols-outlined">content_copy</span>
                 <span class="toolbar-btn-label">Duplicate (C)</span>
             </button>
-            <button class="toolbar-btn" data-action="rotate-left" title="Rotate Left">
-                <span class="material-symbols-outlined">rotate_left</span>
-                <span class="toolbar-btn-label">Rotate Left</span>
-            </button>
-            <button class="toolbar-btn" data-action="rotate-right" title="Rotate Right">
-                <span class="material-symbols-outlined">rotate_right</span>
-                <span class="toolbar-btn-label">Rotate Right</span>
-            </button>
-            <button class="toolbar-btn" data-tool="rotate" title="Rotate (drag)">
-                <span class="material-symbols-outlined">sync</span>
-                <span class="toolbar-btn-label">Rotate (R)</span>
-            </button>
-            <button class="toolbar-btn" data-tool="select" title="Select (V)">
-                <span class="material-symbols-outlined">select_all</span>
-                <span class="toolbar-btn-label">Select (V)</span>
-            </button>
-            <button class="toolbar-btn active" data-action="toggle-grid" title="Toggle Grid (H)">
-                <span class="material-symbols-outlined">grid_on</span>
-                <span class="toolbar-btn-label">Grid (H)</span>
-            </button>
-            <div class="toolbar-divider"></div>
             <button class="toolbar-btn" data-action="zoom-in" title="Zoom In">
                 <span class="material-symbols-outlined">zoom_in</span>
                 <span class="toolbar-btn-label">Zoom In</span>
@@ -341,14 +320,52 @@ class Editor {
                 <span class="material-symbols-outlined">zoom_out</span>
                 <span class="toolbar-btn-label">Zoom Out</span>
             </button>
-            <div class="toolbar-divider"></div>
             <button class="toolbar-btn" data-tool="erase" title="Quick Eraser">
                 <span class="material-symbols-outlined">ink_eraser</span>
                 <span class="toolbar-btn-label">Eraser</span>
             </button>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn toolbar-more-btn" id="toolbar-more-btn" title="More Tools">
+                <span class="material-symbols-outlined">more_horiz</span>
+                <span class="toolbar-btn-label">More</span>
+            </button>
+            <div class="toolbar-extra" id="toolbar-extra">
+                <button class="toolbar-btn" data-action="rotate-left" title="Rotate Left">
+                    <span class="material-symbols-outlined">rotate_left</span>
+                    <span class="toolbar-btn-label">Rotate Left</span>
+                </button>
+                <button class="toolbar-btn" data-action="rotate-right" title="Rotate Right">
+                    <span class="material-symbols-outlined">rotate_right</span>
+                    <span class="toolbar-btn-label">Rotate Right</span>
+                </button>
+                <button class="toolbar-btn" data-tool="rotate" title="Rotate (drag)">
+                    <span class="material-symbols-outlined">sync</span>
+                    <span class="toolbar-btn-label">Rotate (R)</span>
+                </button>
+                <button class="toolbar-btn" data-tool="select" title="Select (V)">
+                    <span class="material-symbols-outlined">select_all</span>
+                    <span class="toolbar-btn-label">Select (V)</span>
+                </button>
+                <button class="toolbar-btn active" data-action="toggle-grid" title="Toggle Grid (H)">
+                    <span class="material-symbols-outlined">grid_on</span>
+                    <span class="toolbar-btn-label">Grid (H)</span>
+                </button>
+            </div>
         `;
         document.body.appendChild(toolbar);
         this.ui.toolbar = toolbar;
+        this.toolbarExpanded = false;
+        
+        // More Tools toggle
+        document.getElementById('toolbar-more-btn').addEventListener('click', () => {
+            this.toolbarExpanded = !this.toolbarExpanded;
+            const extra = document.getElementById('toolbar-extra');
+            const btn = document.getElementById('toolbar-more-btn');
+            extra.classList.toggle('expanded', this.toolbarExpanded);
+            btn.classList.toggle('active', this.toolbarExpanded);
+            btn.querySelector('.toolbar-btn-label').textContent = this.toolbarExpanded ? 'Less' : 'More';
+            btn.querySelector('.material-symbols-outlined').textContent = this.toolbarExpanded ? 'expand_more' : 'more_horiz';
+        });
         
         this.createSelectionToolbar();
     }

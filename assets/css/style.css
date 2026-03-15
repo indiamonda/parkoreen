@@ -1021,6 +1021,15 @@ a:hover {
     margin: var(--spacing-xs) var(--spacing-sm);
 }
 
+.toolbar-extra {
+    display: none;
+    gap: var(--spacing-xs);
+}
+
+.toolbar-extra.expanded {
+    display: flex;
+}
+
 /* Selection Toolbar */
 .selection-toolbar {
     bottom: var(--spacing-lg);

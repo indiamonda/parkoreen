@@ -147,19 +147,27 @@ class Player {
     }
 
     updateFlying(world, editorMode = false) {
-        const speed = FLY_SPEED;
+        let dx = 0, dy = 0;
+        if (this.input.left) dx -= 1;
+        if (this.input.right) dx += 1;
+        if (this.input.up) dy -= 1;
+        if (this.input.down || this.input.shift) dy += 1;
         
-        if (this.input.left) this.x -= speed;
-        if (this.input.right) this.x += speed;
-        // W/ArrowUp OR Space moves up in fly mode
-        if (this.input.up || this.input.jump) this.y -= speed;
-        // S/ArrowDown OR Shift moves down in fly mode
-        if (this.input.down || this.input.shift) this.y += speed;
+        // Normalize so diagonal movement isn't faster
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0) {
+            dx /= len;
+            dy /= len;
+        }
+        
+        // Space = 2x speed boost while flying
+        const speed = this.input.jump ? FLY_SPEED * 2 : FLY_SPEED;
+        this.x += dx * speed;
+        this.y += dy * speed;
         
         this.vx = 0;
         this.vy = 0;
         
-        // Check for hurt collisions while flying (but not in editor mode)
         if (world && !editorMode) {
             this.checkHurtCollisions(world);
         }
@@ -325,14 +333,13 @@ class Player {
         const worldSpikeMode = world?.spikeTouchbox || 'normal';
         
         for (const obj of world.objects) {
-            // Skip objects without collision
             if (!obj.collision) continue;
-            
-            // Skip text objects (actingType 'text' means no touchbox)
             if (obj.actingType === 'text') continue;
-            
-            // Skip teleportals - they don't act as ground, only trigger teleportation
             if (obj.type === 'teleportal') continue;
+            
+            // Broad-phase: skip objects far from player
+            if (obj.x + obj.width < box.x - 2 || obj.x > box.x + box.width + 2 ||
+                obj.y + obj.height < box.y - 2 || obj.y > box.y + box.height + 2) continue;
             
             // Spinners (saw blades) acting as spikes have no ground collision
             // They only damage - player should not stand on them
@@ -401,8 +408,13 @@ class Player {
         const dropHurtOnly = world?.dropHurtOnly || false;
         
         for (const obj of world.objects) {
-            // Only check objects that act as spikes and have collision enabled
-            if (obj.actingType === 'spike' && obj.collision !== false) {
+            if (obj.actingType !== 'spike' || obj.collision === false) continue;
+            
+            // Broad-phase: skip objects far from player
+            if (obj.x + obj.width < hurtBox.x - 2 || obj.x > hurtBox.x + hurtBox.width + 2 ||
+                obj.y + obj.height < hurtBox.y - 2 || obj.y > hurtBox.y + hurtBox.height + 2) continue;
+            
+            {
                 let gotHit = false;
                 
                 // Spinners (saw blades) damage on ANY contact - no touchbox modes apply
@@ -1723,44 +1735,63 @@ class World {
     }
 
     render(ctx, camera) {
-        // Render objects by layer (skip zones - they render on top)
         const layers = [[], [], []];
         
-        // Checkpoint colors to pass to objects
         const checkpointColors = {
             default: this.checkpointDefaultColor,
             active: this.checkpointActiveColor,
             touched: this.checkpointTouchedColor
         };
         
+        // Viewport bounds for frustum culling
+        const margin = 100;
+        const vLeft = camera.x - margin;
+        const vRight = camera.x + camera.width / camera.zoom + margin;
+        const vTop = camera.y - margin;
+        const vBottom = camera.y + camera.height / camera.zoom + margin;
+        
         for (const obj of this.objects) {
             if (obj.appearanceType === 'zone' || obj.appearanceType === 'button') continue;
+            // Skip objects entirely outside the viewport
+            if (obj.x + obj.width < vLeft || obj.x > vRight ||
+                obj.y + obj.height < vTop || obj.y > vBottom) continue;
             layers[obj.layer].push(obj);
         }
         
-        // Behind player (layer 0)
         for (const obj of layers[0]) {
             obj.render(ctx, camera, checkpointColors);
         }
         
-        return { layers, checkpointColors }; // Return for player rendering between layers
+        return { layers, checkpointColors };
     }
 
     renderAbovePlayer(ctx, camera, checkpointColors) {
-        // Above player (layer 2) - skip zones/buttons
+        const margin = 100;
+        const vLeft = camera.x - margin;
+        const vRight = camera.x + camera.width / camera.zoom + margin;
+        const vTop = camera.y - margin;
+        const vBottom = camera.y + camera.height / camera.zoom + margin;
+        
         for (const obj of this.objects) {
-            if (obj.layer === 2 && obj.appearanceType !== 'zone' && obj.appearanceType !== 'button') {
-                obj.render(ctx, camera, checkpointColors);
-            }
+            if (obj.layer !== 2 || obj.appearanceType === 'zone' || obj.appearanceType === 'button') continue;
+            if (obj.x + obj.width < vLeft || obj.x > vRight ||
+                obj.y + obj.height < vTop || obj.y > vBottom) continue;
+            obj.render(ctx, camera, checkpointColors);
         }
     }
     
     renderZones(ctx, camera) {
-        // Render all zones and buttons on top of everything
+        const margin = 100;
+        const vLeft = camera.x - margin;
+        const vRight = camera.x + camera.width / camera.zoom + margin;
+        const vTop = camera.y - margin;
+        const vBottom = camera.y + camera.height / camera.zoom + margin;
+        
         for (const obj of this.objects) {
-            if (obj.appearanceType === 'zone' || obj.appearanceType === 'button') {
-                obj.render(ctx, camera);
-            }
+            if (obj.appearanceType !== 'zone' && obj.appearanceType !== 'button') continue;
+            if (obj.x + obj.width < vLeft || obj.x > vRight ||
+                obj.y + obj.height < vTop || obj.y > vBottom) continue;
+            obj.render(ctx, camera);
         }
     }
     
@@ -2302,17 +2333,14 @@ class GameEngine {
     // Render clouds with parallax effect
     renderClouds() {
         const background = this.world?.background;
-        if (background === 'custom') return; // No clouds on custom backgrounds
+        if (background === 'custom') return;
         
-        // Generate clouds if not yet done
         if (!this.cloudsGenerated) {
             this.generateClouds();
         }
         
-        // Update cloud drift time
-        this.cloudTime += 1 / 60; // Assuming 60fps updates
+        this.cloudTime += 1 / 60;
         
-        // Determine cloud color based on background (use world settings)
         let cloudColor;
         if (background === 'galaxy') {
             cloudColor = this.world?.cloudColorGalaxy || '#9382a8';
@@ -2320,30 +2348,25 @@ class GameEngine {
             cloudColor = this.world?.cloudColorSky || '#ffffff';
         }
         
-        // Get viewport dimensions
+        // Pre-render cloud images once (or when color changes)
+        if (!this._cloudCacheColor || this._cloudCacheColor !== cloudColor) {
+            this._cloudCacheColor = cloudColor;
+            this._preRenderCloudImages(cloudColor);
+        }
+        
         const viewWidth = this.camera.width / this.camera.zoom;
         const viewHeight = this.camera.height / this.camera.zoom;
-        
         const cameraX = this.camera.x;
         const cameraY = this.camera.y;
-        
-        // Wrap width for horizontal looping
         const wrapWidth = viewWidth * 3;
-        
-        // Reusable offscreen canvas for rendering each cloud as a single flat shape
-        if (!this._cloudCanvas) {
-            this._cloudCanvas = document.createElement('canvas');
-            this._cloudCtx = this._cloudCanvas.getContext('2d');
-        }
         
         this.ctx.save();
         
         for (const cloud of this.clouds) {
-            const cloudWidth = Math.ceil(cloud.shape.totalWidth * cloud.scale) + 2;
-            const cloudHeight = Math.ceil(cloud.shape.totalHeight * cloud.scale) + 2;
+            const cloudWidth = cloud._cachedWidth;
+            const cloudHeight = cloud._cachedHeight;
             
             const driftX = cloud.driftOffset + this.cloudTime * cloud.driftSpeed;
-            
             const parallaxX = -cameraX * cloud.parallaxFactor;
             const parallaxY = -cameraY * cloud.parallaxFactor;
             
@@ -2355,32 +2378,44 @@ class GameEngine {
             if (screenY + cloudHeight < -50 || screenY > viewHeight + 50) continue;
             if (screenX + cloudWidth < -50 || screenX > viewWidth + 50) continue;
             
-            // Draw all rects at full opacity onto offscreen canvas, then stamp
-            // onto main canvas at the cloud's opacity — no overlap doubling.
-            this._cloudCanvas.width = cloudWidth;
-            this._cloudCanvas.height = cloudHeight;
-            this._cloudCtx.fillStyle = cloudColor;
-            
+            this.ctx.globalAlpha = cloud.opacity;
+            this.ctx.drawImage(cloud._cachedImage, screenX, screenY);
+        }
+        
+        this.ctx.restore();
+    }
+    
+    _preRenderCloudImages(color) {
+        const tmpCanvas = document.createElement('canvas');
+        const tmpCtx = tmpCanvas.getContext('2d');
+        
+        for (const cloud of this.clouds) {
+            const w = Math.ceil(cloud.shape.totalWidth * cloud.scale) + 2;
+            const h = Math.ceil(cloud.shape.totalHeight * cloud.scale) + 2;
+            tmpCanvas.width = w;
+            tmpCanvas.height = h;
+            tmpCtx.fillStyle = color;
             for (const rect of cloud.shape.rects) {
-                this._cloudCtx.fillRect(
+                tmpCtx.fillRect(
                     rect.x * cloud.scale,
                     rect.y * cloud.scale,
                     rect.width * cloud.scale,
                     rect.height * cloud.scale
                 );
             }
-            
-            this.ctx.globalAlpha = cloud.opacity;
-            this.ctx.drawImage(this._cloudCanvas, 0, 0, cloudWidth, cloudHeight, screenX, screenY, cloudWidth, cloudHeight);
+            const img = new Image();
+            img.src = tmpCanvas.toDataURL();
+            cloud._cachedImage = img;
+            cloud._cachedWidth = w;
+            cloud._cachedHeight = h;
         }
-        
-        this.ctx.restore();
     }
     
     // Regenerate clouds (call when starting new game or resetting)
     regenerateClouds() {
         this.cloudsGenerated = false;
         this.cloudTime = 0;
+        this._cloudCacheColor = null;
     }
 
     setupCanvas() {
@@ -2563,12 +2598,11 @@ class GameEngine {
                 superDash: this.keys['KeyS']
             },
             jimmyqrg: {
-                // JimmyQrg custom layout
                 left: this.keys['KeyA'],
                 right: this.keys['KeyD'],
                 up: this.keys['ArrowUp'],
                 down: this.keys['KeyS'] || this.keys['ArrowDown'],
-                jump: this.keys['KeyW'],
+                jump: this.keys['KeyW'] || this.keys['Space'],
                 shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
                 // Plugin inputs
                 attack: this.keys['KeyN'],
@@ -2843,10 +2877,10 @@ class GameEngine {
     }
 
     update(deltaTime) {
-        if (this.state === GameState.PLAYING || this.state === GameState.TESTING) {
-            // Update local player
+        const isPlaying = this.state === GameState.PLAYING || this.state === GameState.TESTING;
+        
+        if (isPlaying) {
             if (this.localPlayer) {
-                // Let plugins handle pre-update logic via hook
                 if (window.PluginManager) {
                     const result = window.PluginManager.executeHook('player.update', {
                         player: this.localPlayer,
@@ -2855,43 +2889,35 @@ class GameEngine {
                         deltaTime
                     });
                     
-                    // Skip normal physics if plugin says so (e.g., during dash)
                     if (!result.skipPhysics) {
-                this.localPlayer.update(this.world, this.audioManager);
+                        this.localPlayer.update(this.world, this.audioManager);
                     } else {
-                        // Plugin is controlling movement - apply velocity with collision checking
                         this.localPlayer.moveWithCollision(this.world);
                     }
                 } else {
                     this.localPlayer.update(this.world, this.audioManager);
                 }
                 
-                // Check for die line (void death)
+                // Die line check
                 const dieLineY = this.world.dieLineY ?? 2000;
                 if (this.localPlayer.y > dieLineY) {
-                    // Use damage hook so HP plugin can handle it (1 damage, teleport to safe ground)
                     if (window.PluginManager) {
                         const result = window.PluginManager.executeHook('player.damage', {
                             player: this.localPlayer,
                             source: { type: 'void', actingType: 'void' },
                             world: this.world
                         });
-                        if (result.preventDefault) {
-                            // Plugin handled the damage - don't die
-                            // But we need to move player out of the void zone
-                            // (HP plugin will have teleported them already)
-                        } else {
-                    this.localPlayer.die();
+                        if (!result.preventDefault) {
+                            this.localPlayer.die();
                         }
                     } else {
                         this.localPlayer.die();
                     }
                 }
                 
-                // Check for respawn
+                // Respawn
                 if (this.localPlayer.isDead) {
                     this.respawnPlayer();
-                    // Let plugins handle post-respawn via hook
                     if (window.PluginManager) {
                         window.PluginManager.executeHook('player.respawn', {
                             player: this.localPlayer,
@@ -2900,46 +2926,35 @@ class GameEngine {
                     }
                 }
                 
-                // Check for checkpoint/endpoint collision
                 this.checkSpecialCollisions();
-                
-                // Camera follows player
                 this.camera.follow(this.localPlayer);
             }
             
-            // Update remote players with prediction
+            // Remote player prediction
             for (const player of this.remotePlayers.values()) {
-                // Predict position based on velocity since last update
                 if (player.lastUpdateTime && player.vx !== undefined) {
                     const timeSinceUpdate = (performance.now() - player.lastUpdateTime) / 1000;
-                    // Only predict for short time (max 200ms) to prevent drift
                     if (timeSinceUpdate < 0.2) {
                         const predictedX = player.serverX + player.vx * timeSinceUpdate;
                         const predictedY = player.serverY + player.vy * timeSinceUpdate;
-                        // Lerp towards predicted position for smoothness
                         player.x += (predictedX - player.x) * 0.2;
                         player.y += (predictedY - player.y) * 0.2;
                     }
                 }
             }
+            
+            // Particles only in play mode
+            this.updateParticles(deltaTime);
         } else if (this.state === GameState.EDITOR) {
-            // In editor mode, update player movement
             if (this.localPlayer) {
-                // Update player (respects fly mode toggle)
                 if (this.localPlayer.isFlying) {
-                    this.localPlayer.updateFlying(this.world, true); // true = editor mode, no hurt checks
+                    this.localPlayer.updateFlying(this.world, true);
                 } else {
-                    // Platformer physics in editor (for testing) - but no death
-                    this.localPlayer.updatePhysics(this.world, null, true); // true = editor mode
+                    this.localPlayer.updatePhysics(this.world, null, true);
                 }
-                
-                // Camera follows player in editor mode
                 this.camera.follow(this.localPlayer);
             }
         }
-        
-        // Update particles
-        this.updateParticles(deltaTime);
         
         this.camera.update(this.world?.cameraLerpX ?? CAMERA_LERP_X, this.world?.cameraLerpY ?? CAMERA_LERP_Y);
     }
@@ -2951,6 +2966,8 @@ class GameEngine {
         let onCheckpoint = false;
         
         for (const obj of this.world.objects) {
+            // Only check special acting types
+            if (obj.actingType !== 'checkpoint' && obj.actingType !== 'endpoint') continue;
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
             if (obj.actingType === 'checkpoint') {
@@ -3225,73 +3242,74 @@ class GameEngine {
     }
 
     render() {
-        // Clear using camera dimensions (DPR transform is already applied)
         this.ctx.clearRect(0, 0, this.camera.width, this.camera.height);
         
-        // Apply zoom
         this.ctx.save();
         this.ctx.scale(this.camera.zoom, this.camera.zoom);
         
-        // Render clouds (behind everything, parallax effect)
-        this.renderClouds();
+        const isPlaying = this.state === GameState.PLAYING || this.state === GameState.TESTING;
+        const isEditor = this.state === GameState.EDITOR;
+        
+        // Clouds only in play/test mode
+        if (isPlaying) {
+            this.renderClouds();
+        }
         
         // Render world objects behind player
         const { layers, checkpointColors } = this.world.render(this.ctx, this.camera);
         
-        // Render same layer objects
+        // Same-layer objects
         for (const obj of layers[1]) {
             obj.render(this.ctx, this.camera, checkpointColors);
         }
         
-        // Render players
-        if (this.state === GameState.PLAYING || this.state === GameState.TESTING || this.state === GameState.EDITOR) {
-            // Show position in editor and test mode
-            const showPosition = this.state === GameState.EDITOR || this.state === GameState.TESTING;
+        // Players
+        if (this.localPlayer) {
+            const showPosition = isEditor || this.state === GameState.TESTING;
             
-            // Remote players
-            for (const player of this.remotePlayers.values()) {
-                player.render(this.ctx, this.camera, showPosition);
+            if (isPlaying) {
+                for (const player of this.remotePlayers.values()) {
+                    player.render(this.ctx, this.camera, showPosition);
+                }
             }
             
-            // Local player on top
-            if (this.localPlayer) {
-                this.localPlayer.render(this.ctx, this.camera, showPosition);
-                
-                // Let plugins render effects around the player (attack slashes, etc.)
-                if (window.PluginManager) {
-                    window.PluginManager.executeHook('render.player', {
-                        ctx: this.ctx,
-                        player: this.localPlayer,
-                        camera: this.camera,
-                        world: this.world
-                    });
-                }
+            this.localPlayer.render(this.ctx, this.camera, showPosition);
+            
+            if (isPlaying && window.PluginManager) {
+                window.PluginManager.executeHook('render.player', {
+                    ctx: this.ctx,
+                    player: this.localPlayer,
+                    camera: this.camera,
+                    world: this.world
+                });
             }
         }
         
-        // Render objects above player
+        // Above-player objects
         this.world.renderAbovePlayer(this.ctx, this.camera, checkpointColors);
         
-        // Render zones on top of everything
+        // Zones/buttons on top
         this.world.renderZones(this.ctx, this.camera);
         
-        // Render teleportal connections (in editor and test mode)
-        if (this.state === GameState.EDITOR || this.state === GameState.TESTING) {
+        // Teleportal connections (editor & test only)
+        if (isEditor || this.state === GameState.TESTING) {
             this.world.renderTeleportalConnections(this.ctx, this.camera, Date.now());
         }
         
-        // Render editor overlays
-        if (this.state === GameState.EDITOR && this.renderEditorOverlay) {
+        // Editor overlays
+        if (isEditor && this.renderEditorOverlay) {
             this.renderEditorOverlay(this.ctx, this.camera);
         }
         
         this.ctx.restore();
         
-        // Render particles (after restore to use screen coordinates)
-        this.renderParticles();
+        // Particles only in play/test mode
+        if (isPlaying) {
+            this.renderParticles();
+        }
         
-        // Render HUD (HP, Soul) if plugins are enabled
-        if (this.state === GameState.PLAYING || this.state === GameState.TESTING) {
+        // HUD only in play/test mode
+        if (isPlaying) {
             this.renderHUD();
         }
     }
@@ -3411,23 +3429,14 @@ class GameEngine {
         this.state = GameState.EDITOR;
         this.localPlayer = null;
         this.remotePlayers.clear();
+        this.particles = [];
 
-        // Clean up any open button UI
         const buttonUI = document.getElementById('game-button-ui');
         if (buttonUI) buttonUI.remove();
         
-        // Reset button _playerInside flags
         for (const obj of this.world.objects) {
-            if (obj.appearanceType === 'button') {
-                obj._playerInside = false;
-            }
-        }
-
-        // Reset checkpoint states back to default
-        for (const obj of this.world.objects) {
-            if (obj.actingType === 'checkpoint') {
-                obj.checkpointState = 'default';
-            }
+            if (obj.appearanceType === 'button') obj._playerInside = false;
+            if (obj.actingType === 'checkpoint') obj.checkpointState = 'default';
         }
         this.lastCheckpoint = null;
 
