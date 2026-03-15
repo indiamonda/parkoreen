@@ -107,8 +107,8 @@ class Player {
         // Touchboxes - positioned lower on the player sprite
         // Ground touchbox: used for ground collision (full width for partial ground contact)
         this.groundTouchbox = { x: 0, y: 8, width: PLAYER_SIZE, height: PLAYER_SIZE - 8 };
-        // Hurt touchbox: used for spike damage detection (smaller, even lower)
-        this.hurtTouchbox = { x: 8, y: 12, width: PLAYER_SIZE - 16, height: PLAYER_SIZE - 14 };
+        // Hurt touchbox: used for spike damage detection (slightly inset from visual)
+        this.hurtTouchbox = { x: 2, y: 4, width: PLAYER_SIZE - 4, height: PLAYER_SIZE - 6 };
         
         this.isLocal = false;
         this.isDead = false;
@@ -439,10 +439,8 @@ class Player {
                     // In 'normal' mode, flat part is safe, rest damages
                     if (spikeMode === 'normal') {
                         const flatBox = this.getSpikeFlat(obj);
-                        const dangerBox = this.getSpikeDanger(obj);
                         
-                        // Check if touching danger zone (not in flat area)
-                        if (this.boxIntersects(hurtBox, dangerBox) && !this.boxIntersects(hurtBox, flatBox)) {
+                        if (this.boxIntersects(hurtBox, obj) && !this.boxIntersects(hurtBox, flatBox)) {
                             gotHit = true;
                         }
                     }
@@ -1266,10 +1264,10 @@ class WorldObject {
         const centerX = x + w / 2;
         const centerY = y + h / 2;
         
-        // Calculate rotation angle based on time
-        const time = Date.now() / 1000; // Convert to seconds
-        const spinSpeed = this.spinSpeed || 1; // Rotations per second
-        const rotationAngle = time * spinSpeed * Math.PI * 2;
+        const spinSpeed = this.spinSpeed || 1;
+        const now = Date.now();
+        const periodMs = 1000 / spinSpeed;
+        const rotationAngle = ((now % periodMs) / periodMs) * Math.PI * 2;
         
         ctx.save();
         ctx.translate(centerX, centerY);
@@ -3154,8 +3152,8 @@ class GameEngine {
                 this.lastCheckpoint = obj;
                 this._onCheckpointObj = obj;
 
-                // Fire checkpoint hook on first contact per visit (heals to full HP, etc.)
-                if (isNewContact && this.localPlayer && window.PluginManager) {
+                // Fire checkpoint hook every frame while touching (heals to full HP, etc.)
+                if (this.localPlayer && window.PluginManager) {
                     window.PluginManager.executeHook('player.checkpoint', {
                         player: this.localPlayer,
                         world: this.world,
@@ -3163,7 +3161,7 @@ class GameEngine {
                     });
                 }
 
-                if (wasUntouched) {
+                if (isNewContact) {
                     const centerX = obj.x + obj.width / 2;
                     const centerY = obj.y + obj.height / 2;
                     this.spawnCheckpointParticles(centerX, centerY, this.world.checkpointActiveColor);
