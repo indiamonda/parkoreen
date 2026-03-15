@@ -8399,7 +8399,7 @@ class Editor {
         const viewEndY = viewStartY + (endY - startY);
 
         // Draw minor grid lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.lineWidth = 0.5 / camera.zoom;
 
         ctx.beginPath();
@@ -8422,7 +8422,7 @@ class Editor {
         const majorStart = Math.floor(camera.x / (GRID_SIZE * 5)) * GRID_SIZE * 5;
         const majorStartY = Math.floor(camera.y / (GRID_SIZE * 5)) * GRID_SIZE * 5;
         
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
         ctx.lineWidth = 1 / camera.zoom;
         
         ctx.beginPath();
@@ -8439,8 +8439,8 @@ class Editor {
         ctx.stroke();
         
         // Draw origin lines (x=0 and y=0) in a distinct color
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 1.5 / camera.zoom;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = 2 / camera.zoom;
         
         ctx.beginPath();
         // Y-axis (x=0)

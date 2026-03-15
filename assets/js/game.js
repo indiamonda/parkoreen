@@ -2328,11 +2328,17 @@ class GameEngine {
         // Wrap width for horizontal looping
         const wrapWidth = viewWidth * 3;
         
+        // Reusable offscreen canvas for rendering each cloud as a single flat shape
+        if (!this._cloudCanvas) {
+            this._cloudCanvas = document.createElement('canvas');
+            this._cloudCtx = this._cloudCanvas.getContext('2d');
+        }
+        
         this.ctx.save();
         
         for (const cloud of this.clouds) {
-            const cloudWidth = cloud.shape.totalWidth * cloud.scale;
-            const cloudHeight = cloud.shape.totalHeight * cloud.scale;
+            const cloudWidth = Math.ceil(cloud.shape.totalWidth * cloud.scale) + 2;
+            const cloudHeight = Math.ceil(cloud.shape.totalHeight * cloud.scale) + 2;
             
             const driftX = cloud.driftOffset + this.cloudTime * cloud.driftSpeed;
             
@@ -2347,17 +2353,27 @@ class GameEngine {
             if (screenY + cloudHeight < -50 || screenY > viewHeight + 50) continue;
             if (screenX + cloudWidth < -50 || screenX > viewWidth + 50) continue;
             
-            this.ctx.globalAlpha = cloud.opacity;
-            this.ctx.fillStyle = cloudColor;
+            // Render cloud shape to offscreen canvas at full opacity,
+            // then stamp it onto the main canvas at the cloud's opacity.
+            // This prevents overlapping rectangles from doubling up.
+            if (this._cloudCanvas.width < cloudWidth || this._cloudCanvas.height < cloudHeight) {
+                this._cloudCanvas.width = Math.max(this._cloudCanvas.width, cloudWidth);
+                this._cloudCanvas.height = Math.max(this._cloudCanvas.height, cloudHeight);
+            }
+            this._cloudCtx.clearRect(0, 0, cloudWidth, cloudHeight);
+            this._cloudCtx.fillStyle = cloudColor;
             
             for (const rect of cloud.shape.rects) {
-                this.ctx.fillRect(
-                    screenX + rect.x * cloud.scale,
-                    screenY + rect.y * cloud.scale,
+                this._cloudCtx.fillRect(
+                    rect.x * cloud.scale,
+                    rect.y * cloud.scale,
                     rect.width * cloud.scale,
                     rect.height * cloud.scale
                 );
             }
+            
+            this.ctx.globalAlpha = cloud.opacity;
+            this.ctx.drawImage(this._cloudCanvas, 0, 0, cloudWidth, cloudHeight, screenX, screenY, cloudWidth, cloudHeight);
         }
         
         this.ctx.restore();
