@@ -5671,9 +5671,11 @@ class Editor {
         
         // Toggle button
         const toggleBtn = document.getElementById('inspect-toggle-btn');
+        const toggleIcon = toggleBtn.querySelector('.material-symbols-outlined');
         toggleBtn.addEventListener('click', () => {
             const isHidden = container.classList.toggle('hidden');
             toggleBtn.title = isHidden ? 'Show Inspector' : 'Hide Inspector';
+            toggleIcon.textContent = isHidden ? 'visibility' : 'keyboard_double_arrow_left';
         });
     }
     

@@ -258,6 +258,19 @@
     }, pluginId);
     
     // ============================================
+    // CHECKPOINT HOOK - Restore HP to max
+    // ============================================
+    pluginManager.registerHook('player.checkpoint', (data) => {
+        const { player } = data;
+        
+        if (player.useHPSystem) {
+            player.hp = player.maxHP;
+        }
+        
+        return data;
+    }, pluginId);
+    
+    // ============================================
     // RESPAWN HOOK - Reset HP on respawn
     // ============================================
     pluginManager.registerHook('player.respawn', (data) => {

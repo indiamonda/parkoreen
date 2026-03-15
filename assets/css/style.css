@@ -698,7 +698,7 @@ a:hover {
 }
 
 .inspect-box-container.hidden {
-    transform: translateX(calc(-100% + 24px));
+    transform: translateX(calc(-100% + 48px));
 }
 
 .inspect-box-container.hidden .inspect-box {
@@ -758,10 +758,10 @@ a:hover {
 .inspect-toggle-btn {
     position: absolute;
     top: 50%;
-    right: -40px;
+    right: -44px;
     transform: translateY(-50%);
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     background: rgba(20, 20, 30, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
@@ -770,7 +770,8 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s ease, background 0.2s ease;
+    transition: all 0.3s ease;
+    z-index: 10;
 }
 
 .inspect-toggle-btn:hover {
@@ -783,13 +784,17 @@ a:hover {
     background: rgba(74, 222, 128, 0.9);
     color: #000;
     border-color: rgba(74, 222, 128, 1);
-    width: 36px;
-    height: 36px;
-    box-shadow: 0 2px 10px rgba(74, 222, 128, 0.4);
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(74, 222, 128, 0.5);
+    right: -52px;
 }
 
 .inspect-box-container.hidden .inspect-toggle-btn:hover {
     background: rgba(74, 222, 128, 1);
+    box-shadow: 0 3px 16px rgba(74, 222, 128, 0.7);
+    transform: translateY(-50%) rotate(180deg) scale(1.1);
 }
 
 /* ====================================

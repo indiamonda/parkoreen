@@ -2894,10 +2894,10 @@ class GameEngine {
             
             if (obj.actingType === 'checkpoint') {
                 onCheckpoint = true;
-                
+
                 // Spawn particles when checkpoint is first touched
                 const wasUntouched = obj.checkpointState === 'default';
-                
+
                 // Mark previous checkpoint as touched (blue)
                 if (this.lastCheckpoint && this.lastCheckpoint !== obj) {
                     this.lastCheckpoint.checkpointState = 'touched';
@@ -2905,7 +2905,18 @@ class GameEngine {
                 // Mark new checkpoint as active (green)
                 obj.checkpointState = 'active';
                 this.lastCheckpoint = obj;
-                
+
+                // Restore HP to max when reaching a checkpoint
+                if (wasUntouched && this.localPlayer) {
+                    if (window.PluginManager) {
+                        window.PluginManager.executeHook('player.checkpoint', {
+                            player: this.localPlayer,
+                            world: this.world,
+                            checkpoint: obj
+                        });
+                    }
+                }
+
                 // Spawn green particles on first touch
                 if (wasUntouched) {
                     const centerX = obj.x + obj.width / 2;
