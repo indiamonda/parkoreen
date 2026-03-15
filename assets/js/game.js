@@ -2208,8 +2208,8 @@ class GameEngine {
             // Size multiplier (0.6 to 1.4) - more uniform sizes
             const scale = 0.6 + Math.random() * 0.8;
             
-            // Opacity (40% to 60%) - semi-transparent
-            const opacity = 0.4 + Math.random() * 0.2;
+            // Opacity - 100% solid
+            const opacity = 1.0;
             
             // Parallax factor: clouds move LESS than player (background effect)
             // Lower factor = moves less = appears further away
