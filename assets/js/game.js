@@ -352,23 +352,19 @@ class Player {
                 // In 'air' mode, spikes have no interaction
                 if (spikeMode === 'air') continue;
                 
-                // When dropHurtOnly is DISABLED, spikes have full collision (player can't walk through)
-                // When dropHurtOnly is ENABLED, only the flat part has collision
-                if (!useDropHurtOnly || spikeMode === 'full') {
+                // In 'full' mode, spikes only damage, no ground collision at all
+                if (spikeMode === 'full') continue;
+                
+                // When dropHurtOnly is DISABLED, spikes are solid (player can't walk through)
+                if (!useDropHurtOnly) {
                     if (this.boxIntersects(box, obj)) {
-                        // For horizontal checks, block movement
-                        if (direction === 'horizontal') {
-                            collisions.push(obj);
-                        }
-                        // For vertical checks, block hitting from below but not landing
-                        else if (direction === 'vertical' && this.vy < 0) {
-                            collisions.push(obj);
-                        }
+                        collisions.push(obj);
                     }
                     continue;
                 }
                 
-                // For normal, tip, ground, flag modes with dropHurtOnly enabled - check flat part collision
+                // When dropHurtOnly is ENABLED, only the flat part has collision
+                // For normal, tip, ground, flag modes
                 if (this.boxIntersects(box, obj)) {
                     const flatBox = this.getSpikeFlat(obj);
                     if (this.boxIntersects(box, flatBox)) {
