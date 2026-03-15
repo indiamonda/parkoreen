@@ -160,8 +160,8 @@ class Player {
             dy /= len;
         }
         
-        // Space = 2x speed boost while flying
-        const speed = this.input.jump ? FLY_SPEED * 2 : FLY_SPEED;
+        // Space key = 2x speed boost while flying
+        const speed = this.input.space ? FLY_SPEED * 2 : FLY_SPEED;
         this.x += dx * speed;
         this.y += dy * speed;
         
@@ -436,11 +436,10 @@ class Player {
                         }
                     }
                     
-                    // In 'normal' mode, flat part is safe, rest damages
+                    // In 'normal' mode, danger zone damages (between visual tip and flat base)
                     if (spikeMode === 'normal') {
-                        const flatBox = this.getSpikeFlat(obj);
-                        
-                        if (this.boxIntersects(hurtBox, obj) && !this.boxIntersects(hurtBox, flatBox)) {
+                        const dangerBox = this.getSpikeDanger(obj);
+                        if (this.boxIntersects(hurtBox, dangerBox)) {
                             gotHit = true;
                         }
                     }
@@ -491,17 +490,26 @@ class Player {
     
     getSpikeDanger(spike) {
         const r = spike.rotation || 0;
-        const sd = spike.height * 0.5;
-        const si = spike.width * 0.2;
+        const w = spike.width;
+        const h = spike.height;
+        // Spike visual starts at ~44% from the tip side.
+        // Flat safe zone is 35% from the base side (starts at 65% from tip).
+        // Danger zone: from 44% to 62% from tip (3% gap before flat zone).
+        const visStart = 0.44;
+        const dangerLen = 0.18;
         const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
-            b.x = spike.x + si; b.y = spike.y; b.width = spike.width - si * 2; b.height = spike.height - sd;
+            // tip up, flat at bottom
+            b.x = spike.x; b.y = spike.y + h * visStart; b.width = w; b.height = h * dangerLen;
         } else if (r === 90) {
-            b.x = spike.x + sd; b.y = spike.y + si; b.width = spike.width - sd; b.height = spike.height - si * 2;
+            // tip right, flat at left
+            b.x = spike.x + w * (1 - visStart - dangerLen); b.y = spike.y; b.width = w * dangerLen; b.height = h;
         } else if (r === 180) {
-            b.x = spike.x + si; b.y = spike.y + sd; b.width = spike.width - si * 2; b.height = spike.height - sd;
+            // tip down, flat at top
+            b.x = spike.x; b.y = spike.y + h * (1 - visStart - dangerLen); b.width = w; b.height = h * dangerLen;
         } else {
-            b.x = spike.x; b.y = spike.y + si; b.width = spike.width - sd; b.height = spike.height - si * 2;
+            // tip left, flat at right
+            b.x = spike.x + w * visStart; b.y = spike.y; b.width = w * dangerLen; b.height = h;
         }
         return b;
     }
@@ -675,14 +683,13 @@ class Camera {
     
     // Set zoom limits based on game mode
     setZoomLimits(mode) {
-        if (mode === 'editor' || mode === 'test') {
-            // Editor/Test: zoom freely in and out
+        if (mode === 'editor') {
             this.minZoom = 0.5;
             this.maxZoom = 4;
         } else {
-            // Play/Host: default zoom is max zoom out level (can only zoom in from default)
+            // Test/Play: zoom is locked to default
             this.minZoom = this.defaultZoom;
-            this.maxZoom = 4;
+            this.maxZoom = this.defaultZoom;
         }
         // Clamp current zoom to new limits
         this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom));
@@ -2778,6 +2785,7 @@ class GameEngine {
         this.localPlayer.input.down = keymap.down;
         this.localPlayer.input.jump = keymap.jump;
         this.localPlayer.input.shift = keymap.shift;
+        this.localPlayer.input.space = !!this.keys['Space'];
         
         // Store plugin inputs for plugins to use
         this.localPlayer.input.attack = keymap.attack;

@@ -1022,12 +1022,37 @@ a:hover {
 }
 
 .toolbar-extra {
-    display: none;
+    display: flex;
     gap: var(--spacing-xs);
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease,
+                margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 0;
 }
 
 .toolbar-extra.expanded {
-    display: flex;
+    max-width: 500px;
+    opacity: 1;
+    margin-left: var(--spacing-xs);
+}
+
+.toolbar-expand-btn {
+    padding: var(--spacing-sm) var(--spacing-xs) !important;
+    min-width: 32px !important;
+    margin-left: var(--spacing-xs);
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.toolbar-expand-icon {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 20px !important;
+}
+
+.toolbar-expand-btn.expanded .toolbar-expand-icon {
+    transform: rotate(180deg);
 }
 
 /* Selection Toolbar */

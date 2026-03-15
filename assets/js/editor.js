@@ -324,11 +324,6 @@ class Editor {
                 <span class="material-symbols-outlined">ink_eraser</span>
                 <span class="toolbar-btn-label">Eraser</span>
             </button>
-            <div class="toolbar-divider"></div>
-            <button class="toolbar-btn toolbar-more-btn" id="toolbar-more-btn" title="More Tools">
-                <span class="material-symbols-outlined">more_horiz</span>
-                <span class="toolbar-btn-label">More</span>
-            </button>
             <div class="toolbar-extra" id="toolbar-extra">
                 <button class="toolbar-btn" data-action="rotate-left" title="Rotate Left">
                     <span class="material-symbols-outlined">rotate_left</span>
@@ -351,20 +346,21 @@ class Editor {
                     <span class="toolbar-btn-label">Grid (H)</span>
                 </button>
             </div>
+            <button class="toolbar-btn toolbar-expand-btn" id="toolbar-expand-btn" title="More Tools">
+                <span class="material-symbols-outlined toolbar-expand-icon">chevron_right</span>
+            </button>
         `;
         document.body.appendChild(toolbar);
         this.ui.toolbar = toolbar;
         this.toolbarExpanded = false;
         
-        // More Tools toggle
-        document.getElementById('toolbar-more-btn').addEventListener('click', () => {
+        // Expand/collapse toolbar toggle
+        document.getElementById('toolbar-expand-btn').addEventListener('click', () => {
             this.toolbarExpanded = !this.toolbarExpanded;
             const extra = document.getElementById('toolbar-extra');
-            const btn = document.getElementById('toolbar-more-btn');
+            const btn = document.getElementById('toolbar-expand-btn');
             extra.classList.toggle('expanded', this.toolbarExpanded);
-            btn.classList.toggle('active', this.toolbarExpanded);
-            btn.querySelector('.toolbar-btn-label').textContent = this.toolbarExpanded ? 'Less' : 'More';
-            btn.querySelector('.material-symbols-outlined').textContent = this.toolbarExpanded ? 'expand_more' : 'more_horiz';
+            btn.classList.toggle('expanded', this.toolbarExpanded);
         });
         
         this.createSelectionToolbar();
