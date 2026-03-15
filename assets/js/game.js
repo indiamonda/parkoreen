@@ -2225,10 +2225,10 @@ class GameEngine {
     // Generate a single cloud shape (multiple rectangles combined with flat bottom)
     generateCloudShape() {
         const rects = [];
-        const numRects = 3 + Math.floor(Math.random() * 3); // 3-5 rectangles
+        const numRects = 3 + Math.floor(Math.random() * 4); // 3-6 rectangles
 
-        const maxHeight = 20 + Math.random() * 30; // 20-50 height
-        const baseWidth = maxHeight * (2 + Math.random() * 2.5); // 2-4.5x width ratio
+        const maxHeight = 30 + Math.random() * 50; // 30-80 height
+        const baseWidth = maxHeight * (2.5 + Math.random() * 2.5); // 2.5-5x width ratio
 
         let currentX = 0;
         for (let i = 0; i < numRects; i++) {
@@ -2245,7 +2245,11 @@ class GameEngine {
             currentX += rectWidth * (0.5 + Math.random() * 0.4);
         }
 
-        const totalWidth = currentX + (rects.length > 0 ? rects[rects.length - 1].width * 0.4 : 0);
+        // Compute actual bounding box from all rects
+        let totalWidth = 0;
+        for (const r of rects) {
+            totalWidth = Math.max(totalWidth, r.x + r.width);
+        }
 
         return { rects, totalWidth, totalHeight: maxHeight };
     }
@@ -2269,11 +2273,9 @@ class GameEngine {
             const screenX = (i / numClouds) * cloudAreaWidth - cloudAreaWidth / 3 + (Math.random() - 0.5) * 200;
             const screenY = Math.random() * cloudAreaHeight + 15;
             
-            // Moderate scale — clouds should look soft and small
-            const scale = 0.7 + Math.random() * 0.9; // 0.7 to 1.6
+            const scale = 0.8 + Math.random() * 1.4; // 0.8 to 2.2
             
-            // Parallax: bigger clouds closer, move more
-            const normalizedScale = (scale - 0.7) / 0.9; // 0-1
+            const normalizedScale = (scale - 0.8) / 1.4; // 0-1
             const parallaxFactor = 0.15 + normalizedScale * 0.35; // 0.15-0.50
             
             // Opacity: further clouds slightly more transparent
@@ -2353,14 +2355,10 @@ class GameEngine {
             if (screenY + cloudHeight < -50 || screenY > viewHeight + 50) continue;
             if (screenX + cloudWidth < -50 || screenX > viewWidth + 50) continue;
             
-            // Render cloud shape to offscreen canvas at full opacity,
-            // then stamp it onto the main canvas at the cloud's opacity.
-            // This prevents overlapping rectangles from doubling up.
-            if (this._cloudCanvas.width < cloudWidth || this._cloudCanvas.height < cloudHeight) {
-                this._cloudCanvas.width = Math.max(this._cloudCanvas.width, cloudWidth);
-                this._cloudCanvas.height = Math.max(this._cloudCanvas.height, cloudHeight);
-            }
-            this._cloudCtx.clearRect(0, 0, cloudWidth, cloudHeight);
+            // Draw all rects at full opacity onto offscreen canvas, then stamp
+            // onto main canvas at the cloud's opacity — no overlap doubling.
+            this._cloudCanvas.width = cloudWidth;
+            this._cloudCanvas.height = cloudHeight;
             this._cloudCtx.fillStyle = cloudColor;
             
             for (const rect of cloud.shape.rects) {
