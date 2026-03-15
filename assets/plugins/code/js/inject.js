@@ -73,10 +73,10 @@
     const globalState = {
         gameStarted: false,
         gameStartFired: false,
-        repeatTimers: new Map(), // trigger id -> last execution time
+        repeatTimers: new Map(),
         pressedKeys: new Set(),
-        keyJustPressed: new Set(), // Keys that were just pressed this frame
-        playerStates: new Map() // player id -> player state
+        keyJustPressed: new Set(),
+        playerStates: new Map()
     };
     
     // Get or create player state
@@ -317,6 +317,10 @@
                     
                     return playerValue.toLowerCase() === statValue.toLowerCase();
                     
+                case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
+                    // Handled directly via button.pressed hook (event-based)
+                    return false;
+
                 default:
                     return false;
             }
@@ -418,6 +422,34 @@
             setTimeout(() => {
                 playerState.justJumped = false;
             }, 100);
+            
+            return data;
+        });
+        
+        // Button pressed hook - fired when player clicks a button UI
+        pm.registerHook('button.pressed', (data) => {
+            if (!isEnabled()) return data;
+            
+            const { button, player, world } = data;
+            if (!button || !player || !world) return data;
+            
+            // Evaluate button triggers immediately
+            const codeData = getCodeData();
+            const triggers = (codeData?.triggers || []).filter(t => 
+                t.enabled && t.triggerType === CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON
+            );
+            
+            for (const trigger of triggers) {
+                if (trigger.config?.buttonName === button.name) {
+                    if (trigger.config?.actionId) {
+                        executeAction(trigger.config.actionId, world, player, {
+                            trigger: trigger.name,
+                            triggerType: trigger.triggerType,
+                            buttonName: button.name
+                        });
+                    }
+                }
+            }
             
             return data;
         });

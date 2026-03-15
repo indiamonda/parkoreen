@@ -12,6 +12,7 @@ const CODE_TRIGGER_TYPES = {
     PLAYER_ENTER_ZONE: 'playerEnterZone',
     PLAYER_KEY_INPUT: 'playerKeyInput',
     PLAYER_LEAVE_ZONE: 'playerLeaveZone',
+    PLAYER_PRESS_BUTTON: 'playerPressButton',
     PLAYER_STATS: 'playerStats',
     REPEAT: 'repeat'
 };
@@ -23,6 +24,7 @@ const CODE_TRIGGER_TYPE_INFO = [
     { id: CODE_TRIGGER_TYPES.PLAYER_ENTER_ZONE, label: 'Player Enter Zone', description: 'When player enters a zone' },
     { id: CODE_TRIGGER_TYPES.PLAYER_KEY_INPUT, label: 'Player Key Input', description: 'When specific keys are pressed' },
     { id: CODE_TRIGGER_TYPES.PLAYER_LEAVE_ZONE, label: 'Player Leave Zone', description: 'When player leaves a zone' },
+    { id: CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON, label: 'Player Press Button', description: 'When player presses a button UI' },
     { id: CODE_TRIGGER_TYPES.PLAYER_STATS, label: 'Player Stats', description: 'When player stats match a condition' },
     { id: CODE_TRIGGER_TYPES.REPEAT, label: 'Repeat', description: 'Fires repeatedly at an interval' }
 ].sort((a, b) => a.label.localeCompare(b.label));

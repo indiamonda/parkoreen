@@ -79,6 +79,18 @@
         return [];
     };
     
+    // Get all buttons from world
+    const getButtons = () => {
+        const w = getWorld();
+        if (w && w.objects) {
+            return w.objects
+                .filter(obj => obj.appearanceType === 'button')
+                .map(obj => ({ id: obj.id, name: obj.name, displayName: obj.displayName }))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
+        return [];
+    };
+    
     // Show toast notification
     const showToast = (message, type = 'info') => {
         const existing = document.querySelector('.code-toast');
@@ -893,6 +905,12 @@
                     return 'No keys configured';
                 }
                 break;
+            case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
+                if (!config.buttonName) return 'No button selected';
+                if (!getButtons().find(b => b.name === config.buttonName)) {
+                    return `Button "${config.buttonName}" not found`;
+                }
+                break;
         }
         return null;
     };
@@ -951,6 +969,9 @@
                 case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT:
                     const actionObj = CODE_PLAYER_ACTIONS.find(a => a.id === block.config?.action);
                     typeDescription = actionObj ? `Player: ${actionObj.label}` : 'Player action';
+                    break;
+                case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
+                    typeDescription = error ? `⚠ ${error}` : `When player presses "${block.config?.buttonName}"`;
                     break;
                 case CODE_TRIGGER_TYPES.PLAYER_STATS:
                     const statObj = CODE_PLAYER_STATS.find(s => s.id === block.config?.stat);
@@ -1457,6 +1478,21 @@
                 `;
                 break;
                 
+            case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
+                const buttons = getButtons();
+                const hasButtons = buttons.length > 0;
+                html = `
+                    <div class="trigger-form-group">
+                        <label class="trigger-form-label">Button</label>
+                        <select class="trigger-form-select" id="trigger-config-button" ${!hasButtons ? 'disabled' : ''}>
+                            ${!hasButtons ? '<option value="">No buttons available</option>' : ''}
+                            ${buttons.map(b => `<option value="${escapeHtml(b.name)}" ${config.buttonName === b.name ? 'selected' : ''}>${escapeHtml(b.name)}${b.displayName ? ' (' + escapeHtml(b.displayName) + ')' : ''}</option>`).join('')}
+                        </select>
+                        ${!hasButtons ? '<p class="trigger-description error">Create buttons in the editor first (use Add → Button)</p>' : ''}
+                    </div>
+                `;
+                break;
+
             case CODE_TRIGGER_TYPES.GAME_STARTS:
             default:
                 html = `<p class="trigger-description">This trigger fires once when the game starts. No additional configuration needed.</p>`;
@@ -1646,8 +1682,12 @@
                 config.interval = Math.max(1, parseFloat(document.getElementById('trigger-config-interval')?.value) || 1);
                 config.unit = document.getElementById('trigger-config-unit')?.value || 'seconds';
                 break;
+
+            case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
+                config.buttonName = document.getElementById('trigger-config-button')?.value || '';
+                break;
         }
-        
+
         // Update trigger
         editingBlock.name = name;
         editingBlock.triggerType = triggerType;

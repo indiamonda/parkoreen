@@ -875,6 +875,13 @@ class WorldObject {
         // Spinner-specific properties
         this.spinSpeed = config.spinSpeed !== undefined ? config.spinSpeed : 1;
 
+        // Button-specific properties
+        this.displayName = config.displayName || '';
+        this.displayDescription = config.displayDescription || '';
+        this.buttonVisible = config.buttonVisible !== undefined ? config.buttonVisible : true;
+        this.buttonWidth = config.buttonWidth || null;
+        this.buttonHeight = config.buttonHeight || null;
+
         // Teleportal-specific properties
         this.teleportalName = config.teleportalName || null;
         // sendTo/receiveFrom: Array of {name, enabled} objects (backward compatible with string arrays)
@@ -903,7 +910,8 @@ class WorldObject {
             spawnpoint: 'Spawn Point',
             endpoint: 'End Point',
             teleportal: 'Teleportal',
-            soulStatue: 'Soul Statue'
+            soulStatue: 'Soul Statue',
+            button: 'Button'
         };
         return typeNames[this.appearanceType] || 'Object';
     }
@@ -942,6 +950,8 @@ class WorldObject {
             this.renderEndpoint(ctx, screenX, screenY, width, height);
         } else if (this.appearanceType === 'zone') {
             this.renderZone(ctx, screenX, screenY, width, height);
+        } else if (this.appearanceType === 'button') {
+            this.renderButton(ctx, screenX, screenY, width, height);
         } else if (this.type === 'teleportal' || this.appearanceType === 'teleportal') {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
         } else if (this.appearanceType === 'soulStatue') {
@@ -1191,6 +1201,45 @@ class WorldObject {
         }
     }
     
+    renderButton(ctx, x, y, w, h) {
+        if (!this.buttonVisible) return;
+        
+        const bw = this.buttonWidth || w;
+        const bh = this.buttonHeight || h;
+        const bx = x + (w - bw) / 2;
+        const by = y + (h - bh) / 2;
+        
+        // Rounded rectangle fill
+        const r = Math.min(8, bw / 4, bh / 4);
+        ctx.beginPath();
+        ctx.moveTo(bx + r, by);
+        ctx.lineTo(bx + bw - r, by);
+        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+        ctx.lineTo(bx + bw, by + bh - r);
+        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+        ctx.lineTo(bx + r, by + bh);
+        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+        ctx.lineTo(bx, by + r);
+        ctx.quadraticCurveTo(bx, by, bx + r, by);
+        ctx.closePath();
+        
+        ctx.fillStyle = this.color || 'rgba(59, 130, 246, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Display name label
+        if (this.displayName) {
+            const fontSize = Math.min(14, bh * 0.4);
+            ctx.font = `bold ${fontSize}px "Parkoreen Game", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(this.displayName, bx + bw / 2, by + bh / 2);
+        }
+    }
+
     renderTeleportal(ctx, x, y, w, h) {
         const centerX = x + w / 2;
         const centerY = y + h / 2;
@@ -1449,6 +1498,11 @@ class WorldObject {
             dropHurtOnly: this.dropHurtOnly,
             zoneName: this.zoneName,
             spinSpeed: this.spinSpeed,
+            displayName: this.displayName,
+            displayDescription: this.displayDescription,
+            buttonVisible: this.buttonVisible,
+            buttonWidth: this.buttonWidth,
+            buttonHeight: this.buttonHeight,
             teleportalName: this.teleportalName,
             sendTo: this.sendTo,
             receiveFrom: this.receiveFrom,
@@ -1680,7 +1734,7 @@ class World {
         };
         
         for (const obj of this.objects) {
-            if (obj.appearanceType === 'zone') continue; // Zones render last
+            if (obj.appearanceType === 'zone' || obj.appearanceType === 'button') continue;
             layers[obj.layer].push(obj);
         }
         
@@ -1693,18 +1747,18 @@ class World {
     }
 
     renderAbovePlayer(ctx, camera, checkpointColors) {
-        // Above player (layer 2) - skip zones
+        // Above player (layer 2) - skip zones/buttons
         for (const obj of this.objects) {
-            if (obj.layer === 2 && obj.appearanceType !== 'zone') {
+            if (obj.layer === 2 && obj.appearanceType !== 'zone' && obj.appearanceType !== 'button') {
                 obj.render(ctx, camera, checkpointColors);
             }
         }
     }
     
     renderZones(ctx, camera) {
-        // Render all zones on top of everything
+        // Render all zones and buttons on top of everything
         for (const obj of this.objects) {
-            if (obj.appearanceType === 'zone') {
+            if (obj.appearanceType === 'zone' || obj.appearanceType === 'button') {
                 obj.render(ctx, camera);
             }
         }
@@ -2950,8 +3004,108 @@ class GameEngine {
             }
         }
         
+        // Check for button collisions
+        this.checkButtonCollisions();
+
         // Check for teleportal collisions
         this.checkTeleportalCollisions();
+    }
+    
+    checkButtonCollisions() {
+        if (!this.localPlayer || this.localPlayer.isDead) return;
+        
+        const playerBox = this.localPlayer.getGroundTouchbox();
+        
+        for (const obj of this.world.objects) {
+            if (obj.appearanceType !== 'button' || obj.actingType !== 'button') continue;
+            if (!this.localPlayer.boxIntersects(playerBox, obj)) {
+                // Player left the button zone — mark as not inside
+                if (obj._playerInside) {
+                    obj._playerInside = false;
+                }
+                continue;
+            }
+            
+            // Player is inside this button zone
+            if (!obj._playerInside) {
+                obj._playerInside = true;
+                this.showButtonUI(obj);
+            }
+        }
+    }
+    
+    showButtonUI(buttonObj) {
+        // Don't show if one is already visible for this button
+        if (document.getElementById('game-button-ui')) return;
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'game-button-ui';
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; pointer-events: none;
+        `;
+        
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: rgba(15, 15, 30, 0.95); border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 16px; padding: 32px 40px; max-width: 420px; width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(59, 130, 246, 0.15);
+            pointer-events: all; cursor: pointer; position: relative;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        `;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.style.cssText = `
+            position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.1);
+            border: none; color: #aaa; width: 32px; height: 32px; border-radius: 8px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; transition: background 0.15s;
+        `;
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = 'rgba(255,255,255,0.2)'; });
+        closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'rgba(255,255,255,0.1)'; });
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            overlay.remove();
+        });
+        
+        const title = document.createElement('div');
+        title.style.cssText = 'font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 12px; padding-right: 30px;';
+        title.textContent = buttonObj.displayName || 'Button';
+        
+        const desc = document.createElement('div');
+        desc.style.cssText = 'font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; white-space: pre-wrap;';
+        desc.textContent = buttonObj.displayDescription || '';
+        
+        panel.appendChild(closeBtn);
+        panel.appendChild(title);
+        if (buttonObj.displayDescription) panel.appendChild(desc);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+        
+        // Hover effect
+        panel.addEventListener('mouseenter', () => {
+            panel.style.transform = 'scale(1.02)';
+            panel.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(59, 130, 246, 0.25)';
+        });
+        panel.addEventListener('mouseleave', () => {
+            panel.style.transform = '';
+            panel.style.boxShadow = '';
+        });
+        
+        // Click panel (not close) = trigger
+        panel.addEventListener('click', () => {
+            overlay.remove();
+            // Fire button trigger via plugin hook
+            if (window.PluginManager) {
+                window.PluginManager.executeHook('button.pressed', {
+                    button: buttonObj,
+                    player: this.localPlayer,
+                    world: this.world
+                });
+            }
+        });
     }
     
     checkTeleportalCollisions() {
@@ -3260,6 +3414,17 @@ class GameEngine {
         this.state = GameState.EDITOR;
         this.localPlayer = null;
         this.remotePlayers.clear();
+
+        // Clean up any open button UI
+        const buttonUI = document.getElementById('game-button-ui');
+        if (buttonUI) buttonUI.remove();
+        
+        // Reset button _playerInside flags
+        for (const obj of this.world.objects) {
+            if (obj.appearanceType === 'button') {
+                obj._playerInside = false;
+            }
+        }
 
         // Reset checkpoint states back to default
         for (const obj of this.world.objects) {

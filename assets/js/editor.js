@@ -33,7 +33,8 @@ const PlacementMode = {
     OBSTACLE: 'obstacle',
     KOREEN: 'koreen',
     TEXT: 'text',
-    TELEPORTAL: 'teleportal'
+    TELEPORTAL: 'teleportal',
+    BUTTON: 'button'
 };
 
 // ============================================
@@ -177,6 +178,15 @@ class Editor {
         this.isSelectionActive = false; // Whether we're in "select tool" mode
         this.selectionMovingObjects = null; // Array of {obj, offsetX, offsetY} during move
         this.selectionMoveStart = null; // {x, y} world pos where move started
+        
+        // Button placement state (drag-to-draw like zone)
+        this.buttonPlacement = {
+            isPlacing: false,
+            startX: 0,
+            startY: 0,
+            endX: 0,
+            endY: 0
+        };
         
         // Grid visibility
         this.showGrid = true;
@@ -1189,6 +1199,10 @@ class Editor {
                 <span class="material-symbols-outlined">text_fields</span>
                 Text Box
             </button>
+            <button class="add-menu-btn" data-add="button">
+                <span class="material-symbols-outlined">smart_button</span>
+                Button
+            </button>
             <button class="add-menu-btn" data-add="teleportal">
                 <span class="material-symbols-outlined">move</span>
                 Teleportal
@@ -2101,6 +2115,40 @@ class Editor {
         this.triggerMapChange();
     }
 
+    completeButtonPlacement() {
+        const { startX, startY, endX, endY } = this.buttonPlacement;
+        
+        const x = Math.min(startX, endX);
+        const y = Math.min(startY, endY);
+        const width = Math.abs(endX - startX) + GRID_SIZE;
+        const height = Math.abs(endY - startY) + GRID_SIZE;
+        
+        if (width < GRID_SIZE || height < GRID_SIZE) return;
+        
+        const button = new WorldObject({
+            x, y, width, height,
+            type: 'koreen',
+            appearanceType: 'button',
+            actingType: 'button',
+            collision: false,
+            color: 'rgba(59, 130, 246, 0.35)',
+            opacity: this.koreenSettings.opacity || 1,
+            name: 'New Button',
+            displayName: 'Button',
+            displayDescription: '',
+            buttonVisible: true,
+            buttonWidth: null,
+            buttonHeight: null
+        });
+        
+        this.world.addObject(button);
+        this.updateLayersList();
+        this.triggerMapChange();
+        
+        // Open edit popup for the new button
+        this.openButtonEditPopup(button);
+    }
+
     showZoneNamePopup() {
         // Create popup if it doesn't exist
         let popup = document.getElementById('zone-name-popup');
@@ -2325,6 +2373,12 @@ class Editor {
             return;
         }
         
+        // Special handling for buttons
+        if (obj.appearanceType === 'button') {
+            this.openButtonEditPopup(obj);
+            return;
+        }
+        
         this.editingObject = obj;
         const popup = this.ui.objectEditPopup;
         
@@ -2507,6 +2561,156 @@ class Editor {
         const popup = document.getElementById('zone-edit-popup');
         if (popup) popup.classList.remove('active');
         this.editingZone = null;
+    }
+    
+    openButtonEditPopup(button) {
+        let popup = document.getElementById('button-edit-popup');
+        if (popup) popup.remove();
+        
+        popup = document.createElement('div');
+        popup.id = 'button-edit-popup';
+        popup.className = 'modal-overlay';
+        popup.innerHTML = `
+            <div class="object-edit-panel" style="max-width: 420px;">
+                <div class="panel-header">
+                    <span class="panel-title">Edit Button</span>
+                    <button class="btn btn-icon btn-ghost" id="close-button-edit">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="form-label">Object Name</label>
+                        <input type="text" class="form-input" id="button-edit-name" value="${this.escapeAttr(button.name)}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Display Name</label>
+                        <input type="text" class="form-input" id="button-edit-display-name" value="${this.escapeAttr(button.displayName)}" placeholder="Title shown to player">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Display Description</label>
+                        <textarea class="form-input" id="button-edit-display-desc" rows="4" placeholder="Description shown to player" style="resize: vertical;">${this.escapeAttr(button.displayDescription)}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Button Visible</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="button-edit-visible" ${button.buttonVisible ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Button Display Size</label>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                            Custom display size (leave empty to match zone size)
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 11px; color: var(--text-muted);">Width (px)</label>
+                                <input type="number" class="form-input" id="button-edit-width" value="${button.buttonWidth || ''}" placeholder="Auto" min="10" step="1">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 11px; color: var(--text-muted);">Height (px)</label>
+                                <input type="number" class="form-input" id="button-edit-height" value="${button.buttonHeight || ''}" placeholder="Auto" min="10" step="1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Opacity</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="button-edit-opacity" min="0" max="100" value="${Math.round(button.opacity * 100)}" style="flex: 1;">
+                            <span id="button-edit-opacity-label" style="font-size: 12px; min-width: 35px;">${Math.round(button.opacity * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                        <button class="btn btn-danger" id="button-edit-delete" style="width: 100%;">
+                            <span class="material-symbols-outlined">delete</span>
+                            Delete Button
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        popup.classList.add('active');
+        
+        this.editingButton = button;
+        
+        // Close
+        document.getElementById('close-button-edit').addEventListener('click', () => {
+            this.closeButtonEditPopup();
+        });
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) this.closeButtonEditPopup();
+        });
+        
+        // Name
+        document.getElementById('button-edit-name').addEventListener('change', (e) => {
+            button.name = e.target.value || 'Button';
+            this.updateLayersList();
+            this.triggerMapChange();
+        });
+        
+        // Display name
+        document.getElementById('button-edit-display-name').addEventListener('input', (e) => {
+            button.displayName = e.target.value;
+            this.triggerMapChange();
+        });
+        
+        // Display description
+        document.getElementById('button-edit-display-desc').addEventListener('input', (e) => {
+            button.displayDescription = e.target.value;
+            this.triggerMapChange();
+        });
+        
+        // Visible
+        document.getElementById('button-edit-visible').addEventListener('change', (e) => {
+            button.buttonVisible = e.target.checked;
+            this.triggerMapChange();
+        });
+        
+        // Width
+        document.getElementById('button-edit-width').addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            button.buttonWidth = val > 0 ? val : null;
+            this.triggerMapChange();
+        });
+        
+        // Height
+        document.getElementById('button-edit-height').addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            button.buttonHeight = val > 0 ? val : null;
+            this.triggerMapChange();
+        });
+        
+        // Opacity
+        document.getElementById('button-edit-opacity').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            button.opacity = val / 100;
+            document.getElementById('button-edit-opacity-label').textContent = val + '%';
+            this.triggerMapChange();
+        });
+        
+        // Delete
+        document.getElementById('button-edit-delete').addEventListener('click', () => {
+            this.world.removeObject(button.id);
+            this.closeButtonEditPopup();
+            this.updateLayersList();
+            this.triggerMapChange();
+        });
+    }
+    
+    closeButtonEditPopup() {
+        const popup = document.getElementById('button-edit-popup');
+        if (popup) {
+            popup.classList.remove('active');
+            setTimeout(() => popup.remove(), 200);
+        }
+        this.editingButton = null;
+    }
+    
+    escapeAttr(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
     
     updateZoneName(newName) {
@@ -4842,6 +5046,14 @@ class Editor {
             ]});
         }
         
+        // Button fields — only if ALL objects are buttons
+        const allButtons = objects.every(o => o.appearanceType === 'button');
+        if (allButtons) {
+            fields.push({ key: 'displayName', label: 'Display Name', type: 'text' });
+            fields.push({ key: 'displayDescription', label: 'Display Description', type: 'textarea' });
+            fields.push({ key: 'buttonVisible', label: 'Button Visible', type: 'boolean' });
+        }
+
         // Text content — only if ALL objects are text
         const allText = objects.every(o => o.type === 'text');
         if (allText) {
@@ -5433,6 +5645,12 @@ class Editor {
             // Sync opacity
             const teleportalOpacity = Math.round((this.teleportalSettings.opacity || 1) * 100);
             document.getElementById('placement-opacity-input').value = teleportalOpacity;
+        } else if (this.placementMode === PlacementMode.BUTTON) {
+            // Button mode - only opacity, drag-to-place like zones
+            options.opacity.classList.remove('hidden');
+            
+            const opacity = Math.round((this.koreenSettings.opacity || 1) * 100);
+            document.getElementById('placement-opacity-input').value = opacity;
         }
     }
 
@@ -6047,6 +6265,12 @@ class Editor {
             this.obstaclePlacement.isPlacing = false;
             return;
         }
+        
+        // Cancel button placement
+        if (this.buttonPlacement.isPlacing) {
+            this.buttonPlacement.isPlacing = false;
+            return;
+        }
 
         if (this.placementMode !== PlacementMode.NONE) {
             this.stopPlacement();
@@ -6062,6 +6286,7 @@ class Editor {
             this.closePanel('settings');
             this.closeObjectEditPopup();
             this.closeZoneNamePopup();
+            this.closeButtonEditPopup();
         }
     }
 
@@ -6110,7 +6335,14 @@ class Editor {
         if (this.obstaclePlacement.isPlacing) {
             this.obstaclePlacement.endX = gridPos.x;
             this.obstaclePlacement.endY = gridPos.y;
-            return; // Don't do anything else during spinner drawing
+            return;
+        }
+        
+        // Button placement - update end corner
+        if (this.buttonPlacement.isPlacing) {
+            this.buttonPlacement.endX = gridPos.x;
+            this.buttonPlacement.endY = gridPos.y;
+            return;
         }
         
         // Zone adjustment - handle dragger movement
@@ -6125,9 +6357,9 @@ class Editor {
             this.camera.targetY -= e.movementY / this.camera.zoom;
         }
 
-        // Brush-like placement - continue placing while mouse is held (except for teleportal and obstacle with spinner appearance)
+        // Brush-like placement - continue placing while mouse is held (except for teleportal, button, and obstacle with spinner appearance)
         const isSpinnerMode = this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spinner';
-        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && !isSpinnerMode && !this.isOverUI(e)) {
+        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && this.placementMode !== PlacementMode.BUTTON && !isSpinnerMode && !this.isOverUI(e)) {
             this.placeObject(gridPos.x, gridPos.y);
         }
 
@@ -6236,6 +6468,16 @@ class Editor {
             return;
         }
 
+        // Button placement mode - start drawing region (like zone)
+        if (this.placementMode === PlacementMode.BUTTON) {
+            this.buttonPlacement.isPlacing = true;
+            this.buttonPlacement.startX = gridPos.x;
+            this.buttonPlacement.startY = gridPos.y;
+            this.buttonPlacement.endX = gridPos.x;
+            this.buttonPlacement.endY = gridPos.y;
+            return;
+        }
+
         // Placement mode - start brush placement
         if (this.placementMode !== PlacementMode.NONE) {
             this.isPlacing = true;
@@ -6339,6 +6581,13 @@ class Editor {
         if (this.obstaclePlacement.isPlacing) {
             this.obstaclePlacement.isPlacing = false;
             this.completeSpinnerPlacement();
+            return;
+        }
+        
+        // Complete button placement
+        if (this.buttonPlacement.isPlacing) {
+            this.buttonPlacement.isPlacing = false;
+            this.completeButtonPlacement();
             return;
         }
         
@@ -8014,6 +8263,24 @@ class Editor {
                 ctx.lineWidth = 2 / camera.zoom;
                 ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
                 ctx.stroke();
+                ctx.setLineDash([]);
+            } else if (this.buttonPlacement.isPlacing) {
+                // Button placement preview
+                const { startX, startY, endX, endY } = this.buttonPlacement;
+                const x = Math.min(startX, endX);
+                const y = Math.min(startY, endY);
+                const width = Math.abs(endX - startX) + GRID_SIZE;
+                const height = Math.abs(endY - startY) + GRID_SIZE;
+                
+                const screenX = x - camera.x;
+                const screenY = y - camera.y;
+                
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+                ctx.fillRect(screenX, screenY, width, height);
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.9)';
+                ctx.lineWidth = 2 / camera.zoom;
+                ctx.setLineDash([8 / camera.zoom, 4 / camera.zoom]);
+                ctx.strokeRect(screenX, screenY, width, height);
                 ctx.setLineDash([]);
             } else {
                 // Normal placement preview
