@@ -2212,8 +2212,8 @@ class GameEngine {
             // Lower factor = moves less = appears further away
             const parallaxFactor = 0.85 + Math.random() * 0.1; // 0.85-0.95 of camera movement
             
-            // Slow drift speed to the LEFT (negative)
-            const driftSpeed = -(8 + Math.random() * 12); // -8 to -20 pixels per second
+            // Drift speed to the LEFT (negative) - doubled
+            const driftSpeed = -(16 + Math.random() * 24); // -16 to -40 pixels per second
             
             this.clouds.push({
                 baseX,

@@ -278,6 +278,10 @@ class Editor {
                 <span class="material-symbols-outlined">content_copy</span>
                 <span class="toolbar-btn-label">Duplicate (C)</span>
             </button>
+            <button class="toolbar-btn" data-action="rotate-left" title="Rotate Left">
+                <span class="material-symbols-outlined">rotate_left</span>
+                <span class="toolbar-btn-label">Rotate Left</span>
+            </button>
             <button class="toolbar-btn" data-action="rotate-right" title="Rotate Right">
                 <span class="material-symbols-outlined">rotate_right</span>
                 <span class="toolbar-btn-label">Rotate Right</span>
@@ -4193,12 +4197,15 @@ class Editor {
             case 'zoom-out':
                 this.camera.zoomOut(centerX, centerY);
                 break;
+            case 'rotate-left':
+                this.rotateObjectUnderMouse(-90);
+                break;
             case 'rotate-right':
                 this.rotateObjectUnderMouse(90);
                 break;
         }
     }
-    
+
     rotateObjectUnderMouse(degrees) {
         const worldPos = this.engine.getMouseWorldPos();
         const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
