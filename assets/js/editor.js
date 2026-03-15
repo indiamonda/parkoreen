@@ -8393,10 +8393,10 @@ class Editor {
         const endX = camera.x + camera.width / camera.zoom + GRID_SIZE;
         const endY = camera.y + camera.height / camera.zoom + GRID_SIZE;
         
-        const viewStartX = -camera.x;
-        const viewStartY = -camera.y;
-        const viewEndX = viewStartX + camera.width / camera.zoom;
-        const viewEndY = viewStartY + camera.height / camera.zoom;
+        const viewStartX = startX - camera.x;
+        const viewStartY = startY - camera.y;
+        const viewEndX = viewStartX + (endX - startX);
+        const viewEndY = viewStartY + (endY - startY);
 
         // Draw minor grid lines
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
