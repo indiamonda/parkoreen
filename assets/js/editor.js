@@ -4479,41 +4479,33 @@ class Editor {
             this.exitSelectionMode();
         }
 
-        // Other tools are mutually exclusive
-        // Deactivate previous non-fly tool
-        if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
+        const isToggleOff = (tool === this.currentTool);
+        
+        // Always clean up current tool state first
         if (this.currentTool === EditorTool.ERASE) {
             this.isErasing = false;
-                this.hideEraseMode();
-            }
+            this.hideEraseMode();
         }
+        this.movingObject = null;
+        this.rotatingObject = null;
 
         // Update non-fly button states
         this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
             if (btn.dataset.tool !== 'fly') {
-            btn.classList.remove('active');
+                btn.classList.remove('active');
             }
         });
 
-        if (tool === this.currentTool) {
-            // Toggle off
+        if (isToggleOff) {
             this.currentTool = EditorTool.NONE;
-            if (this.isErasing) {
-                this.isErasing = false;
-                this.hideEraseMode();
-            }
         } else {
             this.currentTool = tool;
             const btn = this.ui.toolbar.querySelector(`[data-tool="${tool}"]`);
             if (btn) btn.classList.add('active');
 
-            // Activate tool
             if (tool === EditorTool.ERASE) {
                 this.isErasing = true;
                 this.showEraseMode();
-            } else {
-                // Hide erase mode for other tools
-                this.hideEraseMode();
             }
         }
     }
@@ -4595,13 +4587,14 @@ class Editor {
         }
     }
     
-    // Disable non-fly tools (used when entering placement mode)
     disableNonFlyTools() {
         if (this.currentTool !== EditorTool.NONE && this.currentTool !== EditorTool.FLY) {
             if (this.currentTool === EditorTool.ERASE) {
                 this.isErasing = false;
                 this.hideEraseMode();
             }
+            this.movingObject = null;
+            this.rotatingObject = null;
             this.currentTool = EditorTool.NONE;
             
             this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
@@ -4681,7 +4674,9 @@ class Editor {
         
         // Close any open panels/menus
         this.ui.addMenu.classList.remove('active');
-        this.cancelPlacement();
+        if (this.placementMode !== PlacementMode.NONE) {
+            this.stopPlacement();
+        }
         
         this.updateSelectionCount();
         this.updateSelectionModeUI();
@@ -6992,11 +6987,16 @@ class Editor {
     stopTest() {
         this.engine.stopGame();
         
-        // Stop music playback
         this.stopMusicPlayback();
-        
-        // Hide inspect box
         this.hideInspectBox();
+        
+        // Reset tool state
+        this.currentTool = EditorTool.NONE;
+        this.isErasing = false;
+        this.hideEraseMode();
+        
+        // Sync fly mode with the editor player (createEditorPlayer sets isFlying=true)
+        this.isFlying = true;
         
         // Restore UI
         this.ui.btnConfig.classList.remove('hidden');
@@ -7012,6 +7012,13 @@ class Editor {
         this.ui.toolbar.querySelectorAll('.toolbar-divider').forEach(div => {
             div.classList.remove('hidden');
         });
+        
+        // Restore correct button active states
+        this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const flyBtn = this.ui.toolbar.querySelector('[data-tool="fly"]');
+        if (flyBtn) flyBtn.classList.toggle('active', this.isFlying);
     }
 
     // ========================================
@@ -8404,7 +8411,12 @@ class Editor {
     renderGrid(ctx, camera) {
         if (!this.showGrid) return;
         
-        // Note: ctx already has camera.zoom applied via ctx.scale()
+        const bg = this.world?.background || 'sky';
+        const useDark = (bg === 'sky');
+        const r = useDark ? 0 : 255;
+        const g = useDark ? 0 : 255;
+        const b = useDark ? 0 : 255;
+        
         const startX = Math.floor(camera.x / GRID_SIZE) * GRID_SIZE;
         const startY = Math.floor(camera.y / GRID_SIZE) * GRID_SIZE;
         const endX = camera.x + camera.width / camera.zoom + GRID_SIZE;
@@ -8415,13 +8427,12 @@ class Editor {
         const viewEndX = viewStartX + (endX - startX);
         const viewEndY = viewStartY + (endY - startY);
 
-        // Draw minor grid lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        // Minor grid lines
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
         ctx.lineWidth = 0.5 / camera.zoom;
 
         ctx.beginPath();
         for (let x = startX; x < endX; x += GRID_SIZE) {
-            // Skip lines that will be drawn as major lines
             if (x % (GRID_SIZE * 5) === 0) continue;
             const screenX = x - camera.x;
             ctx.moveTo(screenX, viewStartY);
@@ -8435,11 +8446,11 @@ class Editor {
         }
         ctx.stroke();
         
-        // Draw major grid lines (every 5 cells)
+        // Major grid lines (every 5 cells)
         const majorStart = Math.floor(camera.x / (GRID_SIZE * 5)) * GRID_SIZE * 5;
         const majorStartY = Math.floor(camera.y / (GRID_SIZE * 5)) * GRID_SIZE * 5;
         
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.55)`;
         ctx.lineWidth = 1 / camera.zoom;
         
         ctx.beginPath();
@@ -8455,18 +8466,16 @@ class Editor {
         }
         ctx.stroke();
         
-        // Draw origin lines (x=0 and y=0) in a distinct color
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        // Origin lines (x=0 and y=0)
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.75)`;
         ctx.lineWidth = 2 / camera.zoom;
         
         ctx.beginPath();
-        // Y-axis (x=0)
         if (0 >= camera.x - GRID_SIZE && 0 <= camera.x + camera.width / camera.zoom + GRID_SIZE) {
             const originScreenX = 0 - camera.x;
             ctx.moveTo(originScreenX, viewStartY);
             ctx.lineTo(originScreenX, viewEndY);
         }
-        // X-axis (y=0)
         if (0 >= camera.y - GRID_SIZE && 0 <= camera.y + camera.height / camera.zoom + GRID_SIZE) {
             const originScreenY = 0 - camera.y;
             ctx.moveTo(viewStartX, originScreenY);

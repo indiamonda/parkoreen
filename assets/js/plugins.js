@@ -323,19 +323,20 @@ class PluginManager {
      * @returns {Object} - Modified data after all callbacks
      */
     executeHook(hookName, data = {}) {
-        const hooks = this.hooks[hookName] || [];
-        
+        const hooks = this.hooks[hookName];
+        if (!hooks || hooks.length === 0) return data;
+
         for (const hook of hooks) {
             try {
                 const result = hook.callback(data);
-                if (result !== undefined) {
-                    data = { ...data, ...result };
+                if (result !== undefined && result !== data) {
+                    Object.assign(data, result);
                 }
             } catch (e) {
                 console.error(`Error in hook ${hookName} from ${hook.pluginId}:`, e);
             }
         }
-        
+
         return data;
     }
     

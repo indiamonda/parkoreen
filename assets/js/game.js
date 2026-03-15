@@ -328,18 +328,18 @@ class Player {
     }
 
     checkCollisions(world, direction) {
-        const collisions = [];
+        if (!this._collisionsH) { this._collisionsH = []; this._collisionsV = []; }
+        const collisions = direction === 'horizontal' ? this._collisionsH : this._collisionsV;
+        collisions.length = 0;
         const box = this.getGroundTouchbox();
         const worldSpikeMode = world?.spikeTouchbox || 'normal';
         
-        for (const obj of world.objects) {
+        const nearby = world.queryNear(box.x - 2, box.y - 2, box.width + 4, box.height + 4);
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
             if (!obj.collision) continue;
             if (obj.actingType === 'text') continue;
             if (obj.type === 'teleportal') continue;
-            
-            // Broad-phase: skip objects far from player
-            if (obj.x + obj.width < box.x - 2 || obj.x > box.x + box.width + 2 ||
-                obj.y + obj.height < box.y - 2 || obj.y > box.y + box.height + 2) continue;
             
             // Spinners (saw blades) acting as spikes have no ground collision
             // They only damage - player should not stand on them
@@ -349,26 +349,18 @@ class Player {
             
             // Handle spike collision based on mode and dropHurtOnly
             if (obj.actingType === 'spike') {
-                // Use per-object spikeTouchbox if set, otherwise use world default
                 const spikeMode = obj.spikeTouchbox || worldSpikeMode;
                 
-                // Get dropHurtOnly setting (per-object or world default)
                 const worldDropHurtOnly = world?.dropHurtOnly || false;
                 const useDropHurtOnly = obj.dropHurtOnly !== undefined ? obj.dropHurtOnly : worldDropHurtOnly;
                 
-                // If spike is attached to ground, skip collision for this spike
-                // (the attached ground block will handle it)
-                if (world.isSpikeAttachedToGround(obj)) {
-                    continue;
-                }
-                
-                // In 'air' mode, spikes have no interaction
+                // In 'air' mode, spikes have no collision at all
                 if (spikeMode === 'air') continue;
                 
-                // In 'full' mode, spikes only damage, no ground collision at all
+                // In 'full' mode, spikes only damage, no ground collision
                 if (spikeMode === 'full') continue;
                 
-                // When dropHurtOnly is DISABLED, spikes are solid (player can't walk through)
+                // When dropHurtOnly is DISABLED, spikes are solid
                 if (!useDropHurtOnly) {
                     if (this.boxIntersects(box, obj)) {
                         collisions.push(obj);
@@ -377,14 +369,17 @@ class Player {
                 }
                 
                 // When dropHurtOnly is ENABLED, only the flat part has collision
-                // For normal, tip, ground, flag modes
                 if (this.boxIntersects(box, obj)) {
                     const flatBox = this.getSpikeFlat(obj);
                     if (this.boxIntersects(box, flatBox)) {
-                        // Flat part acts as ground in normal, tip, ground, flag modes
-                        collisions.push({ ...obj, ...flatBox });
+                        if (!this._flatCollision) this._flatCollision = { collision: true };
+                        this._flatCollision.x = flatBox.x;
+                        this._flatCollision.y = flatBox.y;
+                        this._flatCollision.width = flatBox.width;
+                        this._flatCollision.height = flatBox.height;
+                        this._flatCollision.collision = obj.collision;
+                        collisions.push(this._flatCollision);
                     }
-                    // In 'ground' mode, entire spike acts as ground
                     else if (spikeMode === 'ground') {
                         collisions.push(obj);
                     }
@@ -407,13 +402,10 @@ class Player {
         const worldSpikeMode = world?.spikeTouchbox || 'normal';
         const dropHurtOnly = world?.dropHurtOnly || false;
         
-        for (const obj of world.objects) {
+        const nearby = world.queryNear(hurtBox.x - 2, hurtBox.y - 2, hurtBox.width + 4, hurtBox.height + 4);
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
             if (obj.actingType !== 'spike' || obj.collision === false) continue;
-            
-            // Broad-phase: skip objects far from player
-            if (obj.x + obj.width < hurtBox.x - 2 || obj.x > hurtBox.x + hurtBox.width + 2 ||
-                obj.y + obj.height < hurtBox.y - 2 || obj.y > hurtBox.y + hurtBox.height + 2) continue;
-            
             {
                 let gotHit = false;
                 
@@ -483,88 +475,54 @@ class Player {
         }
     }
     
-    // Get the flat (base) part of a spike based on rotation
     getSpikeFlat(spike) {
-        const rotation = spike.rotation || 0;
-        const flatDepth = spike.height * 0.35; // 35% of spike is flat base (increased from 25%)
-        
-        switch (rotation) {
-            case 0: // Tip up, flat at bottom
-                return { x: spike.x, y: spike.y + spike.height - flatDepth, width: spike.width, height: flatDepth };
-            case 90: // Tip right, flat at left
-                return { x: spike.x, y: spike.y, width: flatDepth, height: spike.height };
-            case 180: // Tip down, flat at top
-                return { x: spike.x, y: spike.y, width: spike.width, height: flatDepth };
-            case 270: // Tip left, flat at right
-                return { x: spike.x + spike.width - flatDepth, y: spike.y, width: flatDepth, height: spike.height };
-            default:
-                return { x: spike.x, y: spike.y + spike.height - flatDepth, width: spike.width, height: flatDepth };
+        const r = spike.rotation || 0;
+        const fd = spike.height * 0.35;
+        const b = this._spikeFlat || (this._spikeFlat = { x: 0, y: 0, width: 0, height: 0 });
+        if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
+            b.x = spike.x; b.y = spike.y + spike.height - fd; b.width = spike.width; b.height = fd;
+        } else if (r === 90) {
+            b.x = spike.x; b.y = spike.y; b.width = fd; b.height = spike.height;
+        } else if (r === 180) {
+            b.x = spike.x; b.y = spike.y; b.width = spike.width; b.height = fd;
+        } else {
+            b.x = spike.x + spike.width - fd; b.y = spike.y; b.width = fd; b.height = spike.height;
         }
+        return b;
     }
     
-    // Get the danger zone of a spike (much smaller - only the tip area)
     getSpikeDanger(spike) {
-        const rotation = spike.rotation || 0;
-        const safeDepth = spike.height * 0.5; // Bottom 50% is safe (increased from 25%)
-        const sideInset = spike.width * 0.2; // Inset from sides (20% on each side)
-        
-        switch (rotation) {
-            case 0: // Tip up - danger is smaller triangle at top
-                return { 
-                    x: spike.x + sideInset, 
-                    y: spike.y, 
-                    width: spike.width - sideInset * 2, 
-                    height: spike.height - safeDepth 
-                };
-            case 90: // Tip right
-                return { 
-                    x: spike.x + safeDepth, 
-                    y: spike.y + sideInset, 
-                    width: spike.width - safeDepth, 
-                    height: spike.height - sideInset * 2 
-                };
-            case 180: // Tip down
-                return { 
-                    x: spike.x + sideInset, 
-                    y: spike.y + safeDepth, 
-                    width: spike.width - sideInset * 2, 
-                    height: spike.height - safeDepth 
-                };
-            case 270: // Tip left
-                return { 
-                    x: spike.x, 
-                    y: spike.y + sideInset, 
-                    width: spike.width - safeDepth, 
-                    height: spike.height - sideInset * 2 
-                };
-            default:
-                return { 
-                    x: spike.x + sideInset, 
-                    y: spike.y, 
-                    width: spike.width - sideInset * 2, 
-                    height: spike.height - safeDepth 
-                };
+        const r = spike.rotation || 0;
+        const sd = spike.height * 0.5;
+        const si = spike.width * 0.2;
+        const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
+        if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
+            b.x = spike.x + si; b.y = spike.y; b.width = spike.width - si * 2; b.height = spike.height - sd;
+        } else if (r === 90) {
+            b.x = spike.x + sd; b.y = spike.y + si; b.width = spike.width - sd; b.height = spike.height - si * 2;
+        } else if (r === 180) {
+            b.x = spike.x + si; b.y = spike.y + sd; b.width = spike.width - si * 2; b.height = spike.height - sd;
+        } else {
+            b.x = spike.x; b.y = spike.y + si; b.width = spike.width - sd; b.height = spike.height - si * 2;
         }
+        return b;
     }
     
-    // Get only the tip of a spike (very small - top 10%)
     getSpikeTip(spike) {
-        const rotation = spike.rotation || 0;
-        const tipDepth = spike.height * 0.1; // Top 10% is the tip (reduced from 20%)
-        const tipWidth = spike.width * 0.3; // 30% width (reduced from 50%)
-        
-        switch (rotation) {
-            case 0: // Tip up
-                return { x: spike.x + spike.width * 0.35, y: spike.y, width: tipWidth, height: tipDepth };
-            case 90: // Tip right
-                return { x: spike.x + spike.width - tipDepth, y: spike.y + spike.height * 0.35, width: tipDepth, height: tipWidth };
-            case 180: // Tip down
-                return { x: spike.x + spike.width * 0.35, y: spike.y + spike.height - tipDepth, width: tipWidth, height: tipDepth };
-            case 270: // Tip left
-                return { x: spike.x, y: spike.y + spike.height * 0.35, width: tipDepth, height: tipWidth };
-            default:
-                return { x: spike.x + spike.width * 0.35, y: spike.y, width: tipWidth, height: tipDepth };
+        const r = spike.rotation || 0;
+        const td = spike.height * 0.1;
+        const tw = spike.width * 0.3;
+        const b = this._spikeTip || (this._spikeTip = { x: 0, y: 0, width: 0, height: 0 });
+        if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
+            b.x = spike.x + spike.width * 0.35; b.y = spike.y; b.width = tw; b.height = td;
+        } else if (r === 90) {
+            b.x = spike.x + spike.width - td; b.y = spike.y + spike.height * 0.35; b.width = td; b.height = tw;
+        } else if (r === 180) {
+            b.x = spike.x + spike.width * 0.35; b.y = spike.y + spike.height - td; b.width = tw; b.height = td;
+        } else {
+            b.x = spike.x; b.y = spike.y + spike.height * 0.35; b.width = td; b.height = tw;
         }
+        return b;
     }
     
     // Check if player is moving toward the spike's tip direction
@@ -593,21 +551,22 @@ class Player {
     }
 
     getGroundTouchbox() {
-        return {
-            x: this.x + this.groundTouchbox.x,
-            y: this.y + this.groundTouchbox.y,
-            width: this.groundTouchbox.width,
-            height: this.groundTouchbox.height
-        };
+        // Reuse cached object to avoid GC pressure in hot collision loops
+        if (!this._groundBox) this._groundBox = { x: 0, y: 0, width: 0, height: 0 };
+        this._groundBox.x = this.x + this.groundTouchbox.x;
+        this._groundBox.y = this.y + this.groundTouchbox.y;
+        this._groundBox.width = this.groundTouchbox.width;
+        this._groundBox.height = this.groundTouchbox.height;
+        return this._groundBox;
     }
 
     getHurtTouchbox() {
-        return {
-            x: this.x + this.hurtTouchbox.x,
-            y: this.y + this.hurtTouchbox.y,
-            width: this.hurtTouchbox.width,
-            height: this.hurtTouchbox.height
-        };
+        if (!this._hurtBox) this._hurtBox = { x: 0, y: 0, width: 0, height: 0 };
+        this._hurtBox.x = this.x + this.hurtTouchbox.x;
+        this._hurtBox.y = this.y + this.hurtTouchbox.y;
+        this._hurtBox.width = this.hurtTouchbox.width;
+        this._hurtBox.height = this.hurtTouchbox.height;
+        return this._hurtBox;
     }
 
     boxIntersects(a, b) {
@@ -658,11 +617,9 @@ class Player {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
         
-        // Draw player cube with pixel art style
         ctx.fillStyle = this.color;
         ctx.fillRect(screenX, screenY, this.width, this.height);
         
-        // Pixel shading
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(screenX + this.width - 4, screenY + 4, 4, this.height - 4);
         ctx.fillRect(screenX + 4, screenY + this.height - 4, this.width - 4, 4);
@@ -671,28 +628,33 @@ class Player {
         ctx.fillRect(screenX, screenY, this.width - 4, 4);
         ctx.fillRect(screenX, screenY, 4, this.height - 4);
         
-        // Draw position above player (editor/test mode only)
+        // Cache font scale to avoid per-frame Settings lookup
+        if (!this._fontScale) {
+            this._fontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
+        }
+        const fontScale = this._fontScale;
+        
         if (showPosition) {
-            const fontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = `${Math.round(16 * fontScale)}px "Parkoreen Game", monospace`;
-            ctx.textAlign = 'center';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-            ctx.shadowBlur = 4;
+            const fs = Math.round(16 * fontScale);
             const posText = `(${Math.round(this.x)}, ${Math.round(this.y)})`;
-            ctx.fillText(posText, screenX + this.width / 2, screenY - 10);
-            ctx.shadowBlur = 0;
+            const tx = screenX + this.width / 2;
+            ctx.font = `${fs}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillText(posText, tx + 1, screenY - 9);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillText(posText, tx, screenY - 10);
         }
         
-        // Draw name
-        const nameFontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
-        ctx.fillStyle = 'white';
-        ctx.font = `${Math.round(14 * nameFontScale)}px "Parkoreen Game", monospace`;
+        const nfs = Math.round(14 * fontScale);
+        const nameY = screenY + this.height + Math.round(16 * fontScale);
+        const nameX = screenX + this.width / 2;
+        ctx.font = `${nfs}px monospace`;
         ctx.textAlign = 'center';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 2;
-        ctx.fillText(this.name, screenX + this.width / 2, screenY + this.height + Math.round(16 * nameFontScale));
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillText(this.name, nameX + 1, nameY + 1);
+        ctx.fillStyle = 'white';
+        ctx.fillText(this.name, nameX, nameY);
     }
 }
 
@@ -929,87 +891,78 @@ class WorldObject {
     }
 
     render(ctx, camera, checkpointColors = null) {
-        // Note: ctx already has camera.zoom applied via ctx.scale()
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
         const width = this.width;
         const height = this.height;
 
-        ctx.save();
-        ctx.globalAlpha = this.opacity;
+        const needsTransform = this.rotation !== 0 || this.flipHorizontal;
+        const needsAlpha = this.opacity !== 1;
         
-        // Apply rotation and flip
-        if (this.rotation !== 0 || this.flipHorizontal) {
-            ctx.translate(screenX + width / 2, screenY + height / 2);
-            if (this.rotation !== 0) {
-            ctx.rotate(this.rotation * Math.PI / 180);
+        // Only save/restore when we actually change state
+        if (needsTransform || needsAlpha) {
+            ctx.save();
+            if (needsAlpha) ctx.globalAlpha = this.opacity;
+            if (needsTransform) {
+                ctx.translate(screenX + width / 2, screenY + height / 2);
+                if (this.rotation !== 0) ctx.rotate(this.rotation * Math.PI / 180);
+                if (this.flipHorizontal) ctx.scale(-1, 1);
+                ctx.translate(-(screenX + width / 2), -(screenY + height / 2));
             }
-            if (this.flipHorizontal) {
-                ctx.scale(-1, 1);
-            }
-            ctx.translate(-(screenX + width / 2), -(screenY + height / 2));
         }
 
+        const at = this.appearanceType;
         if (this.type === 'text') {
             this.renderText(ctx, screenX, screenY, width, height);
-        } else if (this.appearanceType === 'spike') {
+        } else if (at === 'spike') {
             this.renderSpike(ctx, screenX, screenY, width, height);
-        } else if (this.appearanceType === 'checkpoint') {
+        } else if (at === 'checkpoint') {
             this.renderCheckpoint(ctx, screenX, screenY, width, height, checkpointColors);
-        } else if (this.appearanceType === 'spawnpoint') {
+        } else if (at === 'spawnpoint') {
             this.renderSpawnpoint(ctx, screenX, screenY, width, height);
-        } else if (this.appearanceType === 'endpoint') {
+        } else if (at === 'endpoint') {
             this.renderEndpoint(ctx, screenX, screenY, width, height);
-        } else if (this.appearanceType === 'zone') {
+        } else if (at === 'zone') {
             this.renderZone(ctx, screenX, screenY, width, height);
-        } else if (this.appearanceType === 'button') {
+        } else if (at === 'button') {
             this.renderButton(ctx, screenX, screenY, width, height);
-        } else if (this.type === 'teleportal' || this.appearanceType === 'teleportal') {
+        } else if (at === 'teleportal' || this.type === 'teleportal') {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
-        } else if (this.appearanceType === 'soulStatue') {
+        } else if (at === 'soulStatue') {
             this.renderSoulStatue(ctx, screenX, screenY, width, height);
-        } else if (this.type === 'spinner' || this.appearanceType === 'spinner') {
+        } else if (at === 'spinner' || this.type === 'spinner') {
             this.renderSpinner(ctx, screenX, screenY, width, height);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
 
-        ctx.restore();
+        if (needsTransform || needsAlpha) {
+            ctx.restore();
+        }
     }
 
     renderBlock(ctx, x, y, w, h) {
         const texture = this.texture || 'solid';
         
-        // Draw background color first
         ctx.fillStyle = this.color;
         ctx.fillRect(x, y, w, h);
         
-        // Draw texture pattern if not solid
         if (texture !== 'solid' && BlockTextures[texture]?.loaded && BlockTextures[texture]?.image) {
-            const textureImg = BlockTextures[texture].image;
-            const tileSize = 64; // Texture tile size
-            
-            // Create a pattern from the texture
+            // Use cached CanvasPattern for efficient tiling
+            if (!BlockTextures[texture]._pattern) {
+                BlockTextures[texture]._pattern = ctx.createPattern(BlockTextures[texture].image, 'repeat');
+            }
             ctx.save();
             ctx.beginPath();
             ctx.rect(x, y, w, h);
             ctx.clip();
-            
-            // Tile the texture across the block
-            for (let ty = y; ty < y + h; ty += tileSize) {
-                for (let tx = x; tx < x + w; tx += tileSize) {
-                    const drawW = Math.min(tileSize, x + w - tx);
-                    const drawH = Math.min(tileSize, y + h - ty);
-                    ctx.drawImage(textureImg, 0, 0, drawW, drawH, tx, ty, drawW, drawH);
-                }
-            }
+            ctx.fillStyle = BlockTextures[texture]._pattern;
+            ctx.fillRect(x, y, w, h);
             ctx.restore();
-        } else if (texture === 'solid') {
-            // Pixel art shading for solid blocks
+        } else if (texture === 'solid' && w >= 16 && h >= 16) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
             ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
             ctx.fillRect(x + 4, y + h - 4, w - 4, 4);
-            
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.fillRect(x, y, w - 4, 4);
             ctx.fillRect(x, y, 4, h - 4);
@@ -1017,24 +970,22 @@ class WorldObject {
     }
 
     renderSpike(ctx, x, y, w, h) {
-        // Use the SVG spike image if loaded
         if (SpikeImage.loaded && SpikeImage.image) {
-            // Create an offscreen canvas to tint the spike with the object's color
-            const offscreen = document.createElement('canvas');
-            offscreen.width = w;
-            offscreen.height = h;
-            const offCtx = offscreen.getContext('2d');
-            
-            // Draw the spike image scaled to fit
-            offCtx.drawImage(SpikeImage.image, 0, 0, w, h);
-            
-            // Tint the spike with the object's color using multiply blend
-            offCtx.globalCompositeOperation = 'source-in';
-            offCtx.fillStyle = this.color;
-            offCtx.fillRect(0, 0, w, h);
-            
-            // Draw the tinted spike to the main canvas
-            ctx.drawImage(offscreen, x, y);
+            // Cache tinted spike image per color+size combo
+            const cacheKey = `${this.color}_${w}_${h}`;
+            if (this._spikeCacheKey !== cacheKey) {
+                const offscreen = document.createElement('canvas');
+                offscreen.width = w;
+                offscreen.height = h;
+                const offCtx = offscreen.getContext('2d');
+                offCtx.drawImage(SpikeImage.image, 0, 0, w, h);
+                offCtx.globalCompositeOperation = 'source-in';
+                offCtx.fillStyle = this.color;
+                offCtx.fillRect(0, 0, w, h);
+                this._spikeCache = offscreen;
+                this._spikeCacheKey = cacheKey;
+            }
+            ctx.drawImage(this._spikeCache, x, y);
         } else {
             // Fallback: simple triangle spikes if image not loaded
             const color = this.color;
@@ -1256,24 +1207,21 @@ class WorldObject {
         const centerX = x + w / 2;
         const centerY = y + h / 2;
         
-        // Use the SVG portal image if loaded
         if (PortalImage.loaded && PortalImage.image) {
-            // Create an offscreen canvas to tint the portal with the object's color
-            const offscreen = document.createElement('canvas');
-            offscreen.width = w;
-            offscreen.height = h;
-            const offCtx = offscreen.getContext('2d');
-            
-            // Draw the portal image scaled to fit
-            offCtx.drawImage(PortalImage.image, 0, 0, w, h);
-            
-            // Tint the portal with the object's color using source-in blend
-            offCtx.globalCompositeOperation = 'source-in';
-            offCtx.fillStyle = this.color;
-            offCtx.fillRect(0, 0, w, h);
-            
-            // Draw the tinted portal to the main canvas
-            ctx.drawImage(offscreen, x, y);
+            const cacheKey = `${this.color}_${w}_${h}`;
+            if (this._portalCacheKey !== cacheKey) {
+                const offscreen = document.createElement('canvas');
+                offscreen.width = w;
+                offscreen.height = h;
+                const offCtx = offscreen.getContext('2d');
+                offCtx.drawImage(PortalImage.image, 0, 0, w, h);
+                offCtx.globalCompositeOperation = 'source-in';
+                offCtx.fillStyle = this.color;
+                offCtx.fillRect(0, 0, w, h);
+                this._portalCache = offscreen;
+                this._portalCacheKey = cacheKey;
+            }
+            ctx.drawImage(this._portalCache, x, y);
         } else {
             // Fallback: circular portal appearance if image not loaded
             const radius = Math.min(w, h) * 0.4;
@@ -1327,25 +1275,21 @@ class WorldObject {
         ctx.translate(centerX, centerY);
         ctx.rotate(rotationAngle);
         
-        // Use the SVG spinner image if loaded
         if (SpinnerImage.loaded && SpinnerImage.image) {
-            // The spinner SVG is 128x73, so we need to scale and stretch it
-            // to fit the target dimensions while maintaining the spinning effect
-            const offscreen = document.createElement('canvas');
-            offscreen.width = w;
-            offscreen.height = h;
-            const offCtx = offscreen.getContext('2d');
-            
-            // Draw the spinner image scaled to fit the ellipse
-            offCtx.drawImage(SpinnerImage.image, 0, 0, w, h);
-            
-            // Tint the spinner with the object's color using source-in blend
-            offCtx.globalCompositeOperation = 'source-in';
-            offCtx.fillStyle = this.color;
-            offCtx.fillRect(0, 0, w, h);
-            
-            // Draw the tinted spinner centered at origin (due to translate above)
-            ctx.drawImage(offscreen, -w / 2, -h / 2);
+            const cacheKey = `${this.color}_${w}_${h}`;
+            if (this._spinnerCacheKey !== cacheKey) {
+                const offscreen = document.createElement('canvas');
+                offscreen.width = w;
+                offscreen.height = h;
+                const offCtx = offscreen.getContext('2d');
+                offCtx.drawImage(SpinnerImage.image, 0, 0, w, h);
+                offCtx.globalCompositeOperation = 'source-in';
+                offCtx.fillStyle = this.color;
+                offCtx.fillRect(0, 0, w, h);
+                this._spinnerCache = offscreen;
+                this._spinnerCacheKey = cacheKey;
+            }
+            ctx.drawImage(this._spinnerCache, -w / 2, -h / 2);
         } else {
             // Fallback: draw a simple saw blade shape
             const radiusX = w / 2;
@@ -1526,9 +1470,79 @@ class WorldObject {
 // ============================================
 // WORLD CLASS
 // ============================================
+class SpatialHash {
+    constructor(cellSize) {
+        this.cellSize = cellSize;
+        this.cells = new Map();
+    }
+
+    clear() {
+        this.cells.clear();
+    }
+
+    _key(cx, cy) {
+        return (cx * 73856093) ^ (cy * 19349663);
+    }
+
+    insert(obj) {
+        const cs = this.cellSize;
+        const x0 = Math.floor(obj.x / cs);
+        const y0 = Math.floor(obj.y / cs);
+        const x1 = Math.floor((obj.x + obj.width) / cs);
+        const y1 = Math.floor((obj.y + obj.height) / cs);
+        for (let cx = x0; cx <= x1; cx++) {
+            for (let cy = y0; cy <= y1; cy++) {
+                const k = this._key(cx, cy);
+                let cell = this.cells.get(k);
+                if (!cell) { cell = []; this.cells.set(k, cell); }
+                cell.push(obj);
+            }
+        }
+    }
+
+    build(objects) {
+        this.clear();
+        for (let i = 0; i < objects.length; i++) {
+            this.insert(objects[i]);
+        }
+    }
+
+    query(x, y, w, h) {
+        const cs = this.cellSize;
+        const x0 = Math.floor(x / cs);
+        const y0 = Math.floor(y / cs);
+        const x1 = Math.floor((x + w) / cs);
+        const y1 = Math.floor((y + h) / cs);
+        const seen = this._seen || (this._seen = new Set());
+        seen.clear();
+        const result = this._result || (this._result = []);
+        result.length = 0;
+        for (let cx = x0; cx <= x1; cx++) {
+            for (let cy = y0; cy <= y1; cy++) {
+                const cell = this.cells.get(this._key(cx, cy));
+                if (!cell) continue;
+                for (let i = 0; i < cell.length; i++) {
+                    const obj = cell[i];
+                    if (!seen.has(obj.id)) {
+                        seen.add(obj.id);
+                        result.push(obj);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+}
+
 class World {
     constructor() {
         this.objects = [];
+        this.spatialHash = new SpatialHash(128);
+        this._spatialDirty = true;
+        // Tile cache for static object rendering (play/test mode)
+        this._tileSize = 512;
+        this._tiles = new Map();
+        this._tileCacheReady = false;
         this.background = 'sky'; // sky, galaxy, custom
         
         // Music settings
@@ -1618,8 +1632,25 @@ class World {
         };
     }
 
+    markSpatialDirty() {
+        this._spatialDirty = true;
+    }
+
+    rebuildSpatialHash() {
+        if (!this._spatialDirty) return;
+        this._spatialDirty = false;
+        this.spatialHash.build(this.objects);
+    }
+
+    queryNear(x, y, w, h) {
+        this.rebuildSpatialHash();
+        return this.spatialHash.query(x, y, w, h);
+    }
+
     addObject(obj) {
         this.objects.push(obj);
+        this._spatialDirty = true;
+        this._tileCacheReady = false;
         this.updateSpecialPoints();
         return obj;
     }
@@ -1628,6 +1659,8 @@ class World {
         const index = this.objects.findIndex(o => o.id === id);
         if (index !== -1) {
             this.objects.splice(index, 1);
+            this._spatialDirty = true;
+            this._tileCacheReady = false;
             this.updateSpecialPoints();
             return true;
         }
@@ -1729,66 +1762,189 @@ class World {
 
     clear() {
         this.objects = [];
+        this._spatialDirty = true;
+        this.invalidateTileCache();
         this.spawnPoint = null;
         this.checkpoints = [];
         this.endpoint = null;
     }
 
+    // ---- Tile cache for static world rendering ----
+
+    _isStaticObject(obj) {
+        const at = obj.appearanceType;
+        if (at === 'zone' || at === 'button') return false;
+        if (at === 'checkpoint') return false;
+        if (obj.type === 'spinner' || at === 'spinner') return false;
+        return true;
+    }
+
+    invalidateTileCache() {
+        this._tiles.clear();
+        this._tileCacheReady = false;
+    }
+
+    buildTileCache() {
+        this._tiles.clear();
+        const ts = this._tileSize;
+        const cpColors = {
+            default: this.checkpointDefaultColor,
+            active: this.checkpointActiveColor,
+            touched: this.checkpointTouchedColor
+        };
+
+        // Pre-build list of dynamic objects for fast per-frame iteration
+        this._dynamicObjects = [];
+        const fakeCamera = { x: 0, y: 0, width: ts, height: ts, zoom: 1 };
+
+        for (let i = 0; i < this.objects.length; i++) {
+            const obj = this.objects[i];
+            if (!this._isStaticObject(obj)) {
+                this._dynamicObjects.push(obj);
+                continue;
+            }
+
+            const layer = obj.layer || 1;
+            const tx0 = Math.floor(obj.x / ts);
+            const ty0 = Math.floor(obj.y / ts);
+            const tx1 = Math.floor((obj.x + obj.width - 1) / ts);
+            const ty1 = Math.floor((obj.y + obj.height - 1) / ts);
+
+            for (let tx = tx0; tx <= tx1; tx++) {
+                for (let ty = ty0; ty <= ty1; ty++) {
+                    const key = layer * 67108864 + (tx + 32768) * 65536 + (ty + 32768);
+                    let tile = this._tiles.get(key);
+                    if (!tile) {
+                        tile = document.createElement('canvas');
+                        tile.width = ts;
+                        tile.height = ts;
+                        tile._ctx = tile.getContext('2d');
+                        this._tiles.set(key, tile);
+                    }
+                    fakeCamera.x = tx * ts;
+                    fakeCamera.y = ty * ts;
+                    obj.render(tile._ctx, fakeCamera, cpColors);
+                }
+            }
+        }
+        this._tileCacheReady = true;
+    }
+
+    _tileKey(layer, tx, ty) {
+        return layer * 67108864 + (tx + 32768) * 65536 + (ty + 32768);
+    }
+
+    renderTiles(ctx, camera, layerArray) {
+        const ts = this._tileSize;
+        const vLeft = camera.x;
+        const vRight = camera.x + camera.width / camera.zoom;
+        const vTop = camera.y;
+        const vBottom = camera.y + camera.height / camera.zoom;
+        const tx0 = Math.floor(vLeft / ts) - 1;
+        const ty0 = Math.floor(vTop / ts) - 1;
+        const tx1 = Math.floor(vRight / ts) + 1;
+        const ty1 = Math.floor(vBottom / ts) + 1;
+
+        for (let li = 0; li < layerArray.length; li++) {
+            const layer = layerArray[li];
+            for (let tx = tx0; tx <= tx1; tx++) {
+                for (let ty = ty0; ty <= ty1; ty++) {
+                    const tile = this._tiles.get(this._tileKey(layer, tx, ty));
+                    if (tile) {
+                        ctx.drawImage(tile, tx * ts - camera.x, ty * ts - camera.y);
+                    }
+                }
+            }
+        }
+    }
+
+    renderDynamic(ctx, camera, layerArray, checkpointColors) {
+        if (!this._dynamicObjects || this._dynamicObjects.length === 0) return;
+        const margin = 100;
+        const vLeft = camera.x - margin;
+        const vRight = camera.x + camera.width / camera.zoom + margin;
+        const vTop = camera.y - margin;
+        const vBottom = camera.y + camera.height / camera.zoom + margin;
+
+        for (let i = 0; i < this._dynamicObjects.length; i++) {
+            const obj = this._dynamicObjects[i];
+            const layer = obj.layer || 1;
+            let match = false;
+            for (let li = 0; li < layerArray.length; li++) {
+                if (layerArray[li] === layer) { match = true; break; }
+            }
+            if (!match) continue;
+            if (obj.x + obj.width < vLeft || obj.x > vRight ||
+                obj.y + obj.height < vTop || obj.y > vBottom) continue;
+            obj.render(ctx, camera, checkpointColors);
+        }
+    }
+
+    // ---- Standard rendering (editor mode) ----
+
     render(ctx, camera) {
-        const layers = [[], [], []];
-        
         const checkpointColors = {
             default: this.checkpointDefaultColor,
             active: this.checkpointActiveColor,
             touched: this.checkpointTouchedColor
         };
         
-        // Viewport bounds for frustum culling
         const margin = 100;
         const vLeft = camera.x - margin;
         const vRight = camera.x + camera.width / camera.zoom + margin;
         const vTop = camera.y - margin;
         const vBottom = camera.y + camera.height / camera.zoom + margin;
         
+        if (!this._layer0) { this._layer0 = []; this._layer1 = []; this._layer2 = []; this._zones = []; }
+        this._layer0.length = 0;
+        this._layer1.length = 0;
+        this._layer2.length = 0;
+        this._zones.length = 0;
+        
         for (const obj of this.objects) {
-            if (obj.appearanceType === 'zone' || obj.appearanceType === 'button') continue;
-            // Skip objects entirely outside the viewport
             if (obj.x + obj.width < vLeft || obj.x > vRight ||
                 obj.y + obj.height < vTop || obj.y > vBottom) continue;
-            layers[obj.layer].push(obj);
+            const at = obj.appearanceType;
+            if (at === 'zone' || at === 'button') {
+                this._zones.push(obj);
+            } else if (obj.layer === 0) {
+                this._layer0.push(obj);
+            } else if (obj.layer === 2) {
+                this._layer2.push(obj);
+            } else {
+                this._layer1.push(obj);
+            }
         }
         
-        for (const obj of layers[0]) {
-            obj.render(ctx, camera, checkpointColors);
+        for (let i = 0; i < this._layer0.length; i++) {
+            this._layer0[i].render(ctx, camera, checkpointColors);
         }
         
-        return { layers, checkpointColors };
+        return { layers: [this._layer0, this._layer1, this._layer2], checkpointColors };
     }
 
     renderAbovePlayer(ctx, camera, checkpointColors) {
-        const margin = 100;
-        const vLeft = camera.x - margin;
-        const vRight = camera.x + camera.width / camera.zoom + margin;
-        const vTop = camera.y - margin;
-        const vBottom = camera.y + camera.height / camera.zoom + margin;
-        
-        for (const obj of this.objects) {
-            if (obj.layer !== 2 || obj.appearanceType === 'zone' || obj.appearanceType === 'button') continue;
-            if (obj.x + obj.width < vLeft || obj.x > vRight ||
-                obj.y + obj.height < vTop || obj.y > vBottom) continue;
-            obj.render(ctx, camera, checkpointColors);
+        for (let i = 0; i < this._layer2.length; i++) {
+            this._layer2[i].render(ctx, camera, checkpointColors);
         }
     }
     
     renderZones(ctx, camera) {
+        for (let i = 0; i < this._zones.length; i++) {
+            this._zones[i].render(ctx, camera);
+        }
+    }
+
+    renderVisibleZones(ctx, camera) {
         const margin = 100;
         const vLeft = camera.x - margin;
         const vRight = camera.x + camera.width / camera.zoom + margin;
         const vTop = camera.y - margin;
         const vBottom = camera.y + camera.height / camera.zoom + margin;
-        
-        for (const obj of this.objects) {
-            if (obj.appearanceType !== 'zone' && obj.appearanceType !== 'button') continue;
+        for (let i = 0; i < this.objects.length; i++) {
+            const obj = this.objects[i];
+            const at = obj.appearanceType;
+            if (at !== 'zone' && at !== 'button') continue;
             if (obj.x + obj.width < vLeft || obj.x > vRight ||
                 obj.y + obj.height < vTop || obj.y > vBottom) continue;
             obj.render(ctx, camera);
@@ -1796,55 +1952,52 @@ class World {
     }
     
     renderTeleportalConnections(ctx, camera, time) {
-        // Only show connections for teleportals that are acting as portals
-        const teleportals = this.objects.filter(obj => obj.type === 'teleportal' && obj.actingType === 'portal');
+        // Build name→portal lookup once
+        const portalByName = this._portalByName || (this._portalByName = new Map());
+        portalByName.clear();
+        const portals = [];
+        for (const obj of this.objects) {
+            if (obj.type === 'teleportal' && obj.actingType === 'portal' && obj.teleportalName) {
+                portalByName.set(obj.teleportalName, obj);
+                portals.push(obj);
+            }
+        }
         
-        for (const portal of teleportals) {
-            if (!portal.teleportalName) continue;
-            
+        for (const portal of portals) {
             const portalCenterX = portal.x + portal.width / 2 - camera.x;
             const portalCenterY = portal.y + portal.height / 2 - camera.y;
             
-            // Process sendTo connections
             for (const conn of portal.sendTo) {
                 const targetName = conn?.name || conn;
-                const isEnabled = conn?.enabled !== false;
-                if (!targetName || !isEnabled) continue;
+                if (!targetName || conn?.enabled === false) continue;
                 
-                const targetPortal = teleportals.find(p => p.teleportalName === targetName);
+                const targetPortal = portalByName.get(targetName);
                 if (!targetPortal) continue;
                 
                 const targetCenterX = targetPortal.x + targetPortal.width / 2 - camera.x;
                 const targetCenterY = targetPortal.y + targetPortal.height / 2 - camera.y;
                 
-                // Check if this is a valid two-way connection (target receives from this portal and is enabled)
                 const receiveConn = targetPortal.receiveFrom.find(c => (c?.name || c) === portal.teleportalName);
                 const isValid = receiveConn && receiveConn?.enabled !== false;
                 
                 if (isValid) {
-                    // Valid connection: Green glowing line with animated arrows
                     this.renderValidTeleportalConnection(ctx, portalCenterX, portalCenterY, targetCenterX, targetCenterY, time);
                 } else {
-                    // Invalid send: Red fading arrows going out
                     this.renderInvalidSendConnection(ctx, portalCenterX, portalCenterY, targetCenterX, targetCenterY, time);
                 }
             }
             
-            // Process receiveFrom connections (only render invalid ones - valid ones already rendered from sender)
             for (const conn of portal.receiveFrom) {
                 const sourceName = conn?.name || conn;
-                const isEnabled = conn?.enabled !== false;
-                if (!sourceName || !isEnabled) continue;
+                if (!sourceName || conn?.enabled === false) continue;
                 
-                const sourcePortal = teleportals.find(p => p.teleportalName === sourceName);
+                const sourcePortal = portalByName.get(sourceName);
                 if (!sourcePortal) continue;
                 
-                // Check if source portal sends to this one (and is enabled)
                 const sendConn = sourcePortal.sendTo.find(c => (c?.name || c) === portal.teleportalName);
                 const isValid = sendConn && sendConn?.enabled !== false;
                 
                 if (!isValid) {
-                    // Invalid receive: Red arrows coming IN to this portal
                     const sourceCenterX = sourcePortal.x + sourcePortal.width / 2 - camera.x;
                     const sourceCenterY = sourcePortal.y + sourcePortal.height / 2 - camera.y;
                     this.renderInvalidReceiveConnection(ctx, sourceCenterX, sourceCenterY, portalCenterX, portalCenterY, time);
@@ -2223,34 +2376,39 @@ class GameEngine {
     }
     
     updateParticles(dt) {
-        for (let i = this.particles.length - 1; i >= 0; i--) {
+        let writeIdx = 0;
+        for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
             p.x += p.vx * dt;
             p.y += p.vy * dt;
-            p.vy += 200 * dt; // gravity
+            p.vy += 200 * dt;
             p.life -= p.decay;
             p.alpha = p.life;
-            
-            if (p.life <= 0) {
-                this.particles.splice(i, 1);
+            if (p.life > 0) {
+                this.particles[writeIdx++] = p;
             }
         }
+        this.particles.length = writeIdx;
     }
     
     renderParticles() {
-        for (const p of this.particles) {
-            const screenX = (p.x - this.camera.x) * this.camera.zoom;
-            const screenY = (p.y - this.camera.y) * this.camera.zoom;
-            const size = p.size * this.camera.zoom;
-            
-            this.ctx.save();
-            this.ctx.globalAlpha = p.alpha;
-            this.ctx.fillStyle = p.color;
-            this.ctx.beginPath();
-            this.ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-            this.ctx.fill();
-            this.ctx.restore();
+        if (this.particles.length === 0) return;
+        const ctx = this.ctx;
+        const cx = this.camera.x;
+        const cy = this.camera.y;
+        const zoom = this.camera.zoom;
+        
+        // Group by color to minimize state changes, draw as rects for speed
+        for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            const screenX = (p.x - cx) * zoom;
+            const screenY = (p.y - cy) * zoom;
+            const size = p.size * zoom;
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(screenX - size, screenY - size, size * 2, size * 2);
         }
+        ctx.globalAlpha = 1;
     }
     
     // Generate a single cloud shape (multiple rectangles combined with flat bottom)
@@ -2297,22 +2455,29 @@ class GameEngine {
         const cloudAreaWidth = screenWidth * 3;
         const cloudAreaHeight = screenHeight * 0.45; // Upper 45% of screen
         
+        let lastY = Math.random() * cloudAreaHeight + 15;
+        
         for (let i = 0; i < numClouds; i++) {
             const shape = this.generateCloudShape();
             
-            // Evenly spaced horizontally with some jitter
             const screenX = (i / numClouds) * cloudAreaWidth - cloudAreaWidth / 3 + (Math.random() - 0.5) * 200;
-            const screenY = Math.random() * cloudAreaHeight + 15;
             
-            const scale = 0.8 + Math.random() * 1.4; // 0.8 to 2.2
+            // Each cloud's Y is 50-500px different from the previous one
+            const yOffset = (50 + Math.random() * 450) * (Math.random() < 0.5 ? -1 : 1);
+            let screenY = lastY + yOffset;
+            // Keep within the cloud area
+            if (screenY < 15) screenY = 15 + Math.random() * 100;
+            if (screenY > cloudAreaHeight) screenY = cloudAreaHeight - Math.random() * 100;
+            lastY = screenY;
             
-            const normalizedScale = (scale - 0.8) / 1.4; // 0-1
-            const parallaxFactor = 0.15 + normalizedScale * 0.35; // 0.15-0.50
+            const scale = 0.8 + Math.random() * 1.4;
             
-            // Opacity: further clouds slightly more transparent
-            const opacity = 0.4 + normalizedScale * 0.35; // 0.4 (far) to 0.75 (near)
+            const normalizedScale = (scale - 0.8) / 1.4;
+            const parallaxFactor = 0.15 + normalizedScale * 0.35;
             
-            const driftSpeed = -(10 + Math.random() * 18); // -10 to -28 px/s
+            const opacity = 0.4 + normalizedScale * 0.35;
+            
+            const driftSpeed = -(14 + Math.random() * 22); // -14 to -36 px/s (faster)
             
             this.clouds.push({
                 screenX,
@@ -2386,26 +2551,23 @@ class GameEngine {
     }
     
     _preRenderCloudImages(color) {
-        const tmpCanvas = document.createElement('canvas');
-        const tmpCtx = tmpCanvas.getContext('2d');
-        
         for (const cloud of this.clouds) {
             const w = Math.ceil(cloud.shape.totalWidth * cloud.scale) + 2;
             const h = Math.ceil(cloud.shape.totalHeight * cloud.scale) + 2;
-            tmpCanvas.width = w;
-            tmpCanvas.height = h;
-            tmpCtx.fillStyle = color;
+            const offscreen = document.createElement('canvas');
+            offscreen.width = w;
+            offscreen.height = h;
+            const offCtx = offscreen.getContext('2d');
+            offCtx.fillStyle = color;
             for (const rect of cloud.shape.rects) {
-                tmpCtx.fillRect(
+                offCtx.fillRect(
                     rect.x * cloud.scale,
                     rect.y * cloud.scale,
                     rect.width * cloud.scale,
                     rect.height * cloud.scale
                 );
             }
-            const img = new Image();
-            img.src = tmpCanvas.toDataURL();
-            cloud._cachedImage = img;
+            cloud._cachedImage = offscreen;
             cloud._cachedWidth = w;
             cloud._cachedHeight = h;
         }
@@ -2452,10 +2614,8 @@ class GameEngine {
     resizeCanvas() {
         // Get the actual rendered size of the canvas (accounts for browser zoom)
         const rect = this.canvas.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        
-        // Set internal canvas resolution to match actual pixel size
-        // This ensures crisp rendering regardless of browser zoom
+        const dpr = 1;
+
         const width = Math.round(rect.width * dpr);
         const height = Math.round(rect.height * dpr);
         
@@ -2826,7 +2986,7 @@ class GameEngine {
         // Fixed timestep: 60 ticks per second
         this.fixedDeltaTime = 1 / 60;
         // Maximum physics updates per frame to prevent spiral of death
-        this.maxUpdatesPerFrame = 5;
+        this.maxUpdatesPerFrame = 3;
         // Bind once to avoid creating new functions every frame
         this._boundGameLoop = this._boundGameLoop || this.gameLoop.bind(this);
         requestAnimationFrame(this._boundGameLoop);
@@ -2839,31 +2999,35 @@ class GameEngine {
     gameLoop(currentTime) {
         if (!this.isRunning) return;
         
-        // On first frame, initialize lastTime to current frame time
-        // This prevents large deltaTime on first frame due to timing mismatch
         if (this.lastTime === null) {
             this.lastTime = currentTime;
+            this._fpsFrames = 0;
+            this._fpsTime = currentTime;
+            this._fpsDisplay = 0;
             requestAnimationFrame(this._boundGameLoop);
             return;
+        }
+        
+        // FPS tracking
+        this._fpsFrames++;
+        if (currentTime - this._fpsTime >= 1000) {
+            this._fpsDisplay = Math.round(this._fpsFrames * 1000 / (currentTime - this._fpsTime));
+            this._fpsFrames = 0;
+            this._fpsTime = currentTime;
         }
         
         let deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
         
-        // Cap deltaTime to prevent large jumps (e.g., after tab switch)
         if (deltaTime > 0.1) deltaTime = 0.1;
         
-        // Accumulate time for fixed timestep physics
         this.accumulator += deltaTime;
         
-        // Cap accumulator to prevent spiral of death (max 5 updates per frame)
         const maxAccumulator = this.fixedDeltaTime * this.maxUpdatesPerFrame;
         if (this.accumulator > maxAccumulator) {
             this.accumulator = maxAccumulator;
         }
         
-        // Run physics at fixed 60Hz - exactly the same number of updates
-        // regardless of display refresh rate
         let updateCount = 0;
         while (this.accumulator >= this.fixedDeltaTime && updateCount < this.maxUpdatesPerFrame) {
             this.update(this.fixedDeltaTime);
@@ -2877,17 +3041,21 @@ class GameEngine {
     }
 
     update(deltaTime) {
+        // Rebuild spatial hash once per update (lazy — only if dirty)
+        if (this.world) this.world.rebuildSpatialHash();
+        
         const isPlaying = this.state === GameState.PLAYING || this.state === GameState.TESTING;
         
         if (isPlaying) {
             if (this.localPlayer) {
                 if (window.PluginManager) {
-                    const result = window.PluginManager.executeHook('player.update', {
-                        player: this.localPlayer,
-                        world: this.world,
-                        audioManager: this.audioManager,
-                        deltaTime
-                    });
+                    if (!this._updateHookData) this._updateHookData = {};
+                    this._updateHookData.player = this.localPlayer;
+                    this._updateHookData.world = this.world;
+                    this._updateHookData.audioManager = this.audioManager;
+                    this._updateHookData.deltaTime = deltaTime;
+                    this._updateHookData.skipPhysics = false;
+                    const result = window.PluginManager.executeHook('player.update', this._updateHookData);
                     
                     if (!result.skipPhysics) {
                         this.localPlayer.update(this.world, this.audioManager);
@@ -2902,11 +3070,13 @@ class GameEngine {
                 const dieLineY = this.world.dieLineY ?? 2000;
                 if (this.localPlayer.y > dieLineY) {
                     if (window.PluginManager) {
-                        const result = window.PluginManager.executeHook('player.damage', {
-                            player: this.localPlayer,
-                            source: { type: 'void', actingType: 'void' },
-                            world: this.world
-                        });
+                        if (!this._voidSource) this._voidSource = { type: 'void', actingType: 'void' };
+                        if (!this._damageData) this._damageData = {};
+                        this._damageData.player = this.localPlayer;
+                        this._damageData.source = this._voidSource;
+                        this._damageData.world = this.world;
+                        this._damageData.preventDefault = false;
+                        const result = window.PluginManager.executeHook('player.damage', this._damageData);
                         if (!result.preventDefault) {
                             this.localPlayer.die();
                         }
@@ -2965,37 +3135,34 @@ class GameEngine {
         const playerBox = this.localPlayer.getGroundTouchbox();
         let onCheckpoint = false;
         
-        for (const obj of this.world.objects) {
-            // Only check special acting types
+        const nearby = this.world.queryNear(playerBox.x, playerBox.y, playerBox.width, playerBox.height);
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
             if (obj.actingType !== 'checkpoint' && obj.actingType !== 'endpoint') continue;
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
             if (obj.actingType === 'checkpoint') {
                 onCheckpoint = true;
 
-                // Spawn particles when checkpoint is first touched
                 const wasUntouched = obj.checkpointState === 'default';
+                const isNewContact = !this._onCheckpointObj || this._onCheckpointObj !== obj;
 
-                // Mark previous checkpoint as touched (blue)
                 if (this.lastCheckpoint && this.lastCheckpoint !== obj) {
                     this.lastCheckpoint.checkpointState = 'touched';
                 }
-                // Mark new checkpoint as active (green)
                 obj.checkpointState = 'active';
                 this.lastCheckpoint = obj;
+                this._onCheckpointObj = obj;
 
-                // Restore HP to max when reaching a checkpoint
-                if (wasUntouched && this.localPlayer) {
-                    if (window.PluginManager) {
-                        window.PluginManager.executeHook('player.checkpoint', {
-                            player: this.localPlayer,
-                            world: this.world,
-                            checkpoint: obj
-                        });
-                    }
+                // Fire checkpoint hook on first contact per visit (heals to full HP, etc.)
+                if (isNewContact && this.localPlayer && window.PluginManager) {
+                    window.PluginManager.executeHook('player.checkpoint', {
+                        player: this.localPlayer,
+                        world: this.world,
+                        checkpoint: obj
+                    });
                 }
 
-                // Spawn green particles on first touch
                 if (wasUntouched) {
                     const centerX = obj.x + obj.width / 2;
                     const centerY = obj.y + obj.height / 2;
@@ -3004,6 +3171,11 @@ class GameEngine {
             } else if (obj.actingType === 'endpoint') {
                 this.onGameEnd();
             }
+        }
+        
+        // Clear contact tracking when player leaves all checkpoints
+        if (!onCheckpoint) {
+            this._onCheckpointObj = null;
         }
         
         // Check for quick direction changes on checkpoint to reset jumps
@@ -3030,7 +3202,9 @@ class GameEngine {
         
         const playerBox = this.localPlayer.getGroundTouchbox();
         
-        for (const obj of this.world.objects) {
+        const nearby = this.world.queryNear(playerBox.x, playerBox.y, playerBox.width, playerBox.height);
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
             if (obj.appearanceType !== 'button' || obj.actingType !== 'button') continue;
             if (!this.localPlayer.boxIntersects(playerBox, obj)) {
                 // Player left the button zone — mark as not inside
@@ -3132,9 +3306,11 @@ class GameEngine {
         // Use smaller hurt touchbox for teleportation detection
         const playerBox = this.localPlayer.getHurtTouchbox();
         
-        for (const obj of this.world.objects) {
+        const nearby = this.world.queryNear(playerBox.x, playerBox.y, playerBox.width, playerBox.height);
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
             if (obj.type !== 'teleportal') continue;
-            if (obj.actingType !== 'portal') continue; // Only teleport when acting as portal
+            if (obj.actingType !== 'portal') continue;
             if (!obj.teleportalName) continue;
             if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
             
@@ -3210,6 +3386,7 @@ class GameEngine {
             spawnY = 100;
         }
         
+        this._onCheckpointObj = null;
         this.localPlayer.respawn(spawnX, spawnY);
     }
 
@@ -3249,68 +3426,101 @@ class GameEngine {
         
         const isPlaying = this.state === GameState.PLAYING || this.state === GameState.TESTING;
         const isEditor = this.state === GameState.EDITOR;
+        const useTileCache = isPlaying && this.world._tileCacheReady;
         
-        // Clouds only in play/test mode
         if (isPlaying) {
             this.renderClouds();
         }
         
-        // Render world objects behind player
-        const { layers, checkpointColors } = this.world.render(this.ctx, this.camera);
-        
-        // Same-layer objects
-        for (const obj of layers[1]) {
-            obj.render(this.ctx, this.camera, checkpointColors);
-        }
-        
-        // Players
-        if (this.localPlayer) {
-            const showPosition = isEditor || this.state === GameState.TESTING;
+        if (useTileCache) {
+            // Fast path: draw pre-rendered tiles + only dynamic objects per frame
+            if (!this._cpColors) this._cpColors = {};
+            this._cpColors.default = this.world.checkpointDefaultColor;
+            this._cpColors.active = this.world.checkpointActiveColor;
+            this._cpColors.touched = this.world.checkpointTouchedColor;
             
-            if (isPlaying) {
+            if (!this._layers01) { this._layers01 = [0, 1]; this._layers2 = [2]; }
+            
+            // Behind + same-layer static tiles
+            this.world.renderTiles(this.ctx, this.camera, this._layers01);
+            this.world.renderDynamic(this.ctx, this.camera, this._layers01, this._cpColors);
+            
+            // Players
+            if (this.localPlayer) {
+                const showPosition = this.state === GameState.TESTING;
                 for (const player of this.remotePlayers.values()) {
                     player.render(this.ctx, this.camera, showPosition);
                 }
+                this.localPlayer.render(this.ctx, this.camera, showPosition);
+                if (window.PluginManager) {
+                    if (!this._renderPlayerData) this._renderPlayerData = {};
+                    this._renderPlayerData.ctx = this.ctx;
+                    this._renderPlayerData.player = this.localPlayer;
+                    this._renderPlayerData.camera = this.camera;
+                    this._renderPlayerData.world = this.world;
+                    window.PluginManager.executeHook('render.player', this._renderPlayerData);
+                }
             }
             
-            this.localPlayer.render(this.ctx, this.camera, showPosition);
+            // Above-player static tiles + dynamic
+            this.world.renderTiles(this.ctx, this.camera, this._layers2);
+            this.world.renderDynamic(this.ctx, this.camera, this._layers2, this._cpColors);
             
-            if (isPlaying && window.PluginManager) {
-                window.PluginManager.executeHook('render.player', {
-                    ctx: this.ctx,
-                    player: this.localPlayer,
-                    camera: this.camera,
-                    world: this.world
-                });
+            // Zones/buttons
+            this.world.renderVisibleZones(this.ctx, this.camera);
+        } else {
+            // Standard path: per-object rendering (editor mode)
+            const { layers, checkpointColors } = this.world.render(this.ctx, this.camera);
+            
+            for (const obj of layers[1]) {
+                obj.render(this.ctx, this.camera, checkpointColors);
             }
+            
+            if (this.localPlayer) {
+                const showPosition = isEditor || this.state === GameState.TESTING;
+                if (isPlaying) {
+                    for (const player of this.remotePlayers.values()) {
+                        player.render(this.ctx, this.camera, showPosition);
+                    }
+                }
+                this.localPlayer.render(this.ctx, this.camera, showPosition);
+                if (isPlaying && window.PluginManager) {
+                    window.PluginManager.executeHook('render.player', {
+                        ctx: this.ctx, player: this.localPlayer,
+                        camera: this.camera, world: this.world
+                    });
+                }
+            }
+            
+            this.world.renderAbovePlayer(this.ctx, this.camera, checkpointColors);
+            this.world.renderZones(this.ctx, this.camera);
         }
-        
-        // Above-player objects
-        this.world.renderAbovePlayer(this.ctx, this.camera, checkpointColors);
-        
-        // Zones/buttons on top
-        this.world.renderZones(this.ctx, this.camera);
         
         // Teleportal connections (editor & test only)
         if (isEditor || this.state === GameState.TESTING) {
             this.world.renderTeleportalConnections(this.ctx, this.camera, Date.now());
         }
         
-        // Editor overlays
         if (isEditor && this.renderEditorOverlay) {
             this.renderEditorOverlay(this.ctx, this.camera);
         }
         
         this.ctx.restore();
         
-        // Particles only in play/test mode
         if (isPlaying) {
             this.renderParticles();
+            this.renderHUD();
         }
         
-        // HUD only in play/test mode
-        if (isPlaying) {
-            this.renderHUD();
+        // FPS counter (top-right corner)
+        if (this._fpsDisplay !== undefined) {
+            const fps = this._fpsDisplay;
+            this.ctx.save();
+            this.ctx.font = '12px monospace';
+            this.ctx.textAlign = 'right';
+            this.ctx.fillStyle = fps < 30 ? '#ff4444' : fps < 50 ? '#ffaa00' : '#44ff44';
+            this.ctx.fillText(`${fps} FPS`, this.camera.width - 8, 16);
+            this.ctx.restore();
         }
     }
     
@@ -3333,6 +3543,7 @@ class GameEngine {
     startGame(playerName, playerColor) {
         this.state = GameState.PLAYING;
         this.lastCheckpoint = null;
+        this._onCheckpointObj = null;
         this.gameStartTime = Date.now();
         
         // Regenerate clouds for new game session
@@ -3376,11 +3587,15 @@ class GameEngine {
         
         this.camera.x = this.localPlayer.x - this.camera.width / 2;
         this.camera.y = this.localPlayer.y - this.camera.height / 2;
+        
+        // Build tile cache for fast rendering
+        this.world.buildTileCache();
     }
 
     startTestGame() {
         this.state = GameState.TESTING;
         this.lastCheckpoint = null;
+        this._onCheckpointObj = null;
         this.gameStartTime = Date.now();
         
         // Regenerate clouds for test session
@@ -3423,6 +3638,9 @@ class GameEngine {
         } else {
             this.localPlayer.setMaxJumps(this.world.maxJumps, this.world.additionalAirjump);
         }
+        
+        // Build tile cache for fast rendering
+        this.world.buildTileCache();
     }
 
     stopGame() {
@@ -3430,6 +3648,7 @@ class GameEngine {
         this.localPlayer = null;
         this.remotePlayers.clear();
         this.particles = [];
+        this.world.invalidateTileCache();
 
         const buttonUI = document.getElementById('game-button-ui');
         if (buttonUI) buttonUI.remove();
