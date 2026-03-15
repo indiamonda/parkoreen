@@ -187,10 +187,9 @@
                 const maxFallSpeed = 20 * (worldGravity / DEFAULT_GRAVITY);
                 if (player.vy > maxFallSpeed) player.vy = maxFallSpeed;
                 
-                // Don't call moveWithCollision here - game engine will call it when skipPhysics is true
-                return { ...data, skipPhysics: true };
+                data.skipPhysics = true;
+                return data;
             } else {
-                // Bounce ended - return to normal physics
                 player.isWallBouncing = false;
             }
         }
@@ -232,23 +231,20 @@
                 // Apply movement with collision
                 player.moveWithCollision(world);
                 
-                return { ...data, skipPhysics: true };
+                data.skipPhysics = true;
+                return data;
             }
             
-            // Reset wall jump ready when jump key is released
             if (!player.input?.jump) {
                 player._wallJumpReady = true;
             }
             
-            // Apply slow wall slide instead of normal gravity
-            player.vy += worldGravity * 0.1; // Very slow gravity while clinging
-            player.vy = Math.min(player.vy, player.wallSlideSpeed); // Cap at slide speed
-            
-            // Prevent horizontal movement away from wall while clinging
+            player.vy += worldGravity * 0.1;
+            player.vy = Math.min(player.vy, player.wallSlideSpeed);
             player.vx = 0;
             
-            // Don't call moveWithCollision here - game engine will call it when skipPhysics is true
-            return { ...data, skipPhysics: true };
+            data.skipPhysics = true;
+            return data;
         }
         
         // ===== ATTACK =====
@@ -269,23 +265,15 @@
             player._attackHitThisSwing = false; // Reset hit flag for new attack
         }
         
-        // Continuous collision check during attack (for pogo bounce to work mid-attack)
         if (player.isAttacking && !player._attackHitThisSwing) {
             const hitbox = getAttackHitbox(player, player.attackDirection);
             const worldJumpForce = world?.jumpForce ?? -11;
             
-            // Only check objects that can be hit (spike or soulStatus)
-            for (let i = 0; i < world.objects.length; i++) {
-                const obj = world.objects[i];
-                // Quick reject: only check hittable objects
+            const atkNearby = world.queryNear ? world.queryNear(hitbox.x, hitbox.y, hitbox.width, hitbox.height) : world.objects;
+            for (let i = 0; i < atkNearby.length; i++) {
+                const obj = atkNearby[i];
                 const isHittable = obj.actingType === 'soulStatus' || (obj.actingType === 'spike' && obj.collision !== false);
                 if (!isHittable) continue;
-                
-                // Quick reject: rough bounding box check before precise check
-                if (obj.x > hitbox.x + hitbox.width + 50 || obj.x + obj.width < hitbox.x - 50 ||
-                    obj.y > hitbox.y + hitbox.height + 50 || obj.y + obj.height < hitbox.y - 50) {
-                    continue;
-                }
                 
                 if (boxIntersects(hitbox, obj)) {
                     player._attackHitThisSwing = true;
@@ -358,9 +346,10 @@
                     });
                 }
                 
-                player.vx = player.dashDirection * 12; // Dash speed
+                player.vx = player.dashDirection * 12;
                 player.vy = 0;
-                return { ...data, skipPhysics: true };
+                data.skipPhysics = true;
+                return data;
             }
         } else if (player.dashTrail.length > 0) {
             // Clean up old trail only when there are items and not dashing
@@ -416,18 +405,17 @@
             player.vx = player.superDashDirection * 20;
             player.vy = 0;
             
-            // Check for wall collision
             const collisions = checkCollisions(player, world, 'horizontal');
             if (collisions.length > 0) {
                 stopSuperDash(player, 'wall');
             }
             
-            // Super dash key, jump, or attack cancels super dash
             if (player.input?.superDash || player.input?.attack || player.input?.jump) {
                 stopSuperDash(player, 'manual');
             }
             
-            return { ...data, skipPhysics: true };
+            data.skipPhysics = true;
+            return data;
         }
         
         // ===== HEAL =====
@@ -511,7 +499,9 @@
             
             pluginManager.playSound(pluginId, 'monarchWings');
             
-            return { ...data, preventDefault: false, didJump: true };
+            data.preventDefault = false;
+            data.didJump = true;
+            return data;
         }
         
         return data;
@@ -536,7 +526,8 @@
         // If player is in attack bounce invincibility, prevent damage from spikes
         if (player.attackBounceUntil && now < player.attackBounceUntil) {
             if (source?.actingType === 'spike') {
-                return { ...data, preventDefault: true };
+                data.preventDefault = true;
+                return data;
             }
         }
         
@@ -747,33 +738,28 @@
     // HELPER FUNCTIONS
     // ============================================
     
+    const _atkBox = { x: 0, y: 0, width: 0, height: 0 };
     function getAttackHitbox(player, direction) {
-        const attackLength = 72; // How far the attack reaches (length of oval)
-        const attackWidth = 20; // Width of oval (shorter axis)
+        const attackLength = 72;
+        const attackWidth = 20;
 
         if (direction === 'up') {
-            return {
-                x: player.x + (player.width - attackWidth) / 2,
-                y: player.y - attackLength,
-                width: attackWidth,
-                height: attackLength
-            };
+            _atkBox.x = player.x + (player.width - attackWidth) / 2;
+            _atkBox.y = player.y - attackLength;
+            _atkBox.width = attackWidth;
+            _atkBox.height = attackLength;
         } else if (direction === 'down') {
-            return {
-                x: player.x + (player.width - attackWidth) / 2,
-                y: player.y + player.height,
-                width: attackWidth,
-                height: attackLength
-            };
+            _atkBox.x = player.x + (player.width - attackWidth) / 2;
+            _atkBox.y = player.y + player.height;
+            _atkBox.width = attackWidth;
+            _atkBox.height = attackLength;
         } else {
-            // Forward attack - extends in the direction player is facing
-            return {
-                x: player.facingDirection > 0 ? player.x + player.width : player.x - attackLength,
-                y: player.y + (player.height - attackWidth) / 2,
-                width: attackLength,
-                height: attackWidth
-            };
+            _atkBox.x = player.facingDirection > 0 ? player.x + player.width : player.x - attackLength;
+            _atkBox.y = player.y + (player.height - attackWidth) / 2;
+            _atkBox.width = attackLength;
+            _atkBox.height = attackWidth;
         }
+        return _atkBox;
     }
     
     function boxIntersects(a, b) {
@@ -783,47 +769,49 @@
                a.y + a.height > b.y;
     }
     
-    // Check if player is touching a wall on a specific side
-    // direction: -1 = check left only, 1 = check right only
-    // Returns: -1 = touching left wall, 1 = touching right wall, 0 = no wall contact
+    const _wallBox = { x: 0, y: 0, width: 0, height: 0 };
     function checkWallContact(player, world, direction) {
-        const margin = 2; // How close to count as "touching"
-        
-        // Only create the box for the side we're checking
-        const checkBox = direction === -1 
-            ? { x: player.x - margin, y: player.y + 4, width: margin, height: player.height - 8 }
-            : { x: player.x + player.width, y: player.y + 4, width: margin, height: player.height - 8 };
-        
-        for (const obj of world.objects) {
-            if (!obj.collision) continue;
-            if (obj.actingType === 'text' || obj.actingType === 'teleportal') continue;
-            
-            if (boxIntersects(checkBox, obj)) {
-                return direction; // Return the direction we found a wall
-            }
+        const margin = 2;
+        if (direction === -1) {
+            _wallBox.x = player.x - margin; _wallBox.y = player.y + 4;
+            _wallBox.width = margin; _wallBox.height = player.height - 8;
+        } else {
+            _wallBox.x = player.x + player.width; _wallBox.y = player.y + 4;
+            _wallBox.width = margin; _wallBox.height = player.height - 8;
         }
         
+        const nearby = world.queryNear ? world.queryNear(_wallBox.x, _wallBox.y, _wallBox.width, _wallBox.height) : world.objects;
+        for (let i = 0; i < nearby.length; i++) {
+            const obj = nearby[i];
+            if (!obj.collision) continue;
+            if (obj.actingType === 'text' || obj.actingType === 'teleportal') continue;
+            if (boxIntersects(_wallBox, obj)) return direction;
+        }
         return 0;
     }
     
+    const _collBox = { x: 0, y: 0, width: 0, height: 0 };
+    const _collResult = [];
     function checkCollisions(player, world, direction) {
-        const collisions = [];
-        // Check slightly ahead in the direction of movement
-        const lookAhead = direction === 'horizontal' ? 
-            { x: player.x + (player.superDashDirection || player.facingDirection) * 5, y: player.y } :
-            { x: player.x, y: player.y + 5 };
-        const box = { x: lookAhead.x, y: lookAhead.y, width: player.width, height: player.height };
+        _collResult.length = 0;
+        if (direction === 'horizontal') {
+            _collBox.x = player.x + (player.superDashDirection || player.facingDirection) * 5;
+            _collBox.y = player.y;
+        } else {
+            _collBox.x = player.x;
+            _collBox.y = player.y + 5;
+        }
+        _collBox.width = player.width;
+        _collBox.height = player.height;
         
-        for (const obj of world.objects) {
+        const nearby = world.queryNear ? world.queryNear(_collBox.x, _collBox.y, _collBox.width, _collBox.height) : world.objects;
+        for (let i = 0; i < nearby.length; i++) {
+            const obj = nearby[i];
             if (!obj.collision) continue;
             if (obj.actingType === 'text' || obj.actingType === 'teleportal') continue;
-            
-            if (boxIntersects(box, obj)) {
-                collisions.push(obj);
-            }
+            if (boxIntersects(_collBox, obj)) _collResult.push(obj);
         }
-        
-        return collisions;
+        return _collResult;
     }
     
     function stopSuperDash(player, reason) {

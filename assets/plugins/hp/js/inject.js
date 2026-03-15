@@ -37,74 +37,47 @@
     // Grid size for alignment
     const GRID_SIZE = 32;
     
-    // Helper: Check if a position is safe (has ground underneath and no spike at position)
+    const _safeBox = { x: 0, y: 0, width: 0, height: 0 };
     function isPositionSafe(x, y, playerWidth, playerHeight) {
-        const playerBox = { x, y, width: playerWidth, height: playerHeight };
-        const margin = 4; // Extra margin around spikes
-        
-        // Check 1: No spike at the player's position
-        for (const obj of world.objects) {
+        const margin = 4;
+        _safeBox.x = x - margin; _safeBox.y = y - margin;
+        _safeBox.width = playerWidth + margin * 2; _safeBox.height = playerHeight + margin * 2;
+
+        const nearby = world.queryNear ? world.queryNear(_safeBox.x, _safeBox.y, _safeBox.width, _safeBox.height) : world.objects;
+        for (let i = 0; i < nearby.length; i++) {
+            const obj = nearby[i];
             if (obj.actingType !== 'spike') continue;
-            
-            // Expanded spike box for safety margin
-            const spikeBox = {
-                x: obj.x - margin,
-                y: obj.y - margin,
-                width: obj.width + margin * 2,
-                height: obj.height + margin * 2
-            };
-            
-            // Check overlap with player position
-            if (playerBox.x < spikeBox.x + spikeBox.width &&
-                playerBox.x + playerBox.width > spikeBox.x &&
-                playerBox.y < spikeBox.y + spikeBox.height &&
-                playerBox.y + playerBox.height > spikeBox.y) {
+            if (x < obj.x + obj.width + margin && x + playerWidth > obj.x - margin &&
+                y < obj.y + obj.height + margin && y + playerHeight > obj.y - margin) {
                 return false;
             }
         }
-        
-        // Check 2: Has solid ground underneath (check the block position directly below player)
-        const groundCheckY = y + playerHeight; // Position directly below player's feet
-        const groundCheckX1 = x + playerWidth * 0.25; // Check left-center of player
-        const groundCheckX2 = x + playerWidth * 0.75; // Check right-center of player
-        
-        let hasGroundUnderneath = false;
-        for (const obj of world.objects) {
-            // Skip non-collidable objects and spikes
+
+        const groundY = y + playerHeight;
+        const gx1 = x + playerWidth * 0.25, gx2 = x + playerWidth * 0.75;
+        const groundNearby = world.queryNear ? world.queryNear(x, groundY - 4, playerWidth, 12) : world.objects;
+        let hasGround = false;
+        for (let i = 0; i < groundNearby.length; i++) {
+            const obj = groundNearby[i];
             if (!obj.collision || obj.actingType === 'spike') continue;
-            
-            // Check if this object is directly beneath the player
-            if (groundCheckY >= obj.y && groundCheckY <= obj.y + 8 && // Within 8px below player
-                ((groundCheckX1 >= obj.x && groundCheckX1 <= obj.x + obj.width) ||
-                 (groundCheckX2 >= obj.x && groundCheckX2 <= obj.x + obj.width))) {
-                hasGroundUnderneath = true;
+            if (groundY >= obj.y && groundY <= obj.y + 8 &&
+                ((gx1 >= obj.x && gx1 <= obj.x + obj.width) ||
+                 (gx2 >= obj.x && gx2 <= obj.x + obj.width))) {
+                hasGround = true;
                 break;
             }
         }
-        
-        // Check 3: No spike at the ground position (where player's feet would land)
-        if (hasGroundUnderneath) {
-            const feetBox = {
-                x: x,
-                y: groundCheckY - 4,
-                width: playerWidth,
-                height: 8
-            };
-            
-            for (const obj of world.objects) {
-                if (obj.actingType !== 'spike') continue;
-                
-                // Check if spike is at the ground position
-                if (feetBox.x < obj.x + obj.width &&
-                    feetBox.x + feetBox.width > obj.x &&
-                    feetBox.y < obj.y + obj.height &&
-                    feetBox.y + feetBox.height > obj.y) {
-                    return false; // Spike at ground level
-                }
+        if (!hasGround) return false;
+
+        for (let i = 0; i < groundNearby.length; i++) {
+            const obj = groundNearby[i];
+            if (obj.actingType !== 'spike') continue;
+            if (x < obj.x + obj.width && x + playerWidth > obj.x &&
+                groundY - 4 < obj.y + obj.height && groundY + 4 > obj.y) {
+                return false;
             }
         }
-        
-        return hasGroundUnderneath;
+        return true;
     }
     
     // Helper: Align to grid
@@ -122,19 +95,13 @@
         const { player } = data;
         const now = Date.now();
         
-        // Handle damage stun - prevent movement
         if (player.useHPSystem && player.damageStunUntil && now < player.damageStunUntil) {
-            // Clear input during stun
             player.vx = 0;
-            // Keep gravity, but don't allow player input
-            player.input = {
-                ...player.input,
-                left: false,
-                right: false,
-                jump: false,
-                up: false,
-                down: false
-            };
+            player.input.left = false;
+            player.input.right = false;
+            player.input.jump = false;
+            player.input.up = false;
+            player.input.down = false;
         }
         
         // Record safe ground when player is on ground (throttled)
@@ -185,9 +152,9 @@
         
         const now = Date.now();
         
-        // Check invincibility
         if (now < player.invincibleUntil) {
-            return { ...data, preventDefault: true };
+            data.preventDefault = true;
+            return data;
         }
         
         // Take damage
@@ -253,8 +220,8 @@
             player.safeGroundHistory = [];
         }
         
-        // Prevent default death behavior
-        return { ...data, preventDefault: true };
+        data.preventDefault = true;
+        return data;
     }, pluginId);
     
     // ============================================
@@ -316,9 +283,9 @@
             }
         }
         
-        // Update xOffset for next HUD element
-        return { ...data, xOffset: currentX + player.maxHP * hpSpacing + 10 };
-    }, pluginId, 20); // Priority 20 so it renders after soul
+        data.xOffset = currentX + player.maxHP * hpSpacing + 10;
+        return data;
+    }, pluginId, 20);
     
     // ============================================
     // PLAYER RENDER HOOK - Flash player sprite during invincibility

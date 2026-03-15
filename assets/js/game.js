@@ -580,16 +580,13 @@ class Player {
     }
 
     resetJumps() {
-        // When landing on ground, reset to full jumps
-        // (The walk-off-ledge penalty is handled in moveWithCollision)
             this.jumpsRemaining = this.maxJumps;
-        // Clear coyote time when landing
         this.coyoteTimeStart = null;
-        // Notify plugins of landing
         if (window.PluginManager) {
-            window.PluginManager.executeHook('player.land', { player: this });
+            if (!this._landData) this._landData = {};
+            this._landData.player = this;
+            window.PluginManager.executeHook('player.land', this._landData);
         }
-        // Reset monarch wings
         this.monarchWingsUsed = 0;
     }
 
@@ -631,17 +628,20 @@ class Player {
         ctx.fillRect(screenX, screenY, this.width - 4, 4);
         ctx.fillRect(screenX, screenY, 4, this.height - 4);
         
-        // Cache font scale to avoid per-frame Settings lookup
-        if (!this._fontScale) {
-            this._fontScale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
+        // Cache font strings to avoid per-frame string concatenation + font parsing
+        if (!this._cachedFonts) {
+            const scale = (typeof Settings !== 'undefined' && Settings.get('fontSize')) ? Settings.get('fontSize') / 100 : 1;
+            this._cachedFonts = {
+                pos: `${Math.round(16 * scale)}px "Parkoreen Game", sans-serif`,
+                name: `${Math.round(14 * scale)}px "Parkoreen Game", sans-serif`,
+                nameOffsetY: Math.round(16 * scale)
+            };
         }
-        const fontScale = this._fontScale;
         
         if (showPosition) {
-            const fs = Math.round(16 * fontScale);
             const posText = `(${Math.round(this.x)}, ${Math.round(this.y)})`;
             const tx = screenX + this.width / 2;
-            ctx.font = `${fs}px "Parkoreen Game", sans-serif`;
+            ctx.font = this._cachedFonts.pos;
             ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillText(posText, tx + 1, screenY - 9);
@@ -649,10 +649,9 @@ class Player {
             ctx.fillText(posText, tx, screenY - 10);
         }
         
-        const nfs = Math.round(14 * fontScale);
-        const nameY = screenY + this.height + Math.round(16 * fontScale);
+        const nameY = screenY + this.height + this._cachedFonts.nameOffsetY;
         const nameX = screenX + this.width / 2;
-        ctx.font = `${nfs}px "Parkoreen Game", sans-serif`;
+        ctx.font = this._cachedFonts.name;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillText(this.name, nameX + 1, nameY + 1);
@@ -1781,6 +1780,12 @@ class World {
         return true;
     }
 
+    _isDynamicRenderable(obj) {
+        const at = obj.appearanceType;
+        if (at === 'zone' || at === 'button') return false;
+        return !this._isStaticObject(obj);
+    }
+
     invalidateTileCache() {
         this._tiles.clear();
         this._tileCacheReady = false;
@@ -1802,7 +1807,7 @@ class World {
         for (let i = 0; i < this.objects.length; i++) {
             const obj = this.objects[i];
             if (!this._isStaticObject(obj)) {
-                this._dynamicObjects.push(obj);
+                if (this._isDynamicRenderable(obj)) this._dynamicObjects.push(obj);
                 continue;
             }
 
@@ -1885,11 +1890,11 @@ class World {
     // ---- Standard rendering (editor mode) ----
 
     render(ctx, camera) {
-        const checkpointColors = {
-            default: this.checkpointDefaultColor,
-            active: this.checkpointActiveColor,
-            touched: this.checkpointTouchedColor
-        };
+        if (!this._cpColorsEditor) this._cpColorsEditor = {};
+        this._cpColorsEditor.default = this.checkpointDefaultColor;
+        this._cpColorsEditor.active = this.checkpointActiveColor;
+        this._cpColorsEditor.touched = this.checkpointTouchedColor;
+        const checkpointColors = this._cpColorsEditor;
         
         const margin = 100;
         const vLeft = camera.x - margin;
@@ -2400,17 +2405,20 @@ class GameEngine {
         const cx = this.camera.x;
         const cy = this.camera.y;
         const zoom = this.camera.zoom;
+        const TAU = Math.PI * 2;
 
+        let lastColor = '';
+        let lastAlpha = -1;
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
             const screenX = (p.x - cx) * zoom;
             const screenY = (p.y - cy) * zoom;
             const size = p.size * zoom;
-            ctx.globalAlpha = p.alpha;
-            ctx.fillStyle = p.color;
+            if (p.alpha !== lastAlpha) { ctx.globalAlpha = p.alpha; lastAlpha = p.alpha; }
+            if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
             if (p.shape === 'circle') {
                 ctx.beginPath();
-                ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                ctx.arc(screenX, screenY, size, 0, TAU);
                 ctx.fill();
             } else {
                 ctx.fillRect(screenX - size, screenY - size, size * 2, size * 2);
@@ -2533,8 +2541,7 @@ class GameEngine {
         const cameraY = this.camera.y;
         const wrapWidth = viewWidth * 3;
         
-        this.ctx.save();
-        
+        let lastAlpha = -1;
         for (const cloud of this.clouds) {
             const cloudWidth = cloud._cachedWidth;
             const cloudHeight = cloud._cachedHeight;
@@ -2551,11 +2558,10 @@ class GameEngine {
             if (screenY + cloudHeight < -50 || screenY > viewHeight + 50) continue;
             if (screenX + cloudWidth < -50 || screenX > viewWidth + 50) continue;
             
-            this.ctx.globalAlpha = cloud.opacity;
+            if (cloud.opacity !== lastAlpha) { this.ctx.globalAlpha = cloud.opacity; lastAlpha = cloud.opacity; }
             this.ctx.drawImage(cloud._cachedImage, screenX, screenY);
         }
-        
-        this.ctx.restore();
+        this.ctx.globalAlpha = 1;
     }
     
     _preRenderCloudImages(color) {
@@ -3098,10 +3104,10 @@ class GameEngine {
                 if (this.localPlayer.isDead) {
                     this.respawnPlayer();
                     if (window.PluginManager) {
-                        window.PluginManager.executeHook('player.respawn', {
-                            player: this.localPlayer,
-                            world: this.world
-                        });
+                        if (!this._respawnData) this._respawnData = {};
+                        this._respawnData.player = this.localPlayer;
+                        this._respawnData.world = this.world;
+                        window.PluginManager.executeHook('player.respawn', this._respawnData);
                     }
                 }
                 
@@ -3165,11 +3171,11 @@ class GameEngine {
 
                 // Fire checkpoint hook every frame while touching (heals to full HP, etc.)
                 if (this.localPlayer && window.PluginManager) {
-                    window.PluginManager.executeHook('player.checkpoint', {
-                        player: this.localPlayer,
-                        world: this.world,
-                        checkpoint: obj
-                    });
+                    if (!this._cpHookData) this._cpHookData = {};
+                    this._cpHookData.player = this.localPlayer;
+                    this._cpHookData.world = this.world;
+                    this._cpHookData.checkpoint = obj;
+                    window.PluginManager.executeHook('player.checkpoint', this._cpHookData);
                 }
 
                 if (isNewContact) {
@@ -3494,10 +3500,12 @@ class GameEngine {
                 }
                 this.localPlayer.render(this.ctx, this.camera, showPosition);
                 if (isPlaying && window.PluginManager) {
-                    window.PluginManager.executeHook('render.player', {
-                        ctx: this.ctx, player: this.localPlayer,
-                        camera: this.camera, world: this.world
-                    });
+                    if (!this._renderPlayerData) this._renderPlayerData = {};
+                    this._renderPlayerData.ctx = this.ctx;
+                    this._renderPlayerData.player = this.localPlayer;
+                    this._renderPlayerData.camera = this.camera;
+                    this._renderPlayerData.world = this.world;
+                    window.PluginManager.executeHook('render.player', this._renderPlayerData);
                 }
             }
             
@@ -3536,16 +3544,13 @@ class GameEngine {
     renderHUD() {
         if (!this.localPlayer) return;
         
-        // Let plugins render their HUD elements via hook
         if (window.PluginManager) {
-            window.PluginManager.executeHook('render.hud', {
-                ctx: this.ctx,
-                canvas: this.canvas,
-                player: this.localPlayer,
-                world: this.world,
-                xOffset: 20,
-                yOffset: 20
-            });
+            if (!this._hudData) this._hudData = { xOffset: 20, yOffset: 20 };
+            this._hudData.ctx = this.ctx;
+            this._hudData.canvas = this.canvas;
+            this._hudData.player = this.localPlayer;
+            this._hudData.world = this.world;
+            window.PluginManager.executeHook('render.hud', this._hudData);
         }
     }
 
