@@ -9,9 +9,9 @@
 const GRID_SIZE = 32;
 // Physics: Lower gravity for floatier feel, jump force adjusted to maintain same jump HEIGHT
 // Formula: h = v²/(2g), so to keep h constant: v₂ = v₁ * sqrt(g₂/g₁)
-// Old: g=0.8, v=-14, h=122.5 | New: g=0.5, v=-11, h=121 (same height, slower speed)
+// Old: g=0.8, v=-14, h=122.5 | New: g=0.5, v=-13.2
 const DEFAULT_GRAVITY = 0.5;
-const DEFAULT_JUMP_FORCE = -11;
+const DEFAULT_JUMP_FORCE = -13.2;
 const DEFAULT_MOVE_SPEED = 5;
 const FLY_SPEED = 8;
 const CAMERA_LERP_X = 0.12;
@@ -2207,10 +2207,7 @@ class GameEngine {
             
             // Size multiplier (0.6 to 1.4) - more uniform sizes
             const scale = 0.6 + Math.random() * 0.8;
-            
-            // Opacity - 100% solid
-            const opacity = 1.0;
-            
+
             // Parallax factor: clouds move LESS than player (background effect)
             // Lower factor = moves less = appears further away
             const parallaxFactor = 0.85 + Math.random() * 0.1; // 0.85-0.95 of camera movement
@@ -2223,7 +2220,6 @@ class GameEngine {
                 baseY,
                 scale,
                 shape,
-                opacity,
                 parallaxFactor,
                 driftSpeed,
                 driftOffset: Math.random() * 10000 // Random starting position
@@ -2291,8 +2287,8 @@ class GameEngine {
                 continue;
             }
             
-            // Draw cloud with individual opacity
-            this.ctx.globalAlpha = cloud.opacity;
+            // Draw cloud at 100% opacity
+            this.ctx.globalAlpha = 1.0;
             
             for (const rect of cloud.shape.rects) {
                 this.ctx.fillRect(
