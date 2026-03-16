@@ -236,6 +236,8 @@ class Editor {
     
     // Trigger map change callback (for auto-save)
     triggerMapChange() {
+        this.world.markSpatialDirty();
+        this.world._tileCacheReady = false;
         if (typeof this.onMapChange === 'function') {
             this.onMapChange();
         }
@@ -428,6 +430,11 @@ class Editor {
             </button>
             <div class="toolbar-divider"></div>
             <span class="sel-count" id="sel-count">0 selected</span>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn sel-done-btn" data-sel-cmd="done" title="Done (exit selection)">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span class="toolbar-btn-label">Done</span>
+            </button>
         `;
         document.body.appendChild(selToolbar);
         this.ui.selectionToolbar = selToolbar;
@@ -4844,6 +4851,9 @@ class Editor {
                 this.selectedObjects = newSelection;
                 break;
             }
+            case 'done':
+                this.exitSelectionMode();
+                return;
         }
         this.updateSelectionCount();
     }

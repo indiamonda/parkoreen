@@ -360,19 +360,21 @@ class Player {
                 
                 // Only the flat base of the spike is solid ground.
                 // The pointy part must let the player through so they can take damage.
+                // BUT: skip flat collision entirely if a solid block is adjacent on the flat side.
                 if (this.boxIntersects(box, obj)) {
-                    const flatBox = this.getSpikeFlat(obj);
-                    if (this.boxIntersects(box, flatBox)) {
-                        if (!this._flatCollision) this._flatCollision = { collision: true };
-                        this._flatCollision.x = flatBox.x;
-                        this._flatCollision.y = flatBox.y;
-                        this._flatCollision.width = flatBox.width;
-                        this._flatCollision.height = flatBox.height;
-                        this._flatCollision.collision = obj.collision;
-                        collisions.push(this._flatCollision);
-                    }
-                    else if (spikeMode === 'ground') {
+                    if (spikeMode === 'ground') {
                         collisions.push(obj);
+                    } else if (!this._spikeHasAdjacentBlock(obj, world)) {
+                        const flatBox = this.getSpikeFlat(obj);
+                        if (this.boxIntersects(box, flatBox)) {
+                            if (!this._flatCollision) this._flatCollision = { collision: true };
+                            this._flatCollision.x = flatBox.x;
+                            this._flatCollision.y = flatBox.y;
+                            this._flatCollision.width = flatBox.width;
+                            this._flatCollision.height = flatBox.height;
+                            this._flatCollision.collision = obj.collision;
+                            collisions.push(this._flatCollision);
+                        }
                     }
                 }
                 continue;
@@ -479,16 +481,47 @@ class Player {
         }
         return b;
     }
-    
+
+    _spikeHasAdjacentBlock(spike, world) {
+        const r = spike.rotation || 0;
+        const probe = 2;
+        if (!this._adjProbe) this._adjProbe = { x: 0, y: 0, width: 0, height: 0 };
+        const p = this._adjProbe;
+        // Probe a thin strip on the outside of the flat side
+        if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
+            // tip up, flat at bottom → probe below
+            p.x = spike.x; p.y = spike.y + spike.height; p.width = spike.width; p.height = probe;
+        } else if (r === 90) {
+            // tip right, flat at left → probe to the left
+            p.x = spike.x - probe; p.y = spike.y; p.width = probe; p.height = spike.height;
+        } else if (r === 180) {
+            // tip down, flat at top → probe above
+            p.x = spike.x; p.y = spike.y - probe; p.width = spike.width; p.height = probe;
+        } else {
+            // tip left, flat at right → probe to the right
+            p.x = spike.x + spike.width; p.y = spike.y; p.width = probe; p.height = spike.height;
+        }
+        const near = world.queryNear(p.x, p.y, p.width, p.height);
+        for (let i = 0; i < near.length; i++) {
+            const o = near[i];
+            if (o === spike) continue;
+            if (!o.collision) continue;
+            if (o.actingType === 'spike' || o.actingType === 'text' || o.type === 'teleportal') continue;
+            if (o.type === 'spinner' || o.appearanceType === 'spinner') continue;
+            if (this.boxIntersects(p, o)) return true;
+        }
+        return false;
+    }
+
     getSpikeDanger(spike) {
         const r = spike.rotation || 0;
         const w = spike.width;
         const h = spike.height;
-        // Danger zone covers the main body of the spike, positioned low (close to base).
-        // Flat safe zone is 22% from base side. Danger starts at 30% from tip, ends at 76%.
-        // For a 32px spike: danger is ~14.7px tall, starting 9.6px from tip.
-        const dangerStart = 0.30;
-        const dangerLen = 0.46;
+        // Danger zone covers the lower body of the spike, flush against the flat base.
+        // Flat safe zone is 22% from base side (78%-100%). Danger spans 38%-78%.
+        // For a 32px spike: danger is ~12.8px tall, starting 12.2px from tip.
+        const dangerStart = 0.38;
+        const dangerLen = 0.40;
         const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
             b.x = spike.x; b.y = spike.y + h * dangerStart; b.width = w; b.height = h * dangerLen;

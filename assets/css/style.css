@@ -1094,6 +1094,17 @@ a:hover {
     border-color: var(--danger) !important;
 }
 
+.sel-done-btn {
+    background: #2e7d32 !important;
+    border-color: #2e7d32 !important;
+    color: #fff !important;
+}
+
+.sel-done-btn:hover {
+    background: #388e3c !important;
+    border-color: #388e3c !important;
+}
+
 /* MIXED overlay for multi-edit booleans/selects */
 .multi-mixed-overlay {
     position: absolute;

@@ -11,10 +11,29 @@
     
     // Load HP SVG images
     const hpFullImg = new Image();
+    let hpFullLoaded = false;
+    hpFullImg.onload = () => { hpFullLoaded = true; };
+    hpFullImg.onerror = () => { hpFullLoaded = false; };
     hpFullImg.src = 'assets/plugins/hp/svg/hpfull.svg';
     
     const hpEmptyImg = new Image();
+    let hpEmptyLoaded = false;
+    hpEmptyImg.onload = () => { hpEmptyLoaded = true; };
+    hpEmptyImg.onerror = () => { hpEmptyLoaded = false; };
     hpEmptyImg.src = 'assets/plugins/hp/svg/hpempty.svg';
+    
+    function drawHeartPath(ctx, x, y, size) {
+        const s = size / 64;
+        ctx.beginPath();
+        ctx.moveTo(x + 32 * s, y + 56 * s);
+        ctx.bezierCurveTo(x + 32 * s, y + 56 * s, x + 8 * s, y + 40 * s, x + 8 * s, y + 22 * s);
+        ctx.bezierCurveTo(x + 8 * s, y + 14 * s, x + 14 * s, y + 8 * s, x + 22 * s, y + 8 * s);
+        ctx.bezierCurveTo(x + 27 * s, y + 8 * s, x + 31 * s, y + 11 * s, x + 32 * s, y + 14 * s);
+        ctx.bezierCurveTo(x + 33 * s, y + 11 * s, x + 37 * s, y + 8 * s, x + 42 * s, y + 8 * s);
+        ctx.bezierCurveTo(x + 50 * s, y + 8 * s, x + 56 * s, y + 14 * s, x + 56 * s, y + 22 * s);
+        ctx.bezierCurveTo(x + 56 * s, y + 40 * s, x + 32 * s, y + 56 * s, x + 32 * s, y + 56 * s);
+        ctx.closePath();
+    }
     
     // ============================================
     // PLAYER INITIALIZATION HOOK
@@ -269,16 +288,27 @@
             const hpX = currentX + i * hpSpacing;
             const hpY = yOffset;
             
-            // Draw HP icon using SVG images
             if (i < player.hp) {
-                // Full HP
-                if (hpFullImg.complete) {
+                if (hpFullLoaded) {
                     ctx.drawImage(hpFullImg, hpX, hpY, hpSize, hpSize);
+                } else {
+                    drawHeartPath(ctx, hpX, hpY, hpSize);
+                    ctx.fillStyle = '#E53935';
+                    ctx.fill();
+                    ctx.strokeStyle = '#B71C1C';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
                 }
             } else {
-                // Empty HP
-                if (hpEmptyImg.complete) {
+                if (hpEmptyLoaded) {
                     ctx.drawImage(hpEmptyImg, hpX, hpY, hpSize, hpSize);
+                } else {
+                    drawHeartPath(ctx, hpX, hpY, hpSize);
+                    ctx.fillStyle = 'rgba(51,51,51,0.5)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
                 }
             }
         }
