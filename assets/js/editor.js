@@ -12,6 +12,8 @@ const EditorTool = {
     MOVE: 'move',
     DUPLICATE: 'duplicate',
     ROTATE: 'rotate',
+    ROTATE_LEFT: 'rotate-left',
+    ROTATE_RIGHT: 'rotate-right',
     ERASE: 'erase',
     SELECT: 'select'
 };
@@ -191,6 +193,10 @@ class Editor {
         // Grid visibility
         this.showGrid = true;
         
+        // Debug tools
+        this.invincibilityEnabled = false;
+        this.showTouchboxes = false;
+        
         // Erase settings
         this.eraseSettings = {
             eraseType: 'all', // 'all', 'top', 'bottom'
@@ -325,11 +331,11 @@ class Editor {
                 <span class="toolbar-btn-label">Eraser</span>
             </button>
             <div class="toolbar-extra" id="toolbar-extra">
-                <button class="toolbar-btn" data-action="rotate-left" title="Rotate Left">
+                <button class="toolbar-btn" data-tool="rotate-left" title="Rotate Left">
                     <span class="material-symbols-outlined">rotate_left</span>
                     <span class="toolbar-btn-label">Rotate Left</span>
                 </button>
-                <button class="toolbar-btn" data-action="rotate-right" title="Rotate Right">
+                <button class="toolbar-btn" data-tool="rotate-right" title="Rotate Right">
                     <span class="material-symbols-outlined">rotate_right</span>
                     <span class="toolbar-btn-label">Rotate Right</span>
                 </button>
@@ -344,6 +350,14 @@ class Editor {
                 <button class="toolbar-btn active" data-action="toggle-grid" title="Toggle Grid (H)">
                     <span class="material-symbols-outlined">grid_on</span>
                     <span class="toolbar-btn-label">Grid (H)</span>
+                </button>
+                <button class="toolbar-btn" data-action="toggle-invincibility" title="Invincibility">
+                    <span class="material-symbols-outlined">shield</span>
+                    <span class="toolbar-btn-label">Invincible</span>
+                </button>
+                <button class="toolbar-btn" data-action="toggle-touchboxes" title="Show Touchboxes">
+                    <span class="material-symbols-outlined">select_check_box</span>
+                    <span class="toolbar-btn-label">Touchbox</span>
                 </button>
             </div>
             <button class="toolbar-btn toolbar-expand-btn" id="toolbar-expand-btn" title="More Tools">
@@ -1530,6 +1544,23 @@ class Editor {
                         </label>
                     </div>
                     
+                    <div class="form-group" id="object-edit-spinner-group" style="display: none;">
+                        <label class="form-label">Size (px)</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <label style="font-size: 12px; color: #aaa;">W</label>
+                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-width" min="16" step="16" style="width: 72px;">
+                            <label style="font-size: 12px; color: #aaa;">H</label>
+                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-height" min="16" step="16" style="width: 72px;">
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label class="form-label">Spin Speed</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="range" class="form-range" id="object-edit-spin-speed-range" min="0" max="50" step="1" value="10" style="flex: 1;">
+                                <span id="object-edit-spin-speed-label" style="font-size: 12px; min-width: 40px;">1.0/s</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group" id="object-edit-spike-group" style="display: none;">
                         <label class="form-label">Spike Touchbox</label>
                         <select class="form-select" id="object-edit-spike-touchbox">
@@ -1717,6 +1748,36 @@ class Editor {
         document.getElementById('object-edit-flip-horizontal').addEventListener('change', (e) => {
             if (this.editingObject) {
                 this.editingObject.flipHorizontal = e.target.checked;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Spinner width
+        document.getElementById('object-edit-spinner-width').addEventListener('change', (e) => {
+            if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
+                const val = Math.max(16, parseInt(e.target.value) || 32);
+                this.editingObject.width = val;
+                e.target.value = val;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Spinner height
+        document.getElementById('object-edit-spinner-height').addEventListener('change', (e) => {
+            if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
+                const val = Math.max(16, parseInt(e.target.value) || 32);
+                this.editingObject.height = val;
+                e.target.value = val;
+                this.triggerMapChange();
+            }
+        });
+        
+        // Spinner spin speed
+        document.getElementById('object-edit-spin-speed-range').addEventListener('input', (e) => {
+            if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
+                const speed = parseInt(e.target.value) / 10;
+                this.editingObject.spinSpeed = speed;
+                document.getElementById('object-edit-spin-speed-label').textContent = speed.toFixed(1) + '/s';
                 this.triggerMapChange();
             }
         });
@@ -2416,9 +2477,22 @@ class Editor {
             document.getElementById('object-edit-flip-horizontal').checked = obj.flipHorizontal || false;
         }
         
+        // Show/hide spinner options (size + spin speed)
+        const spinnerGroup = document.getElementById('object-edit-spinner-group');
+        const isSpinner = obj.type === 'spinner' || obj.appearanceType === 'spinner';
+        if (isSpinner) {
+            spinnerGroup.style.display = 'block';
+            document.getElementById('object-edit-spinner-width').value = obj.width;
+            document.getElementById('object-edit-spinner-height').value = obj.height;
+            const speed = obj.spinSpeed || 1;
+            document.getElementById('object-edit-spin-speed-range').value = Math.round(speed * 10);
+            document.getElementById('object-edit-spin-speed-label').textContent = speed.toFixed(1) + '/s';
+        } else {
+            spinnerGroup.style.display = 'none';
+        }
+
         // Show/hide spike options (not for spinners/saw blades)
         const spikeGroup = document.getElementById('object-edit-spike-group');
-        const isSpinner = obj.type === 'spinner' || obj.appearanceType === 'spinner';
         if (!isSpinner && (obj.appearanceType === 'spike' || obj.actingType === 'spike')) {
             spikeGroup.style.display = 'block';
             document.getElementById('object-edit-spike-touchbox').value = obj.spikeTouchbox || '';
@@ -4619,14 +4693,14 @@ class Editor {
             case 'zoom-out':
                 this.camera.zoomOut(centerX, centerY);
                 break;
-            case 'rotate-left':
-                this.rotateObjectUnderMouse(-90);
-                break;
-            case 'rotate-right':
-                this.rotateObjectUnderMouse(90);
-                break;
             case 'toggle-grid':
                 this.toggleGrid();
+                break;
+            case 'toggle-invincibility':
+                this.toggleInvincibility();
+                break;
+            case 'toggle-touchboxes':
+                this.toggleTouchboxes();
                 break;
         }
     }
@@ -4637,6 +4711,20 @@ class Editor {
         if (gridBtn) {
             gridBtn.classList.toggle('active', this.showGrid);
         }
+    }
+
+    toggleInvincibility() {
+        this.invincibilityEnabled = !this.invincibilityEnabled;
+        this.engine.invincibilityEnabled = this.invincibilityEnabled;
+        GameEngine._invincible = this.invincibilityEnabled;
+        const btn = this.ui.toolbar.querySelector('[data-action="toggle-invincibility"]');
+        if (btn) btn.classList.toggle('active', this.invincibilityEnabled);
+    }
+
+    toggleTouchboxes() {
+        this.showTouchboxes = !this.showTouchboxes;
+        const btn = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
+        if (btn) btn.classList.toggle('active', this.showTouchboxes);
     }
 
     rotateObjectUnderMouse(degrees) {
@@ -6520,6 +6608,24 @@ class Editor {
                 }
                 break;
             
+            case EditorTool.ROTATE_LEFT: {
+                const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
+                if (obj) {
+                    obj.rotation = (obj.rotation - 90 + 360) % 360;
+                    this.triggerMapChange();
+                }
+                break;
+            }
+            
+            case EditorTool.ROTATE_RIGHT: {
+                const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
+                if (obj) {
+                    obj.rotation = (obj.rotation + 90) % 360;
+                    this.triggerMapChange();
+                }
+                break;
+            }
+            
             case EditorTool.ERASE:
                 const objOrObjsToErase = this.getObjectToErase(worldPos.x, worldPos.y);
                 if (objOrObjsToErase) {
@@ -8322,6 +8428,11 @@ class Editor {
         if (this.zoneAdjustment.active && this.zoneAdjustment.zone) {
             this.renderZoneAdjustmentHandles(ctx, camera);
         }
+        
+        // Touchbox debug overlay (works in both editor and test modes)
+        if (this.showTouchboxes) {
+            this.renderTouchboxes(ctx, camera);
+        }
     }
     
     renderZoneAdjustmentHandles(ctx, camera) {
@@ -8401,6 +8512,83 @@ class Editor {
         ctx.fillStyle = '#ff3333';
         ctx.fillText(text, -camera.x + 15 / camera.zoom, screenY - 6 / camera.zoom);
         
+        ctx.restore();
+    }
+
+    renderTouchboxes(ctx, camera) {
+        const lw = 2 / camera.zoom;
+        const vpW = camera.width / camera.zoom;
+        const vpH = camera.height / camera.zoom;
+
+        ctx.save();
+        ctx.lineWidth = lw;
+        ctx.setLineDash([]);
+
+        const drawBox = (bx, by, bw, bh, color) => {
+            const sx = bx - camera.x;
+            const sy = by - camera.y;
+            if (sx + bw < 0 || sx > vpW || sy + bh < 0 || sy > vpH) return;
+            ctx.strokeStyle = color;
+            ctx.strokeRect(sx, sy, bw, bh);
+        };
+
+        // World objects
+        const objects = this.world?.objects;
+        if (objects) {
+            for (let i = 0; i < objects.length; i++) {
+                const obj = objects[i];
+                const at = obj.appearanceType;
+                const act = obj.actingType;
+
+                if (act === 'spike' || obj.type === 'spinner' || at === 'spinner') {
+                    // Red: spike/spinner danger touchbox
+                    if (obj.type === 'spinner' || at === 'spinner') {
+                        drawBox(obj.x, obj.y, obj.width, obj.height, '#ff0000');
+                    } else {
+                        const spikeMode = obj.spikeTouchbox || this.world?.spikeTouchbox || 'normal';
+                        if (spikeMode === 'full') {
+                            drawBox(obj.x, obj.y, obj.width, obj.height, '#ff0000');
+                        } else if (spikeMode === 'normal' || spikeMode === 'tip') {
+                            const player = this.engine.localPlayer;
+                            if (player) {
+                                if (spikeMode === 'normal') {
+                                    const d = player.getSpikeDanger(obj);
+                                    drawBox(d.x, d.y, d.width, d.height, '#ff0000');
+                                } else {
+                                    const t = player.getSpikeTip(obj);
+                                    drawBox(t.x, t.y, t.width, t.height, '#ff0000');
+                                }
+                            }
+                        }
+                    }
+                } else if (at === 'zone' || at === 'button') {
+                    // Purple: zones and buttons
+                    drawBox(obj.x, obj.y, obj.width, obj.height, '#a855f7');
+                } else if (obj.type === 'teleportal' || at === 'teleportal') {
+                    // Cyan: teleportals
+                    drawBox(obj.x, obj.y, obj.width, obj.height, '#00e5ff');
+                } else if (at === 'spawnpoint' || at === 'endpoint' || at === 'checkpoint') {
+                    // Green: koreens (spawn, endpoint, checkpoint)
+                    drawBox(obj.x, obj.y, obj.width, obj.height, '#4caf50');
+                } else if (obj.collision) {
+                    // Blue: ground / solid blocks
+                    drawBox(obj.x, obj.y, obj.width, obj.height, '#2196f3');
+                }
+            }
+        }
+
+        // Player touchboxes
+        const player = this.engine.localPlayer;
+        if (player && !player.isDead) {
+            // Yellow: player ground touchbox
+            const gt = player.getGroundTouchbox();
+            drawBox(gt.x, gt.y, gt.width, gt.height, '#ffeb3b');
+
+            // Orange: player hurt/spike touchbox
+            const ht = player.getHurtTouchbox();
+            drawBox(ht.x, ht.y, ht.width, ht.height, '#ff9800');
+        }
+
         ctx.restore();
     }
 

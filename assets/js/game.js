@@ -388,6 +388,7 @@ class Player {
 
     checkHurtCollisions(world) {
         if (!world || !world.objects) return;
+        if (GameEngine._invincible) return;
         
         const hurtBox = this.getHurtTouchbox();
         const worldSpikeMode = world?.spikeTouchbox || 'normal';
@@ -922,7 +923,7 @@ class WorldObject {
         } else if (at === 'soulStatue') {
             this.renderSoulStatue(ctx, screenX, screenY, width, height);
         } else if (at === 'spinner' || this.type === 'spinner') {
-            this.renderSpinner(ctx, screenX, screenY, width, height);
+            this.renderSpinner(ctx, screenX, screenY, width, height, camera);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
@@ -1253,18 +1254,32 @@ class WorldObject {
         }
     }
 
-    renderSpinner(ctx, x, y, w, h) {
+    renderSpinner(ctx, x, y, w, h, camera) {
         const centerX = x + w / 2;
         const centerY = y + h / 2;
         
-        const spinSpeed = this.spinSpeed || 1;
-        const now = Date.now();
-        const periodMs = 1000 / spinSpeed;
-        const rotationAngle = ((now % periodMs) / periodMs) * Math.PI * 2;
+        // Determine if spinning should be active:
+        // 1. Not in editor mode
+        // 2. Visible on screen (viewport check using camera dimensions and zoom)
+        let shouldSpin = !WorldObject._editorMode;
+        if (shouldSpin && camera) {
+            const vpW = camera.width / camera.zoom;
+            const vpH = camera.height / camera.zoom;
+            if (x + w < 0 || x > vpW || y + h < 0 || y > vpH) {
+                shouldSpin = false;
+            }
+        }
+
+        let rotationAngle = 0;
+        if (shouldSpin) {
+            const spinSpeed = this.spinSpeed || 1;
+            const periodMs = 1000 / spinSpeed;
+            rotationAngle = ((Date.now() % periodMs) / periodMs) * Math.PI * 2;
+        }
         
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(rotationAngle);
+        if (rotationAngle !== 0) ctx.rotate(rotationAngle);
         
         if (SpinnerImage.loaded && SpinnerImage.image) {
             const cacheKey = `${this.color}_${w}_${h}`;
@@ -1457,6 +1472,7 @@ class WorldObject {
         };
     }
 }
+WorldObject._editorMode = true;
 
 // ============================================
 // WORLD CLASS
@@ -2324,8 +2340,13 @@ class GameEngine {
         this.remotePlayers = new Map();
         
         this.state = GameState.EDITOR;
+        WorldObject._editorMode = true;
         this.isRunning = false;
         this.lastTime = 0;
+        
+        // Debug tools
+        this.invincibilityEnabled = false;
+        this._voidConfirmShowing = false;
         
         // Editor state
         this.selectedObject = null;
@@ -3074,7 +3095,22 @@ class GameEngine {
                 // Die line check
                 const dieLineY = this.world.dieLineY ?? 2000;
                 if (this.localPlayer.y > dieLineY) {
-                    if (window.PluginManager) {
+                    if (this.invincibilityEnabled) {
+                        if (!this._voidConfirmShowing) {
+                            this._voidConfirmShowing = true;
+                            const doTP = confirm('You fell into the void. Teleport back?');
+                            this._voidConfirmShowing = false;
+                            if (doTP) {
+                                this.respawnPlayer();
+                                if (window.PluginManager) {
+                                    if (!this._respawnData) this._respawnData = {};
+                                    this._respawnData.player = this.localPlayer;
+                                    this._respawnData.world = this.world;
+                                    window.PluginManager.executeHook('player.respawn', this._respawnData);
+                                }
+                            }
+                        }
+                    } else if (window.PluginManager) {
                         if (!this._voidSource) this._voidSource = { type: 'void', actingType: 'void' };
                         if (!this._damageData) this._damageData = {};
                         this._damageData.player = this.localPlayer;
@@ -3308,16 +3344,21 @@ class GameEngine {
         const now = Date.now();
         if (this.lastTeleportTime && now - this.lastTeleportTime < 500) return;
         
-        // Use smaller hurt touchbox for teleportation detection
-        const playerBox = this.localPlayer.getHurtTouchbox();
+        const playerBox = this.localPlayer.getGroundTouchbox();
+        const pad = 6;
         
-        const nearby = this.world.queryNear(playerBox.x, playerBox.y, playerBox.width, playerBox.height);
+        const nearby = this.world.queryNear(playerBox.x - pad, playerBox.y - pad, playerBox.width + pad * 2, playerBox.height + pad * 2);
+        if (!this._tpBox) this._tpBox = { x: 0, y: 0, width: 0, height: 0 };
         for (let ni = 0; ni < nearby.length; ni++) {
             const obj = nearby[ni];
             if (obj.type !== 'teleportal') continue;
             if (obj.actingType !== 'portal') continue;
             if (!obj.teleportalName) continue;
-            if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
+            this._tpBox.x = obj.x - pad;
+            this._tpBox.y = obj.y - pad;
+            this._tpBox.width = obj.width + pad * 2;
+            this._tpBox.height = obj.height + pad * 2;
+            if (!this.localPlayer.boxIntersects(playerBox, this._tpBox)) continue;
             
             // Check if this portal has valid send connections
             for (const conn of obj.sendTo) {
@@ -3508,7 +3549,7 @@ class GameEngine {
             this.world.renderTeleportalConnections(this.ctx, this.camera, Date.now());
         }
         
-        if (isEditor && this.renderEditorOverlay) {
+        if ((isEditor || this.state === GameState.TESTING) && this.renderEditorOverlay) {
             this.renderEditorOverlay(this.ctx, this.camera);
         }
         
@@ -3535,17 +3576,20 @@ class GameEngine {
         if (!this.localPlayer) return;
         
         if (window.PluginManager) {
-            if (!this._hudData) this._hudData = { xOffset: 20, yOffset: 20 };
+            if (!this._hudData) this._hudData = {};
             this._hudData.ctx = this.ctx;
             this._hudData.canvas = this.canvas;
             this._hudData.player = this.localPlayer;
             this._hudData.world = this.world;
+            this._hudData.xOffset = 20;
+            this._hudData.yOffset = 20;
             window.PluginManager.executeHook('render.hud', this._hudData);
         }
     }
 
     startGame(playerName, playerColor) {
         this.state = GameState.PLAYING;
+        WorldObject._editorMode = false;
         this.lastCheckpoint = null;
         this._onCheckpointObj = null;
         this.gameStartTime = Date.now();
@@ -3598,6 +3642,7 @@ class GameEngine {
 
     startTestGame() {
         this.state = GameState.TESTING;
+        WorldObject._editorMode = false;
         this.lastCheckpoint = null;
         this._onCheckpointObj = null;
         this.gameStartTime = Date.now();
@@ -3649,6 +3694,7 @@ class GameEngine {
 
     stopGame() {
         this.state = GameState.EDITOR;
+        WorldObject._editorMode = true;
         this.localPlayer = null;
         this.remotePlayers.clear();
         this.particles = [];
@@ -3695,6 +3741,7 @@ class GameEngine {
         this.localPlayer.setMaxJumps(999, true); // Infinite jumps in editor mode
         
         this.state = GameState.EDITOR;
+        WorldObject._editorMode = true;
     }
 
     addRemotePlayer(id, name, color, x, y) {
@@ -3735,6 +3782,8 @@ class GameEngine {
         };
     }
 }
+
+GameEngine._invincible = false;
 
 // Export for use in other modules
 window.GameEngine = GameEngine;
