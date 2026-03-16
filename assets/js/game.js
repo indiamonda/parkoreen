@@ -2722,7 +2722,7 @@ class GameEngine {
 
             const screenX = (i / numClouds) * cloudAreaWidth - cloudAreaWidth / 3 + (Math.random() - 0.5) * 200;
 
-            const yOffset = (50 + Math.random() * 950) * (Math.random() < 0.5 ? -1 : 1);
+            const yOffset = (50 + Math.random() * 1050) * (Math.random() < 0.5 ? -1 : 1);
             let screenY = lastY + yOffset;
             if (screenY < 15) screenY = 15 + Math.random() * 100;
             if (screenY > cloudAreaHeight) screenY = cloudAreaHeight - Math.random() * 100;
