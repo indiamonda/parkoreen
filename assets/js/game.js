@@ -3230,8 +3230,8 @@ class GameEngine {
             jimmyqrg: {
                 left: this.keys['KeyA'],
                 right: this.keys['KeyD'],
-                up: this.keys['KeyW'] || this.keys['ArrowUp'],
-                down: this.keys['KeyS'] || this.keys['ArrowDown'],
+                up: this.keys['ArrowUp'],
+                down: this.keys['ArrowDown'],
                 jump: this.keys['KeyW'] || this.keys['Space'],
                 shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
                 // Plugin inputs
