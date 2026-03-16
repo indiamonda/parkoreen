@@ -267,6 +267,8 @@ class Player {
     }
 
     moveWithCollision(world, editorMode = false) {
+        const CORNER_TOLERANCE = 6;
+
         // Move horizontally
         this.x += this.vx;
         
@@ -274,6 +276,10 @@ class Player {
         const hCollisions = this.checkCollisions(world, 'horizontal');
         for (const obj of hCollisions) {
             if (obj.collision) {
+                // Corner correction: if player barely clips a block vertically,
+                // nudge them into an adjacent gap instead of stopping
+                if (this._tryCornerNudgeVertical(obj, world, CORNER_TOLERANCE)) continue;
+
                 if (this.vx > 0) {
                     this.x = obj.x - this.width;
                 } else if (this.vx < 0) {
@@ -293,6 +299,9 @@ class Player {
         const vCollisions = this.checkCollisions(world, 'vertical');
         for (const obj of vCollisions) {
             if (obj.collision) {
+                // Corner correction: nudge horizontally into an adjacent gap
+                if (this._tryCornerNudgeHorizontal(obj, world, CORNER_TOLERANCE)) continue;
+
                 if (this.vy > 0) {
                     // Landing on ground
                     this.y = obj.y - this.height;
@@ -319,6 +328,63 @@ class Player {
         if (!editorMode) {
             this.checkHurtCollisions(world);
         }
+    }
+
+    _hasBlockAt(world, x, y) {
+        const near = world.queryNear(x + 1, y + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+        for (let i = 0; i < near.length; i++) {
+            const o = near[i];
+            if (!o.collision || o.actingType === 'spike' || o.actingType === 'text' || o.type === 'teleportal') continue;
+            if (o.type === 'spinner' || o.appearanceType === 'spinner') continue;
+            if (this.boxIntersects({ x: x + 1, y: y + 1, width: GRID_SIZE - 2, height: GRID_SIZE - 2 }, o)) return true;
+        }
+        return false;
+    }
+
+    _tryCornerNudgeVertical(obj, world, tolerance) {
+        const box = this.getGroundTouchbox();
+        const overlapTop = box.y + box.height - obj.y;
+        const overlapBottom = obj.y + obj.height - box.y;
+
+        if (overlapTop > 0 && overlapTop <= tolerance) {
+            // Player's bottom clips the top edge of the block — try nudging up
+            const gapY = obj.y - GRID_SIZE;
+            if (!this._hasBlockAt(world, obj.x, gapY)) {
+                this.y -= overlapTop;
+                return true;
+            }
+        } else if (overlapBottom > 0 && overlapBottom <= tolerance) {
+            // Player's top clips the bottom edge — try nudging down
+            const gapY = obj.y + obj.height;
+            if (!this._hasBlockAt(world, obj.x, gapY)) {
+                this.y += overlapBottom;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    _tryCornerNudgeHorizontal(obj, world, tolerance) {
+        const box = this.getGroundTouchbox();
+        const overlapLeft = box.x + box.width - obj.x;
+        const overlapRight = obj.x + obj.width - box.x;
+
+        if (overlapLeft > 0 && overlapLeft <= tolerance) {
+            // Player's right clips the left edge — try nudging left
+            const gapX = obj.x - GRID_SIZE;
+            if (!this._hasBlockAt(world, gapX, obj.y)) {
+                this.x -= overlapLeft;
+                return true;
+            }
+        } else if (overlapRight > 0 && overlapRight <= tolerance) {
+            // Player's left clips the right edge — try nudging right
+            const gapX = obj.x + obj.width;
+            if (!this._hasBlockAt(world, gapX, obj.y)) {
+                this.x += overlapRight;
+                return true;
+            }
+        }
+        return false;
     }
 
     checkCollisions(world, direction) {

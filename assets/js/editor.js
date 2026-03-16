@@ -1956,6 +1956,7 @@ class Editor {
     closeObjectEditPopup() {
         this.editingObject = null;
         this.ui.objectEditPopup.classList.remove('active');
+        this.closeColorPicker();
     }
     
     updateSpikeTouchboxEditDescription(mode) {
@@ -5225,6 +5226,15 @@ class Editor {
             ]});
         }
         
+        // Damage amount — if ALL objects are spikes or spinners (anything that can deal damage)
+        const allDamaging = objects.every(o =>
+            o.appearanceType === 'spike' || o.actingType === 'spike' ||
+            o.type === 'spinner' || o.appearanceType === 'spinner'
+        );
+        if (allDamaging) {
+            fields.push({ key: 'damageAmount', label: 'Damage Amount', type: 'number', min: 0, step: 1, defaultValue: 1 });
+        }
+
         // Button fields — only if ALL objects are buttons
         const allButtons = objects.every(o => o.appearanceType === 'button');
         if (allButtons) {
@@ -5349,6 +5359,17 @@ class Editor {
                     </div>`;
             }
             
+            case 'number': {
+                const numVal = isMixed ? '' : (value !== undefined ? value : (field.defaultValue ?? ''));
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${field.label}</label>
+                        <input type="number" class="form-input form-input-sm" data-multi-field="${field.key}"
+                            value="${numVal}" min="${field.min ?? ''}" step="${field.step ?? 1}"
+                            placeholder="${isMixed ? 'MIXED' : ''}" style="width: 90px;">
+                    </div>`;
+            }
+
             default:
                 return '';
         }
@@ -5369,6 +5390,11 @@ class Editor {
                 const mixedOverlay = popup.querySelector(`[data-multi-mixed="${key}"]`);
                 if (mixedOverlay) mixedOverlay.remove();
                 
+                if (field.type === 'number') {
+                    val = Math.max(field.min ?? -Infinity, parseInt(val) || (field.defaultValue ?? 0));
+                    input.value = val;
+                }
+
                 if (field.type === 'range') {
                     const fromValue = field.fromValue || (v => v);
                     const rangeLabel = popup.querySelector(`[data-multi-range-label="${key}"]`);
@@ -8694,43 +8720,38 @@ class Editor {
     }
     
     renderDieLine(ctx, camera) {
-        // Die line - players die if they fall below this Y position
-        const dieLineY = this.world.dieLineY ?? 2000; // Default 2000 pixels below origin
-        const screenY = dieLineY - camera.y;
-        
-        // Only render if visible on screen (accounting for zoom)
-        if (screenY < -100 / camera.zoom || screenY > camera.height / camera.zoom + 100) return;
-        
-        // Draw red dashed die line
+        const dieLineY = this.world.dieLineY ?? 2000;
+        const screenY = (dieLineY - camera.y) * camera.zoom;
+
+        if (screenY < -100 || screenY > camera.height + 100) return;
+
+        // Draw in screen pixel coordinates to guarantee viewport-relative positioning
         ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
         ctx.strokeStyle = '#ff3333';
-        ctx.lineWidth = 3 / camera.zoom;
-        ctx.setLineDash([15 / camera.zoom, 10 / camera.zoom]);
-        
+        ctx.lineWidth = 3;
+        ctx.setLineDash([15, 10]);
+
         ctx.beginPath();
         ctx.moveTo(0, screenY);
-        ctx.lineTo(camera.width / camera.zoom, screenY);
+        ctx.lineTo(camera.width, screenY);
         ctx.stroke();
 
-        // Draw label
-        const fontSize = 14 / camera.zoom;
-        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.font = 'bold 14px monospace';
         ctx.fillStyle = '#ff3333';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
         ctx.setLineDash([]);
 
-        // Background for text
         const text = '☠ DEATH LINE - Players die below this point';
         const textWidth = ctx.measureText(text).width;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        const padding = 10 / camera.zoom;
-        ctx.fillRect(padding, screenY - 24 / camera.zoom, textWidth + padding, 22 / camera.zoom);
-        
-        // Text
+        ctx.fillRect(10, screenY - 24, textWidth + 10, 22);
+
         ctx.fillStyle = '#ff3333';
-        ctx.fillText(text, 15 / camera.zoom, screenY - 6 / camera.zoom);
-        
+        ctx.fillText(text, 15, screenY - 6);
+
         ctx.restore();
     }
 
