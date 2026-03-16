@@ -348,12 +348,9 @@ class Player {
                 continue;
             }
             
-            // Handle spike collision based on mode and dropHurtOnly
+            // Handle spike collision based on mode
             if (obj.actingType === 'spike') {
                 const spikeMode = obj.spikeTouchbox || worldSpikeMode;
-                
-                const worldDropHurtOnly = world?.dropHurtOnly || false;
-                const useDropHurtOnly = obj.dropHurtOnly !== undefined ? obj.dropHurtOnly : worldDropHurtOnly;
                 
                 // In 'air' mode, spikes have no collision at all
                 if (spikeMode === 'air') continue;
@@ -361,15 +358,8 @@ class Player {
                 // In 'full' mode, spikes only damage, no ground collision
                 if (spikeMode === 'full') continue;
                 
-                // When dropHurtOnly is DISABLED, spikes are solid
-                if (!useDropHurtOnly) {
-                    if (this.boxIntersects(box, obj)) {
-                        collisions.push(obj);
-                    }
-                    continue;
-                }
-                
-                // When dropHurtOnly is ENABLED, only the flat part has collision
+                // Only the flat base of the spike is solid ground.
+                // The pointy part must let the player through so they can take damage.
                 if (this.boxIntersects(box, obj)) {
                     const flatBox = this.getSpikeFlat(obj);
                     if (this.boxIntersects(box, flatBox)) {
