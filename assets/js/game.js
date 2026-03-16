@@ -360,11 +360,12 @@ class Player {
                 
                 // Only the flat base of the spike is solid ground.
                 // The pointy part must let the player through so they can take damage.
-                // BUT: skip flat collision entirely if a solid block is adjacent on the flat side.
+                // The flat part only acts as a floor/ceiling (vertical), never as a wall (horizontal).
+                // Skip flat collision entirely if a solid block is adjacent on the flat side.
                 if (this.boxIntersects(box, obj)) {
                     if (spikeMode === 'ground') {
                         collisions.push(obj);
-                    } else if (!this._spikeHasAdjacentBlock(obj, world)) {
+                    } else if (direction === 'vertical' && !this._spikeHasAdjacentBlock(obj, world)) {
                         const flatBox = this.getSpikeFlat(obj);
                         if (this.boxIntersects(box, flatBox)) {
                             if (!this._flatCollision) this._flatCollision = { collision: true };
