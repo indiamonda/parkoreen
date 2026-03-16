@@ -238,6 +238,8 @@ class Editor {
     triggerMapChange() {
         this.world.markSpatialDirty();
         this.world._tileCacheReady = false;
+        this.world._editorMergedDirty = true;
+        this.world._teleportalListDirty = true;
         if (typeof this.onMapChange === 'function') {
             this.onMapChange();
         }
@@ -1570,6 +1572,13 @@ class Editor {
                                 <span id="object-edit-spin-speed-label" style="font-size: 12px; min-width: 40px;">1.0/s</span>
                             </div>
                         </div>
+                        <div style="margin-top: 8px;">
+                            <label class="form-label">Spin Direction</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="placement-opt-btn active" id="object-edit-spin-dir-cw" data-spin-dir="1">Clockwise</button>
+                                <button class="placement-opt-btn" id="object-edit-spin-dir-ccw" data-spin-dir="-1">Counter-CW</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group" id="object-edit-spike-group" style="display: none;">
@@ -1793,6 +1802,18 @@ class Editor {
             }
         });
         
+        // Spinner spin direction
+        document.querySelectorAll('[data-spin-dir]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
+                    document.querySelectorAll('[data-spin-dir]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.editingObject.spinDirection = parseInt(btn.dataset.spinDir);
+                    this.triggerMapChange();
+                }
+            });
+        });
+
         // Spike touchbox
         document.getElementById('object-edit-spike-touchbox').addEventListener('change', (e) => {
             if (this.editingObject && this.editingObject.appearanceType === 'spike') {
@@ -2498,6 +2519,9 @@ class Editor {
             const speed = obj.spinSpeed || 1;
             document.getElementById('object-edit-spin-speed-range').value = Math.round(speed * 10);
             document.getElementById('object-edit-spin-speed-label').textContent = speed.toFixed(1) + '/s';
+            const dir = obj.spinDirection || 1;
+            document.getElementById('object-edit-spin-dir-cw').classList.toggle('active', dir === 1);
+            document.getElementById('object-edit-spin-dir-ccw').classList.toggle('active', dir === -1);
         } else {
             spinnerGroup.style.display = 'none';
         }
@@ -5012,6 +5036,8 @@ class Editor {
             item.obj.x = gridPos.x + item.offsetX;
             item.obj.y = gridPos.y + item.offsetY;
         }
+        this.world._spatialDirty = true;
+        this.world._editorMergedDirty = true;
     }
     
     handleMouseModeUp(worldX, worldY) {
@@ -6492,6 +6518,8 @@ class Editor {
         if (this.movingObject) {
             this.movingObject.x = gridPos.x;
             this.movingObject.y = gridPos.y;
+            this.world._spatialDirty = true;
+            this.world._editorMergedDirty = true;
         }
         
         // Rotating object (drag-based rotation)
@@ -6523,13 +6551,15 @@ class Editor {
         if (this.isErasing && this.engine.mouse.down && !this.isOverUI(e)) {
             const objOrObjs = this.getObjectToErase(worldPos.x, worldPos.y);
             if (objOrObjs) {
-                // Handle array (all mode) or single object
-                const objects = Array.isArray(objOrObjs) ? objOrObjs : [objOrObjs];
-                for (const obj of objects) {
-                this.world.removeObject(obj.id);
-                }
-                if (objects.length > 0) {
-                this.triggerMapChange();
+                const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+                const halfW = Math.floor(this.eraseSettings.width / 2) * GRID_SIZE;
+                const halfH = Math.floor(this.eraseSettings.height / 2) * GRID_SIZE;
+                const eX = gridPos.x - halfW;
+                const eY = gridPos.y - halfH;
+                const eW = this.eraseSettings.width * GRID_SIZE;
+                const eH = this.eraseSettings.height * GRID_SIZE;
+                if (this.eraseFromArea(objOrObjs, eX, eY, eW, eH)) {
+                    this.triggerMapChange();
                 }
             }
         }
@@ -6655,19 +6685,22 @@ class Editor {
                 break;
             }
             
-            case EditorTool.ERASE:
+            case EditorTool.ERASE: {
                 const objOrObjsToErase = this.getObjectToErase(worldPos.x, worldPos.y);
                 if (objOrObjsToErase) {
-                    // Handle array (all mode) or single object
-                    const objectsToErase = Array.isArray(objOrObjsToErase) ? objOrObjsToErase : [objOrObjsToErase];
-                    for (const obj of objectsToErase) {
-                        this.world.removeObject(obj.id);
-                    }
-                    if (objectsToErase.length > 0) {
-                    this.triggerMapChange();
+                    const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
+                    const halfW = Math.floor(this.eraseSettings.width / 2) * GRID_SIZE;
+                    const halfH = Math.floor(this.eraseSettings.height / 2) * GRID_SIZE;
+                    const eX = gridPos.x - halfW;
+                    const eY = gridPos.y - halfH;
+                    const eW = this.eraseSettings.width * GRID_SIZE;
+                    const eH = this.eraseSettings.height * GRID_SIZE;
+                    if (this.eraseFromArea(objOrObjsToErase, eX, eY, eW, eH)) {
+                        this.triggerMapChange();
                     }
                 }
                 break;
+            }
             
             case EditorTool.NONE:
                 // If no tool is active, open edit popup on click
@@ -6923,6 +6956,63 @@ class Editor {
         this.triggerMapChange();
     }
 
+    eraseFromArea(objects, eraserX, eraserY, eraserW, eraserH) {
+        let didErase = false;
+        const toProcess = Array.isArray(objects) ? objects : [objects];
+
+        for (const obj of toProcess) {
+            const isMerged = obj.type === 'block' && obj.appearanceType === 'ground' &&
+                obj.rotation === 0 && !obj.flipHorizontal &&
+                (obj.width > GRID_SIZE || obj.height > GRID_SIZE);
+
+            if (!isMerged) {
+                this.world.removeObject(obj.id);
+                didErase = true;
+                continue;
+            }
+
+            const gs = GRID_SIZE;
+            const cols = Math.round(obj.width / gs);
+            const rows = Math.round(obj.height / gs);
+            const kept = [];
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cx = obj.x + c * gs;
+                    const cy = obj.y + r * gs;
+                    const inside = cx < eraserX + eraserW && cx + gs > eraserX &&
+                                   cy < eraserY + eraserH && cy + gs > eraserY;
+                    if (!inside) {
+                        kept.push({ x: cx, y: cy });
+                    }
+                }
+            }
+
+            if (kept.length === cols * rows) continue;
+            didErase = true;
+
+            this.world.removeObject(obj.id);
+
+            for (const cell of kept) {
+                this.world.addObject(new WorldObject({
+                    type: obj.type,
+                    x: cell.x,
+                    y: cell.y,
+                    width: gs,
+                    height: gs,
+                    color: obj.color,
+                    texture: obj.texture,
+                    opacity: obj.opacity,
+                    layer: obj.layer,
+                    collision: obj.collision,
+                    appearanceType: obj.appearanceType,
+                    actingType: obj.actingType
+                }));
+            }
+        }
+        return didErase;
+    }
+
     mergeBlockWithAdjacent(obj) {
         if (obj.type !== 'block') return;
         const at = obj.appearanceType;
@@ -6979,6 +7069,7 @@ class Editor {
         this.world._spatialDirty = true;
         this.world._tileCacheReady = false;
         this.world._mergedBlockCache = null;
+        this.world._editorMergedDirty = true;
     }
 
     // ========================================

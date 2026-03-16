@@ -471,6 +471,7 @@ class ExportManager {
         // Spinner-specific properties
         if (obj.type === 'spinner' || obj.appearanceType === 'spinner') {
             data.ss = obj.spinSpeed !== undefined ? obj.spinSpeed : 1;
+            if (obj.spinDirection === -1) data.sd = -1;
         }
 
         // Button-specific properties
@@ -872,6 +873,7 @@ class ImportManager {
         // Spinner-specific properties
         if (data.type === 'spinner' || data.appearanceType === 'spinner') {
             data.spinSpeed = obj.ss !== undefined ? obj.ss : (obj.spinSpeed !== undefined ? obj.spinSpeed : 1);
+            data.spinDirection = obj.sd !== undefined ? obj.sd : (obj.spinDirection !== undefined ? obj.spinDirection : 1);
         }
 
         // Button-specific properties

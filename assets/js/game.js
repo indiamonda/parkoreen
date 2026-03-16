@@ -899,6 +899,7 @@ class WorldObject {
 
         // Spinner-specific properties
         this.spinSpeed = config.spinSpeed !== undefined ? config.spinSpeed : 1;
+        this.spinDirection = config.spinDirection !== undefined ? config.spinDirection : 1; // 1=clockwise, -1=counter-clockwise
 
         // Button-specific properties
         this.displayName = config.displayName || '';
@@ -1333,7 +1334,7 @@ class WorldObject {
         if (shouldSpin) {
             const spinSpeed = this.spinSpeed || 1;
             const periodMs = 1000 / spinSpeed;
-            rotationAngle = ((Date.now() % periodMs) / periodMs) * Math.PI * 2;
+            rotationAngle = ((Date.now() % periodMs) / periodMs) * Math.PI * 2 * (this.spinDirection || 1);
         }
         
         ctx.save();
@@ -1610,6 +1611,12 @@ class World {
         this._tileSize = 512;
         this._tiles = new Map();
         this._tileCacheReady = false;
+        // Editor merged block cache
+        this._editorMergedDirty = true;
+        this._editorMergedCache = null;
+        // Teleportal list cache
+        this._teleportalListDirty = true;
+        this._teleportalList = [];
         this.background = 'sky'; // sky, galaxy, custom
         
         // Music settings
@@ -1703,6 +1710,24 @@ class World {
         this._spatialDirty = true;
     }
 
+    markEditorDirty() {
+        this._editorMergedDirty = true;
+        this._teleportalListDirty = true;
+    }
+
+    getTeleportals() {
+        if (this._teleportalListDirty) {
+            this._teleportalList.length = 0;
+            for (let i = 0; i < this.objects.length; i++) {
+                if (this.objects[i].type === 'teleportal') {
+                    this._teleportalList.push(this.objects[i]);
+                }
+            }
+            this._teleportalListDirty = false;
+        }
+        return this._teleportalList;
+    }
+
     rebuildSpatialHash() {
         if (!this._spatialDirty) return;
         this._spatialDirty = false;
@@ -1719,6 +1744,8 @@ class World {
         this._spatialDirty = true;
         this._tileCacheReady = false;
         this._mergedBlockCache = null;
+        this._editorMergedDirty = true;
+        this._teleportalListDirty = true;
         this.updateSpecialPoints();
         return obj;
     }
@@ -1730,6 +1757,8 @@ class World {
             this._spatialDirty = true;
             this._tileCacheReady = false;
             this._mergedBlockCache = null;
+            this._editorMergedDirty = true;
+            this._teleportalListDirty = true;
             this.updateSpecialPoints();
             return true;
         }
@@ -1827,11 +1856,14 @@ class World {
     reorderLayers(fromIndex, toIndex) {
         const [item] = this.objects.splice(fromIndex, 1);
         this.objects.splice(toIndex, 0, item);
+        this._editorMergedDirty = true;
     }
 
     clear() {
         this.objects = [];
         this._spatialDirty = true;
+        this._editorMergedDirty = true;
+        this._teleportalListDirty = true;
         this.invalidateTileCache();
         this.spawnPoint = null;
         this.checkpoints = [];
@@ -1849,6 +1881,10 @@ class World {
         if (obj.width !== GRID_SIZE || obj.height !== GRID_SIZE) return false;
         if (Math.round(obj.x) % GRID_SIZE !== 0 || Math.round(obj.y) % GRID_SIZE !== 0) return false;
         return true;
+    }
+
+    _gridKey(gx, gy) {
+        return (gx + 500000) * 1000000 + (gy + 500000);
     }
 
     _buildMergedBlocks(objects) {
@@ -1882,7 +1918,7 @@ class World {
             for (let i = 0; i < blocks.length; i++) {
                 const gx = Math.round(blocks[i].x / GRID_SIZE);
                 const gy = Math.round(blocks[i].y / GRID_SIZE);
-                grid.add(`${gx},${gy}`);
+                grid.add(this._gridKey(gx, gy));
             }
 
             blocks.sort((a, b) => {
@@ -1898,12 +1934,12 @@ class World {
             for (let i = 0; i < blocks.length; i++) {
                 const startGx = Math.round(blocks[i].x / GRID_SIZE);
                 const startGy = Math.round(blocks[i].y / GRID_SIZE);
-                const startKey = `${startGx},${startGy}`;
+                const startKey = this._gridKey(startGx, startGy);
 
                 if (visited.has(startKey)) continue;
 
                 let endGx = startGx;
-                while (grid.has(`${endGx + 1},${startGy}`) && !visited.has(`${endGx + 1},${startGy}`)) {
+                while (grid.has(this._gridKey(endGx + 1, startGy)) && !visited.has(this._gridKey(endGx + 1, startGy))) {
                     endGx++;
                 }
 
@@ -1912,7 +1948,7 @@ class World {
                 while (canExtend) {
                     const nextGy = endGy + 1;
                     for (let gx = startGx; gx <= endGx; gx++) {
-                        const k = `${gx},${nextGy}`;
+                        const k = this._gridKey(gx, nextGy);
                         if (!grid.has(k) || visited.has(k)) {
                             canExtend = false;
                             break;
@@ -1923,7 +1959,7 @@ class World {
 
                 for (let gy = startGy; gy <= endGy; gy++) {
                     for (let gx = startGx; gx <= endGx; gx++) {
-                        visited.add(`${gx},${gy}`);
+                        visited.add(this._gridKey(gx, gy));
                     }
                 }
 
@@ -1998,6 +2034,7 @@ class World {
         this._tiles.clear();
         this._tileCacheReady = false;
         this._mergedBlockCache = null;
+        this._editorMergedDirty = true;
     }
 
     buildTileCache() {
@@ -2133,6 +2170,31 @@ class World {
 
     // ---- Standard rendering (editor mode) ----
 
+    _rebuildEditorMergedCache() {
+        if (!this._editorMergedDirty && this._editorMergedCache) return;
+        this._editorMergedDirty = false;
+
+        const layer0 = [], layer1 = [], layer2 = [];
+        for (let i = 0; i < this.objects.length; i++) {
+            const obj = this.objects[i];
+            const at = obj.appearanceType;
+            if (at === 'zone' || at === 'button') continue;
+            if (obj.layer === 0) layer0.push(obj);
+            else if (obj.layer === 2) layer2.push(obj);
+            else layer1.push(obj);
+        }
+
+        const r0 = this._buildMergedBlocks(layer0);
+        const r1 = this._buildMergedBlocks(layer1);
+        const r2 = this._buildMergedBlocks(layer2);
+
+        this._editorMergedCache = {
+            merged0: r0.merged, nonMerged0: r0.nonMerged,
+            merged1: r1.merged, nonMerged1: r1.nonMerged,
+            merged2: r2.merged, nonMerged2: r2.nonMerged
+        };
+    }
+
     render(ctx, camera) {
         if (!this._cpColorsEditor) this._cpColorsEditor = {};
         this._cpColorsEditor.default = this.checkpointDefaultColor;
@@ -2146,60 +2208,68 @@ class World {
         const vTop = camera.y - margin;
         const vBottom = camera.y + camera.height / camera.zoom + margin;
         
-        if (!this._layer0) { this._layer0 = []; this._layer1 = []; this._layer2 = []; this._zones = []; }
-        this._layer0.length = 0;
-        this._layer1.length = 0;
-        this._layer2.length = 0;
+        this._rebuildEditorMergedCache();
+        const cache = this._editorMergedCache;
+
+        if (!this._zones) this._zones = [];
         this._zones.length = 0;
-        
-        for (const obj of this.objects) {
+        for (let i = 0; i < this.objects.length; i++) {
+            const obj = this.objects[i];
+            const at = obj.appearanceType;
+            if (at !== 'zone' && at !== 'button') continue;
             if (obj.x + obj.width < vLeft || obj.x > vRight ||
                 obj.y + obj.height < vTop || obj.y > vBottom) continue;
-            const at = obj.appearanceType;
-            if (at === 'zone' || at === 'button') {
-                this._zones.push(obj);
-            } else if (obj.layer === 0) {
-                this._layer0.push(obj);
-            } else if (obj.layer === 2) {
-                this._layer2.push(obj);
-            } else {
-                this._layer1.push(obj);
-            }
+            this._zones.push(obj);
         }
-        
-        const { merged: merged0, nonMerged: nonMerged0 } = this._buildMergedBlocks(this._layer0);
-        const { merged: merged1, nonMerged: nonMerged1 } = this._buildMergedBlocks(this._layer1);
-        const { merged: merged2, nonMerged: nonMerged2 } = this._buildMergedBlocks(this._layer2);
 
-        this._editorMerged2 = merged2;
-        this._editorNonMerged2 = nonMerged2;
+        this._renderMergedLayer(ctx, camera, cache.merged0, cache.nonMerged0, checkpointColors, vLeft, vRight, vTop, vBottom);
 
-        for (let i = 0; i < merged0.length; i++) {
-            const m = merged0[i];
+        // Layer 1: only render merged blocks here; nonMerged1 is returned to caller
+        // so the player renders between layer 1 non-merged objects and layer 2
+        for (let i = 0; i < cache.merged1.length; i++) {
+            const m = cache.merged1[i];
+            if (m.x + m.width < vLeft || m.x > vRight || m.y + m.height < vTop || m.y > vBottom) continue;
             this._renderMergedBlock(ctx, m.x - camera.x, m.y - camera.y, m.width, m.height, m.color, m.texture, m.opacity);
         }
-        for (let i = 0; i < nonMerged0.length; i++) {
-            nonMerged0[i].render(ctx, camera, checkpointColors);
-        }
 
-        for (let i = 0; i < merged1.length; i++) {
-            const m = merged1[i];
+        this._editorMerged2 = cache.merged2;
+        this._editorNonMerged2 = cache.nonMerged2;
+
+        return { layers: [cache.nonMerged0, cache.nonMerged1, cache.nonMerged2], checkpointColors };
+    }
+
+    _renderMergedLayer(ctx, camera, merged, nonMerged, checkpointColors, vL, vR, vT, vB) {
+        for (let i = 0; i < merged.length; i++) {
+            const m = merged[i];
+            if (m.x + m.width < vL || m.x > vR || m.y + m.height < vT || m.y > vB) continue;
             this._renderMergedBlock(ctx, m.x - camera.x, m.y - camera.y, m.width, m.height, m.color, m.texture, m.opacity);
         }
-        
-        return { layers: [nonMerged0, nonMerged1, nonMerged2], checkpointColors };
+        for (let i = 0; i < nonMerged.length; i++) {
+            const obj = nonMerged[i];
+            if (obj.x + obj.width < vL || obj.x > vR || obj.y + obj.height < vT || obj.y > vB) continue;
+            obj.render(ctx, camera, checkpointColors);
+        }
     }
 
     renderAbovePlayer(ctx, camera, checkpointColors) {
+        const margin = 100;
+        const vL = camera.x - margin;
+        const vR = camera.x + camera.width / camera.zoom + margin;
+        const vT = camera.y - margin;
+        const vB = camera.y + camera.height / camera.zoom + margin;
+
         if (this._editorMerged2) {
             for (let i = 0; i < this._editorMerged2.length; i++) {
                 const m = this._editorMerged2[i];
+                if (m.x + m.width < vL || m.x > vR || m.y + m.height < vT || m.y > vB) continue;
                 this._renderMergedBlock(ctx, m.x - camera.x, m.y - camera.y, m.width, m.height, m.color, m.texture, m.opacity);
             }
         }
-        const list = this._editorNonMerged2 || this._layer2;
+        const list = this._editorNonMerged2 || [];
         for (let i = 0; i < list.length; i++) {
-            list[i].render(ctx, camera, checkpointColors);
+            const obj = list[i];
+            if (obj.x + obj.width < vL || obj.x > vR || obj.y + obj.height < vT || obj.y > vB) continue;
+            obj.render(ctx, camera, checkpointColors);
         }
     }
     
@@ -2226,16 +2296,19 @@ class World {
     }
     
     renderTeleportalConnections(ctx, camera, time) {
-        // Build name→portal lookup once
+        const allPortals = this.getTeleportals();
         const portalByName = this._portalByName || (this._portalByName = new Map());
         portalByName.clear();
-        const portals = [];
-        for (const obj of this.objects) {
-            if (obj.type === 'teleportal' && obj.actingType === 'portal' && obj.teleportalName) {
+        if (!this._activePortals) this._activePortals = [];
+        this._activePortals.length = 0;
+        for (let i = 0; i < allPortals.length; i++) {
+            const obj = allPortals[i];
+            if (obj.actingType === 'portal' && obj.teleportalName) {
                 portalByName.set(obj.teleportalName, obj);
-                portals.push(obj);
+                this._activePortals.push(obj);
             }
         }
+        const portals = this._activePortals;
         
         for (const portal of portals) {
             const portalCenterX = portal.x + portal.width / 2 - camera.x;
@@ -2687,10 +2760,9 @@ class GameEngine {
         if (this._portalParticleTimer >= spawnInterval) {
             this._portalParticleTimer -= spawnInterval;
 
-            const objs = this.world.objects;
-            for (let i = 0; i < objs.length; i++) {
-                const obj = objs[i];
-                if (obj.type !== 'teleportal') continue;
+            const portals = this.world.getTeleportals();
+            for (let i = 0; i < portals.length; i++) {
+                const obj = portals[i];
                 const cx = obj.x + obj.width / 2;
                 const cy = obj.y + obj.height / 2;
                 if (cx + obj.width / 2 < vpL || cx - obj.width / 2 > vpR ||
@@ -2740,17 +2812,13 @@ class GameEngine {
         const cx = this.camera.x;
         const cy = this.camera.y;
         const zoom = this.camera.zoom;
-        const TAU = Math.PI * 2;
         let lastColor = '';
         for (let i = 0; i < this._portalParticles.length; i++) {
             const p = this._portalParticles[i];
             ctx.globalAlpha = p.life * 0.7;
             if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
-            const sx = (p.x - cx) * zoom;
-            const sy = (p.y - cy) * zoom;
-            ctx.beginPath();
-            ctx.arc(sx, sy, p.size * zoom, 0, TAU);
-            ctx.fill();
+            const sz = p.size * zoom;
+            ctx.fillRect((p.x - cx) * zoom - sz, (p.y - cy) * zoom - sz, sz * 2, sz * 2);
         }
         ctx.globalAlpha = 1;
     }
@@ -3675,12 +3743,15 @@ class GameEngine {
                 const isEnabled = conn?.enabled !== false;
                 if (!targetName || !isEnabled) continue;
                 
-                // Find the target portal (must also be acting as portal)
-                const targetPortal = this.world.objects.find(p => 
-                    p.type === 'teleportal' && 
-                    p.actingType === 'portal' && 
-                    p.teleportalName === targetName
-                );
+                const teleportals = this.world.getTeleportals();
+                let targetPortal = null;
+                for (let ti = 0; ti < teleportals.length; ti++) {
+                    const p = teleportals[ti];
+                    if (p.actingType === 'portal' && p.teleportalName === targetName) {
+                        targetPortal = p;
+                        break;
+                    }
+                }
                 
                 if (!targetPortal) continue;
                 

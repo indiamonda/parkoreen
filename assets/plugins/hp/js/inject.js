@@ -11,7 +11,7 @@
     
     // Load HP SVG images (full, empty)
     const hpFullImg = new Image();
-    hpFullImg.src = 'assets/plugins/hp/svg/HP-full.svg';
+    hpFullImg.src = 'assets/plugins/hp/svg/full.svg';
     
     const hpEmptyImg = new Image();
     hpEmptyImg.src = 'assets/plugins/hp/svg/empty.svg';
