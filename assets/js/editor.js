@@ -2338,7 +2338,7 @@ class Editor {
             type: 'teleportal',
             appearanceType: 'teleportal',
             actingType: this.teleportalSettings.actingType || 'portal',
-            collision: false, // Teleportals don't collide by default
+            collision: true,
             color: this.teleportalSettings.color || '#9C27B0',
             opacity: this.teleportalSettings.opacity || 1,
             name: 'New Teleportal',
