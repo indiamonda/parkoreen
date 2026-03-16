@@ -202,6 +202,15 @@
                 var listFn = window.MapManager.listMaps;
                 var maps = await listFn.call(window.MapManager);
                 
+                // Ensure every account has exactly one Sample Map
+                var hasSample = maps.some(function(m) { return m.name === 'Sample Map'; });
+                if (!hasSample) {
+                    var seeded = await seedSampleMap();
+                    if (seeded) {
+                        maps = await listFn.call(window.MapManager);
+                    }
+                }
+
                 // Hide loading
                 loading.classList.add('hidden');
                 
@@ -219,6 +228,29 @@
             } catch (e) {
                 loading.classList.add('hidden');
                 toastError('Failed to load maps: ' + e.message);
+            }
+        }
+
+        async function seedSampleMap() {
+            try {
+                var resp = await fetch('../assets/pkrn/sample_map.pkrn');
+                if (!resp.ok) return false;
+                var buffer = await resp.arrayBuffer();
+
+                var importManager = new ImportManager();
+                var file = new File([buffer], 'sample_map.pkrn');
+                var data = await importManager.importFromFile(file);
+
+                var name = data.mapName || 'Sample Map';
+                var createFn = window.MapManager.createMap;
+                var result = await createFn.call(window.MapManager, name);
+
+                var saveFn = window.MapManager.saveMap;
+                await saveFn.call(window.MapManager, result.id, { data: data });
+                return true;
+            } catch (e) {
+                console.warn('[Dashboard] Could not seed sample map:', e);
+                return false;
             }
         }
 
