@@ -1652,7 +1652,7 @@ a:hover {
     border-radius: var(--border-radius-lg);
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-lg);
-    z-index: var(--z-popup);
+    z-index: calc(var(--z-modal) + 10);
     min-width: 280px;
     opacity: 0;
     visibility: hidden;
