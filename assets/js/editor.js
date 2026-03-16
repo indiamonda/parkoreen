@@ -8580,22 +8580,31 @@ class Editor {
                 if (act === 'spike' || obj.type === 'spinner' || at === 'spinner') {
                     // Red: spike/spinner danger touchbox
                     if (obj.type === 'spinner' || at === 'spinner') {
-                        drawBox(obj.x, obj.y, obj.width, obj.height, '#ff0000');
+                        const cx = obj.x + obj.width / 2 - camera.x;
+                        const cy = obj.y + obj.height / 2 - camera.y;
+                        const r = Math.min(obj.width, obj.height) / 2;
+                        ctx.strokeStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                        ctx.stroke();
                     } else {
                         const spikeMode = obj.spikeTouchbox || this.world?.spikeTouchbox || 'normal';
+                        const player = this.engine.localPlayer;
                         if (spikeMode === 'full') {
                             drawBox(obj.x, obj.y, obj.width, obj.height, '#ff0000');
-                        } else if (spikeMode === 'normal' || spikeMode === 'tip') {
-                            const player = this.engine.localPlayer;
-                            if (player) {
-                                if (spikeMode === 'normal') {
-                                    const d = player.getSpikeDanger(obj);
-                                    drawBox(d.x, d.y, d.width, d.height, '#ff0000');
-                                } else {
-                                    const t = player.getSpikeTip(obj);
-                                    drawBox(t.x, t.y, t.width, t.height, '#ff0000');
-                                }
+                        } else if (spikeMode === 'ground') {
+                            drawBox(obj.x, obj.y, obj.width, obj.height, '#2196f3');
+                        } else if (player && (spikeMode === 'normal' || spikeMode === 'tip')) {
+                            if (spikeMode === 'normal') {
+                                const d = player.getSpikeDanger(obj);
+                                drawBox(d.x, d.y, d.width, d.height, '#ff0000');
+                            } else {
+                                const t = player.getSpikeTip(obj);
+                                drawBox(t.x, t.y, t.width, t.height, '#ff0000');
                             }
+                            // Blue: spike flat part ground touchbox
+                            const f = player.getSpikeFlat(obj);
+                            drawBox(f.x, f.y, f.width, f.height, '#2196f3');
                         }
                     }
                 } else if (at === 'zone' || at === 'button') {

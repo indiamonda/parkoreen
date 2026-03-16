@@ -404,9 +404,12 @@ class Player {
             {
                 let gotHit = false;
                 
-                // Spinners (saw blades) damage on ANY contact - no touchbox modes apply
+                // Spinners (saw blades) use circular hitbox matching their shape
                 if (obj.type === 'spinner' || obj.appearanceType === 'spinner') {
-                    if (this.boxIntersects(hurtBox, obj)) {
+                    const cx = obj.x + obj.width / 2;
+                    const cy = obj.y + obj.height / 2;
+                    const r = Math.min(obj.width, obj.height) / 2;
+                    if (this.circleIntersectsBox(cx, cy, r, hurtBox)) {
                         gotHit = true;
                     }
                 } else {
@@ -518,11 +521,10 @@ class Player {
         const r = spike.rotation || 0;
         const w = spike.width;
         const h = spike.height;
-        // Danger zone covers the lower body of the spike, flush against the flat base.
-        // Flat safe zone is 22% from base side (78%-100%). Danger spans 38%-78%.
-        // For a 32px spike: danger is ~12.8px tall, starting 12.2px from tip.
+        // Danger zone covers the lower body of the spike, barely overlapping the flat base.
+        // Flat zone is 22% from base (78%-100%). Danger spans 38%-80%.
         const dangerStart = 0.38;
-        const dangerLen = 0.40;
+        const dangerLen = 0.42;
         const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
             b.x = spike.x; b.y = spike.y + h * dangerStart; b.width = w; b.height = h * dangerLen;
@@ -602,6 +604,14 @@ class Player {
                a.x + a.width > b.x &&
                a.y < b.y + b.height &&
                a.y + a.height > b.y;
+    }
+
+    circleIntersectsBox(cx, cy, r, box) {
+        const closestX = Math.max(box.x, Math.min(cx, box.x + box.width));
+        const closestY = Math.max(box.y, Math.min(cy, box.y + box.height));
+        const dx = cx - closestX;
+        const dy = cy - closestY;
+        return dx * dx + dy * dy <= r * r;
     }
 
     resetJumps() {
