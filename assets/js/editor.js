@@ -1189,6 +1189,27 @@ class Editor {
                         </div>
                     </div>
                     
+                    <!-- CJ (Controllable Jump) Plugin -->
+                    <div class="plugin-card" data-plugin="cj" style="background: var(--bg-light); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+                        <img src="assets/plugins/cj/cover.png" alt="Controllable Jump Plugin" style="width: 100%; height: auto; display: block;">
+                        <div style="padding: 16px 20px 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 8px 0; color: #4CAF50;">
+                                        Controllable Jump
+                                    </h3>
+                                    <p style="margin: 0 0 12px 0; color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+                                        Adds variable jump height. Hold the jump key to jump higher, tap for a short hop.
+                                        Release the jump key mid-air to cut upward velocity.
+                                    </p>
+                                </div>
+                                <button class="btn plugin-toggle-btn" data-plugin="cj" style="min-width: 80px; margin-left: 16px;">
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Code Plugin is hidden (mechanics are built into the game) -->
                 </div>
             </div>
