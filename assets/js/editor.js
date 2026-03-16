@@ -1002,7 +1002,7 @@ class Editor {
                         <span class="material-symbols-outlined">videogame_asset</span>
                         Host Game
                     </button>
-                    </div>
+                </div>
                 </div>
                 
                 <!-- Plugins -->
@@ -3230,7 +3230,7 @@ class Editor {
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.color = color;
                 } else {
-                    this.placementSettings.color = color;
+                this.placementSettings.color = color;
                     // Update texture preview with new background color
                     this.updateTexturePreview();
                 }
@@ -4573,7 +4573,7 @@ class Editor {
         // Update non-fly button states
         this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
             if (btn.dataset.tool !== 'fly') {
-                btn.classList.remove('active');
+            btn.classList.remove('active');
             }
         });
 
@@ -5418,7 +5418,7 @@ class Editor {
             });
         });
     }
-    
+
     // ========================================
     // PANEL MANAGEMENT
     // ========================================
@@ -5488,7 +5488,7 @@ class Editor {
                 this.obstacleSettings.appearanceType = 'spike';
             }
         } else {
-            this.placementMode = mode;
+        this.placementMode = mode;
             // Reset block to ground if coming from obstacle mode
             if (mode === 'block') {
                 this.placementSettings.appearanceType = 'ground';
@@ -5886,7 +5886,7 @@ class Editor {
     updateDefaultColor() {
         let color;
         if (this.placementMode === PlacementMode.BLOCK) {
-            color = this.world.defaultBlockColor;
+                color = this.world.defaultBlockColor;
             this.placementSettings.color = color;
         } else if (this.placementMode === PlacementMode.OBSTACLE) {
             color = this.world.defaultSpikeColor;
@@ -5897,7 +5897,7 @@ class Editor {
         } else {
             return;
         }
-
+        
         document.getElementById('placement-color-preview').style.background = color;
         document.getElementById('placement-color-input').value = color;
         
@@ -6254,12 +6254,12 @@ class Editor {
                 if (type === 'cloud-sky') this.world.cloudColorSky = hex;
                 else if (type === 'cloud-galaxy') this.world.cloudColorGalaxy = hex;
             } else {
-                document.getElementById(`config-${type}-color`).value = hex;
-                document.getElementById(`config-${type}-color-preview`).style.background = hex;
+            document.getElementById(`config-${type}-color`).value = hex;
+            document.getElementById(`config-${type}-color-preview`).style.background = hex;
             
-                if (type === 'block') this.world.defaultBlockColor = hex;
-                else if (type === 'spike') this.world.defaultSpikeColor = hex;
-                else if (type === 'text') this.world.defaultTextColor = hex;
+            if (type === 'block') this.world.defaultBlockColor = hex;
+            else if (type === 'spike') this.world.defaultSpikeColor = hex;
+            else if (type === 'text') this.world.defaultTextColor = hex;
             }
         }
     }
@@ -7143,7 +7143,7 @@ class Editor {
             if (btn.classList.contains('test-mode-tool')) {
                 btn.classList.add('hidden');
             } else {
-                btn.classList.remove('hidden');
+            btn.classList.remove('hidden');
             }
         });
         this.ui.toolbar.querySelectorAll('.toolbar-divider').forEach(div => {
@@ -8275,7 +8275,7 @@ class Editor {
             this.renderGrid(ctx, camera);
             this.renderDieLine(ctx, camera);
         }
-        
+
         // Selection highlights
         if (this.isSelectionActive && this.selectedObjects.size > 0 && this.engine.state === GameState.EDITOR) {
             ctx.save();
@@ -8683,7 +8683,7 @@ class Editor {
             const ht = player.getHurtTouchbox();
             drawBox(ht.x, ht.y, ht.width, ht.height, '#ff9800');
         }
-
+        
         ctx.restore();
     }
 
@@ -8700,7 +8700,7 @@ class Editor {
         const startY = Math.floor(camera.y / GRID_SIZE) * GRID_SIZE;
         const endX = camera.x + camera.width / camera.zoom + GRID_SIZE;
         const endY = camera.y + camera.height / camera.zoom + GRID_SIZE;
-        
+
         const viewStartX = startX - camera.x;
         const viewStartY = startY - camera.y;
         const viewEndX = viewStartX + (endX - startX);
@@ -8710,7 +8710,7 @@ class Editor {
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
         ctx.lineWidth = 0.5 / camera.zoom;
 
-        ctx.beginPath();
+            ctx.beginPath();
         for (let x = startX; x < endX; x += GRID_SIZE) {
             if (x % (GRID_SIZE * 5) === 0) continue;
             const screenX = x - camera.x;
@@ -8732,7 +8732,7 @@ class Editor {
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.55)`;
         ctx.lineWidth = 1 / camera.zoom;
         
-        ctx.beginPath();
+            ctx.beginPath();
         for (let x = majorStart; x < endX; x += GRID_SIZE * 5) {
             const screenX = x - camera.x;
             ctx.moveTo(screenX, viewStartY);
@@ -8743,7 +8743,7 @@ class Editor {
             ctx.moveTo(viewStartX, screenY);
             ctx.lineTo(viewEndX, screenY);
         }
-        ctx.stroke();
+            ctx.stroke();
         
         // Origin lines (x=0 and y=0)
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.75)`;

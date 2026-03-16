@@ -289,7 +289,7 @@
                     
                     // Bounce based on attack direction
                     if (player.attackDirection === 'down') {
-                        const pogoMultiplier = HK_CONFIG.pogoBouncePower || 1.2;
+                        const pogoMultiplier = HK_DEFAULTS.pogoBouncePower || 1.2;
                         player.vy = worldJumpForce * pogoMultiplier;
                         player.monarchWingsUsed = 0;
                         player._pogoJumping = true;
@@ -735,8 +735,8 @@
     
     const _atkBox = { x: 0, y: 0, width: 0, height: 0 };
     function getAttackHitbox(player, direction) {
-        const attackLength = 72;
-        const attackWidth = 20;
+        const attackLength = 90;
+        const attackWidth = 26;
 
         if (direction === 'up') {
             _atkBox.x = player.x + (player.width - attackWidth) / 2;
