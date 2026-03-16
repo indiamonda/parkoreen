@@ -331,12 +331,15 @@ class Player {
     }
 
     _hasBlockAt(world, x, y) {
+        if (!this._blockCheckBox) this._blockCheckBox = { x: 0, y: 0, width: GRID_SIZE - 2, height: GRID_SIZE - 2 };
+        this._blockCheckBox.x = x + 1;
+        this._blockCheckBox.y = y + 1;
         const near = world.queryNear(x + 1, y + 1, GRID_SIZE - 2, GRID_SIZE - 2);
         for (let i = 0; i < near.length; i++) {
             const o = near[i];
             if (!o.collision || o.actingType === 'spike' || o.actingType === 'text' || o.type === 'teleportal') continue;
             if (o.type === 'spinner' || o.appearanceType === 'spinner') continue;
-            if (this.boxIntersects({ x: x + 1, y: y + 1, width: GRID_SIZE - 2, height: GRID_SIZE - 2 }, o)) return true;
+            if (this.boxIntersects(this._blockCheckBox, o)) return true;
         }
         return false;
     }
@@ -1686,6 +1689,9 @@ class World {
         // Teleportal list cache
         this._teleportalListDirty = true;
         this._teleportalList = [];
+        // Zone/button list cache
+        this._zoneListDirty = true;
+        this._zoneList = [];
         this.background = 'sky'; // sky, galaxy, custom
         
         // Music settings
@@ -1782,6 +1788,7 @@ class World {
     markEditorDirty() {
         this._editorMergedDirty = true;
         this._teleportalListDirty = true;
+        this._zoneListDirty = true;
     }
 
     getTeleportals() {
@@ -1795,6 +1802,20 @@ class World {
             this._teleportalListDirty = false;
         }
         return this._teleportalList;
+    }
+
+    getZones() {
+        if (this._zoneListDirty) {
+            this._zoneList.length = 0;
+            for (let i = 0; i < this.objects.length; i++) {
+                const at = this.objects[i].appearanceType;
+                if (at === 'zone' || at === 'button') {
+                    this._zoneList.push(this.objects[i]);
+                }
+            }
+            this._zoneListDirty = false;
+        }
+        return this._zoneList;
     }
 
     rebuildSpatialHash() {
@@ -1815,6 +1836,7 @@ class World {
         this._mergedBlockCache = null;
         this._editorMergedDirty = true;
         this._teleportalListDirty = true;
+        this._zoneListDirty = true;
         this.updateSpecialPoints();
         return obj;
     }
@@ -1828,6 +1850,7 @@ class World {
             this._mergedBlockCache = null;
             this._editorMergedDirty = true;
             this._teleportalListDirty = true;
+            this._zoneListDirty = true;
             this.updateSpecialPoints();
             return true;
         }
@@ -1933,6 +1956,7 @@ class World {
         this._spatialDirty = true;
         this._editorMergedDirty = true;
         this._teleportalListDirty = true;
+        this._zoneListDirty = true;
         this.invalidateTileCache();
         this.spawnPoint = null;
         this.checkpoints = [];
@@ -2349,15 +2373,15 @@ class World {
     }
 
     renderVisibleZones(ctx, camera) {
+        const zones = this.getZones();
+        if (zones.length === 0) return;
         const margin = 100;
         const vLeft = camera.x - margin;
         const vRight = camera.x + camera.width / camera.zoom + margin;
         const vTop = camera.y - margin;
         const vBottom = camera.y + camera.height / camera.zoom + margin;
-        for (let i = 0; i < this.objects.length; i++) {
-            const obj = this.objects[i];
-            const at = obj.appearanceType;
-            if (at !== 'zone' && at !== 'button') continue;
+        for (let i = 0; i < zones.length; i++) {
+            const obj = zones[i];
             if (obj.x + obj.width < vLeft || obj.x > vRight ||
                 obj.y + obj.height < vTop || obj.y > vBottom) continue;
             obj.render(ctx, camera);
@@ -2729,6 +2753,12 @@ class World {
 // ============================================
 // GAME ENGINE CLASS
 // ============================================
+const GAME_KEYS = new Set([
+    'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyZ', 'KeyX', 'KeyC', 'KeyF', 'KeyN',
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Comma', 'Period',
+    'ShiftLeft', 'ShiftRight'
+]);
+
 class GameEngine {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
@@ -3141,11 +3171,7 @@ class GameEngine {
             return;
         }
         
-        // Prevent default for game keys to avoid browser delays
-        const gameKeys = ['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyZ', 'KeyX', 'KeyC', 'KeyF', 'KeyN',
-                          'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Comma', 'Period',
-                          'ShiftLeft', 'ShiftRight'];
-        if (gameKeys.includes(e.code)) {
+        if (GAME_KEYS.has(e.code)) {
             e.preventDefault();
         }
         
@@ -3194,77 +3220,53 @@ class GameEngine {
     updatePlayerInput() {
         if (!this.localPlayer) return;
         
-        // Get keyboard layout (only applies in play/test mode)
         const inGameMode = this.state === GameState.PLAYING || this.state === GameState.TESTING;
         const layout = inGameMode ? (this.world?.keyboardLayout || 'jimmyqrg') : 'jimmyqrg';
+        const k = this.keys;
+        const inp = this.localPlayer.input;
+
+        if (layout === 'jimmyqrg') {
+            inp.left = k['KeyA'];
+            inp.right = k['KeyD'];
+            inp.up = k['ArrowUp'];
+            inp.down = k['ArrowDown'];
+            inp.jump = k['KeyW'] || k['Space'];
+            inp.shift = k['ShiftLeft'] || k['ShiftRight'];
+            inp.attack = k['KeyN'];
+            inp.heal = k['ShiftLeft'];
+            inp.dash = k['Comma'];
+            inp.superDash = k['KeyF'];
+        } else if (layout === 'hk') {
+            inp.left = k['ArrowLeft'];
+            inp.right = k['ArrowRight'];
+            inp.up = k['ArrowUp'];
+            inp.down = k['ArrowDown'];
+            inp.jump = k['KeyZ'];
+            inp.shift = k['ShiftLeft'] || k['ShiftRight'];
+            inp.attack = k['KeyX'];
+            inp.heal = k['KeyA'];
+            inp.dash = k['KeyC'];
+            inp.superDash = k['KeyS'];
+        } else {
+            inp.left = k['KeyA'] || k['ArrowLeft'];
+            inp.right = k['KeyD'] || k['ArrowRight'];
+            inp.up = k['KeyW'] || k['ArrowUp'];
+            inp.down = k['KeyS'] || k['ArrowDown'];
+            inp.jump = k['Space'] || k['KeyW'] || k['ArrowUp'];
+            inp.shift = k['ShiftLeft'] || k['ShiftRight'];
+            inp.attack = k['KeyX'];
+            inp.heal = k['KeyF'];
+            inp.dash = k['Comma'];
+            inp.superDash = k['Period'];
+        }
+        inp.space = !!k['Space'];
         
-        // Define keyboard layouts
-        const layouts = {
-            default: {
-                left: this.keys['KeyA'] || this.keys['ArrowLeft'],
-                right: this.keys['KeyD'] || this.keys['ArrowRight'],
-                up: this.keys['KeyW'] || this.keys['ArrowUp'],
-                down: this.keys['KeyS'] || this.keys['ArrowDown'],
-                jump: this.keys['Space'] || this.keys['KeyW'] || this.keys['ArrowUp'],
-                shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
-                // Plugin inputs (no conflicts with movement)
-                attack: this.keys['KeyX'],
-                heal: this.keys['KeyF'],
-                dash: this.keys['Comma'],
-                superDash: this.keys['Period']
-            },
-            hk: {
-                // Hollow Knight Original layout (requires HK plugin)
-                left: this.keys['ArrowLeft'],
-                right: this.keys['ArrowRight'],
-                up: this.keys['ArrowUp'],
-                down: this.keys['ArrowDown'],
-                jump: this.keys['KeyZ'],
-                shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
-                // Plugin inputs
-                attack: this.keys['KeyX'],
-                heal: this.keys['KeyA'],
-                dash: this.keys['KeyC'],
-                superDash: this.keys['KeyS']
-            },
-            jimmyqrg: {
-                left: this.keys['KeyA'],
-                right: this.keys['KeyD'],
-                up: this.keys['ArrowUp'],
-                down: this.keys['ArrowDown'],
-                jump: this.keys['KeyW'] || this.keys['Space'],
-                shift: this.keys['ShiftLeft'] || this.keys['ShiftRight'],
-                // Plugin inputs
-                attack: this.keys['KeyN'],
-                heal: this.keys['ShiftLeft'],
-                dash: this.keys['Comma'],
-                superDash: this.keys['KeyF']
-            }
-        };
-        
-        const keymap = layouts[layout] || layouts.default;
-        
-        this.localPlayer.input.left = keymap.left;
-        this.localPlayer.input.right = keymap.right;
-        this.localPlayer.input.up = keymap.up;
-        this.localPlayer.input.down = keymap.down;
-        this.localPlayer.input.jump = keymap.jump;
-        this.localPlayer.input.shift = keymap.shift;
-        this.localPlayer.input.space = !!this.keys['Space'];
-        
-        // Store plugin inputs for plugins to use
-        this.localPlayer.input.attack = keymap.attack;
-        this.localPlayer.input.heal = keymap.heal;
-        this.localPlayer.input.dash = keymap.dash;
-        this.localPlayer.input.superDash = keymap.superDash;
-        
-        // Let plugins handle additional input via hooks
         if (window.PluginManager) {
-            window.PluginManager.executeHook('input.update', { 
-                player: this.localPlayer, 
-                keys: this.keys,
-                layout: layout
-            });
+            if (!this._inputHookData) this._inputHookData = {};
+            this._inputHookData.player = this.localPlayer;
+            this._inputHookData.keys = k;
+            this._inputHookData.layout = layout;
+            window.PluginManager.executeHook('input.update', this._inputHookData);
         }
     }
 
