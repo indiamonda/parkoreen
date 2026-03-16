@@ -7123,6 +7123,10 @@ class Editor {
         this.stopMusicPlayback();
         this.hideInspectBox();
         
+        // Reset debug overlays
+        this.showTouchboxes = false;
+        this.invincibilityEnabled = false;
+        
         // Reset tool state
         this.currentTool = EditorTool.NONE;
         this.isErasing = false;

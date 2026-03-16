@@ -515,9 +515,9 @@ class Player {
         const w = spike.width;
         const h = spike.height;
         // Danger zone covers the lower body of the spike, barely overlapping the flat base.
-        // Flat zone is 22% from base (78%-100%). Danger spans 38%-80%.
-        const dangerStart = 0.38;
-        const dangerLen = 0.42;
+        // Flat zone is 22% from base (78%-100%). Danger spans 48%-86%.
+        const dangerStart = 0.48;
+        const dangerLen = 0.38;
         const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
             b.x = spike.x; b.y = spike.y + h * dangerStart; b.width = w; b.height = h * dangerLen;
@@ -666,11 +666,13 @@ class Player {
             };
         }
         
+        ctx.save();
+        ctx.textAlign = 'center';
+        
         if (showPosition) {
             const posText = `(${Math.round(this.x)}, ${Math.round(this.y)})`;
             const tx = screenX + this.width / 2;
             ctx.font = this._cachedFonts.pos;
-            ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillText(posText, tx + 1, screenY - 9);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
@@ -680,11 +682,11 @@ class Player {
         const nameY = screenY + this.height + this._cachedFonts.nameOffsetY;
         const nameX = screenX + this.width / 2;
         ctx.font = this._cachedFonts.name;
-        ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillText(this.name, nameX + 1, nameY + 1);
         ctx.fillStyle = 'white';
         ctx.fillText(this.name, nameX, nameY);
+        ctx.restore();
     }
 }
 
@@ -1396,6 +1398,7 @@ class WorldObject {
     }
 
     renderText(ctx, x, y, w, h) {
+        ctx.textAlign = 'left';
         ctx.fillStyle = this.color;
         const scaleFactor = w / this.width;
         
