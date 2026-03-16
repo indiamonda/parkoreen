@@ -90,6 +90,16 @@
             "label": "Mantis Claw (Wall Jump)",
             "description": "Cling to walls and wall jump",
             "default": false  
+        },
+        "nailSpeed": {
+            "type": "select",
+            "label": "Nail Attack Speed",
+            "description": "Base: 0.41s between attacks. Quick Slash: 0.25s between attacks.",
+            "default": "base",
+            "options": [
+                { "value": "base", "label": "Base (0.41s)" },
+                { "value": "quickSlash", "label": "Quick Slash (0.25s)" }
+            ]
         }
     },
     "controls": {

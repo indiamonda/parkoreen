@@ -14,7 +14,8 @@ const HK_DEFAULTS = {
     superDashChargeDuration: 800, // ms
     superDashSpeed: 20,
     attackDuration: 200, // ms
-    attackCooldown: 100, // ms
+    attackCooldown: 210, // ms (base: 410ms total, quickSlash: 250ms total)
+    nailSpeed: 'base', // 'base' (0.41s) or 'quickSlash' (0.25s)
     attackRange: 52,
     pogoBouncePower: 1.2, // Fraction of normal jump (higher than normal jump for satisfying bounce)
     monarchWingJumpPower: 0.9, // Fraction of normal jump

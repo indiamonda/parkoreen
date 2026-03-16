@@ -306,10 +306,13 @@
         }
         
         // Update attack state
-        if (player.isAttacking && now - player.attackStartTime >= 200) {
+        const nailSpeed = config.nailSpeed || 'base';
+        const attackDuration = 200;
+        const attackCooldownMs = nailSpeed === 'quickSlash' ? 50 : 210;
+        if (player.isAttacking && now - player.attackStartTime >= attackDuration) {
             player.isAttacking = false;
-            player._attackHitThisSwing = false; // Reset for next attack
-            player.attackCooldown = now + 100;
+            player._attackHitThisSwing = false;
+            player.attackCooldown = now + attackCooldownMs;
         }
         
         // ===== DASH =====
