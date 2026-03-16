@@ -2620,6 +2620,8 @@ class GameEngine {
         
         // Particle system
         this.particles = [];
+        this._portalParticles = [];
+        this._portalParticleTimer = 0;
         
         // Cloud system
         this.clouds = [];
@@ -2670,6 +2672,88 @@ class GameEngine {
         this.particles.length = writeIdx;
     }
     
+    updatePortalParticles(dt) {
+        const pad = GRID_SIZE * 3;
+        const cam = this.camera;
+        const vpL = cam.x - pad;
+        const vpR = cam.x + cam.width / cam.zoom + pad;
+        const vpT = cam.y - pad;
+        const vpB = cam.y + cam.height / cam.zoom + pad;
+
+        this._portalParticleTimer += dt;
+        const spawnInterval = 0.08;
+
+        if (this._portalParticleTimer >= spawnInterval) {
+            this._portalParticleTimer -= spawnInterval;
+
+            const objs = this.world.objects;
+            for (let i = 0; i < objs.length; i++) {
+                const obj = objs[i];
+                if (obj.type !== 'teleportal') continue;
+                const cx = obj.x + obj.width / 2;
+                const cy = obj.y + obj.height / 2;
+                if (cx + obj.width / 2 < vpL || cx - obj.width / 2 > vpR ||
+                    cy + obj.height / 2 < vpT || cy - obj.height / 2 > vpB) continue;
+
+                const radius = Math.min(obj.width, obj.height) * 0.5;
+                const angle = Math.random() * Math.PI * 2;
+                const dist = radius * (0.6 + Math.random() * 0.5);
+                const px = cx + Math.cos(angle) * dist;
+                const py = cy + Math.sin(angle) * dist;
+                const orbitSpeed = (0.8 + Math.random() * 0.6) * (Math.random() < 0.5 ? 1 : -1);
+
+                this._portalParticles.push({
+                    x: px, y: py,
+                    cx: cx, cy: cy,
+                    angle: Math.atan2(py - cy, px - cx),
+                    dist: dist,
+                    orbitSpeed: orbitSpeed,
+                    driftIn: -8 - Math.random() * 6,
+                    size: 1.5 + Math.random() * 2,
+                    color: obj.color,
+                    life: 1,
+                    decay: 0.008 + Math.random() * 0.006
+                });
+            }
+        }
+
+        let w = 0;
+        for (let i = 0; i < this._portalParticles.length; i++) {
+            const p = this._portalParticles[i];
+            p.angle += p.orbitSpeed * dt;
+            p.dist += p.driftIn * dt;
+            if (p.dist < 0) p.dist = 0;
+            p.x = p.cx + Math.cos(p.angle) * p.dist;
+            p.y = p.cy + Math.sin(p.angle) * p.dist;
+            p.life -= p.decay;
+            if (p.life > 0) {
+                this._portalParticles[w++] = p;
+            }
+        }
+        this._portalParticles.length = w;
+    }
+
+    renderPortalParticles() {
+        if (this._portalParticles.length === 0) return;
+        const ctx = this.ctx;
+        const cx = this.camera.x;
+        const cy = this.camera.y;
+        const zoom = this.camera.zoom;
+        const TAU = Math.PI * 2;
+        let lastColor = '';
+        for (let i = 0; i < this._portalParticles.length; i++) {
+            const p = this._portalParticles[i];
+            ctx.globalAlpha = p.life * 0.7;
+            if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
+            const sx = (p.x - cx) * zoom;
+            const sy = (p.y - cy) * zoom;
+            ctx.beginPath();
+            ctx.arc(sx, sy, p.size * zoom, 0, TAU);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
     renderParticles() {
         if (this.particles.length === 0) return;
         const ctx = this.ctx;
@@ -3379,6 +3463,7 @@ class GameEngine {
             
             // Particles only in play mode
             this.updateParticles(deltaTime);
+            this.updatePortalParticles(deltaTime);
         } else if (this.state === GameState.EDITOR) {
             if (this.localPlayer) {
                 if (this.localPlayer.isFlying) {
@@ -3779,6 +3864,7 @@ class GameEngine {
         this.ctx.restore();
         
         if (isPlaying) {
+            this.renderPortalParticles();
             this.renderParticles();
             this.renderHUD();
         }
@@ -3921,6 +4007,8 @@ class GameEngine {
         this.localPlayer = null;
         this.remotePlayers.clear();
         this.particles = [];
+        this._portalParticles = [];
+        this._portalParticleTimer = 0;
         this.world.invalidateTileCache();
 
         const buttonUI = document.getElementById('game-button-ui');

@@ -6919,7 +6919,66 @@ class Editor {
         }
 
         this.world.addObject(obj);
+        this.mergeBlockWithAdjacent(obj);
         this.triggerMapChange();
+    }
+
+    mergeBlockWithAdjacent(obj) {
+        if (obj.type !== 'block') return;
+        const at = obj.appearanceType;
+        if (at === 'spike' || at === 'spinner' || at === 'checkpoint' ||
+            at === 'soulStatue' || at === 'button') return;
+        if (obj.rotation !== 0 || obj.flipHorizontal) return;
+
+        const propKey = (o) =>
+            `${o.color}|${o.texture || 'solid'}|${o.opacity}|${o.layer || 1}|${o.collision}|${o.appearanceType}|${o.actingType}`;
+        const myKey = propKey(obj);
+
+        let changed = true;
+        while (changed) {
+            changed = false;
+            const near = this.world.queryNear(
+                obj.x - 1, obj.y - 1, obj.width + 2, obj.height + 2
+            );
+            for (let i = 0; i < near.length; i++) {
+                const other = near[i];
+                if (other === obj || other.id === obj.id) continue;
+                if (other.type !== 'block') continue;
+                if (other.rotation !== 0 || other.flipHorizontal) continue;
+                if (propKey(other) !== myKey) continue;
+
+                // Right: other is directly to the right, same top & height
+                if (obj.x + obj.width === other.x && obj.y === other.y && obj.height === other.height) {
+                    obj.width += other.width;
+                    this.world.removeObject(other.id);
+                    changed = true; break;
+                }
+                // Left
+                if (other.x + other.width === obj.x && obj.y === other.y && obj.height === other.height) {
+                    obj.x = other.x;
+                    obj.width += other.width;
+                    this.world.removeObject(other.id);
+                    changed = true; break;
+                }
+                // Below
+                if (obj.y + obj.height === other.y && obj.x === other.x && obj.width === other.width) {
+                    obj.height += other.height;
+                    this.world.removeObject(other.id);
+                    changed = true; break;
+                }
+                // Above
+                if (other.y + other.height === obj.y && obj.x === other.x && obj.width === other.width) {
+                    obj.y = other.y;
+                    obj.height += other.height;
+                    this.world.removeObject(other.id);
+                    changed = true; break;
+                }
+            }
+        }
+
+        this.world._spatialDirty = true;
+        this.world._tileCacheReady = false;
+        this.world._mergedBlockCache = null;
     }
 
     // ========================================
