@@ -216,7 +216,7 @@ class Player {
         this.vy += gravity;
         
         // Cap fall speed (scaled with gravity)
-        const maxFallSpeed = 20 * (gravity / DEFAULT_GRAVITY);
+        const maxFallSpeed = 16 * (gravity / DEFAULT_GRAVITY);
         if (this.vy > maxFallSpeed) this.vy = maxFallSpeed;
 
         // Handle jump - infinite jumps in editor mode

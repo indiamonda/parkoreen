@@ -606,33 +606,35 @@
             ctx.lineWidth = 2;
 
             if (player.attackDirection === 'up') {
-                // Upward attack - vertical oval above player
-                const centerX = screenX + hitbox.width / 2;
-                const centerY = screenY + hitbox.height / 2;
-                const radiusX = hitbox.width / 2;
-                const radiusY = hitbox.height / 2;
+                const cx = screenX + hitbox.width / 2;
+                const cy = screenY + hitbox.height;
                 ctx.beginPath();
-                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.ellipse(cx, cy, hitbox.width / 2, hitbox.height, 0, Math.PI, Math.PI * 2);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
             } else if (player.attackDirection === 'down') {
-                // Downward attack - vertical oval below player
-                const centerX = screenX + hitbox.width / 2;
-                const centerY = screenY + hitbox.height / 2;
-                const radiusX = hitbox.width / 2;
-                const radiusY = hitbox.height / 2;
+                const cx = screenX + hitbox.width / 2;
+                const cy = screenY;
                 ctx.beginPath();
-                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.ellipse(cx, cy, hitbox.width / 2, hitbox.height, 0, 0, Math.PI);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (player.facingDirection > 0) {
+                const cx = screenX;
+                const cy = screenY + hitbox.height / 2;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, hitbox.width, hitbox.height / 2, 0, -Math.PI / 2, Math.PI / 2);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
             } else {
-                // Forward attack - horizontal oval in front of player
-                const centerX = screenX + hitbox.width / 2;
-                const centerY = screenY + hitbox.height / 2;
-                const radiusX = hitbox.width / 2;
-                const radiusY = hitbox.height / 2;
+                const cx = screenX + hitbox.width;
+                const cy = screenY + hitbox.height / 2;
                 ctx.beginPath();
-                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+                ctx.ellipse(cx, cy, hitbox.width, hitbox.height / 2, 0, Math.PI / 2, Math.PI * 3 / 2);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
             }
