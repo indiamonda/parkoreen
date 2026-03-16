@@ -824,11 +824,31 @@ const BlockTextures = {
     }
 };
 
+const CloudImages = {
+    images: [],
+    loaded: false,
+    _loadCount: 0,
+    _total: 5,
+    load() {
+        if (this.images.length) return;
+        for (let i = 1; i <= this._total; i++) {
+            const img = new Image();
+            img.onload = () => {
+                this._loadCount++;
+                if (this._loadCount >= this._total) this.loaded = true;
+            };
+            img.src = `assets/svg/cloud${i}.svg`;
+            this.images.push(img);
+        }
+    }
+};
+
 // Load images immediately
 SpikeImage.load();
 PortalImage.load();
 SpinnerImage.load();
 BlockTextures.brick.load();
+CloudImages.load();
 
 // ============================================
 // WORLD OBJECT CLASS
@@ -1628,7 +1648,7 @@ class World {
         this.checkpoints = [];
         this.endpoint = null;
         this.mapName = 'Untitled Map';
-        this.dieLineY = 2000; // Y position below which players die (void death)
+        this.dieLineY = 1000; // Y position below which players die (void death)
         
         // Physics settings
         this.playerSpeed = DEFAULT_MOVE_SPEED; // Horizontal movement speed (default: 5)
@@ -1692,6 +1712,7 @@ class World {
         this.objects.push(obj);
         this._spatialDirty = true;
         this._tileCacheReady = false;
+        this._mergedBlockCache = null;
         this.updateSpecialPoints();
         return obj;
     }
@@ -1702,6 +1723,7 @@ class World {
             this.objects.splice(index, 1);
             this._spatialDirty = true;
             this._tileCacheReady = false;
+            this._mergedBlockCache = null;
             this.updateSpecialPoints();
             return true;
         }
@@ -1810,6 +1832,145 @@ class World {
         this.endpoint = null;
     }
 
+    // ---- Block merging (greedy meshing) ----
+
+    _isMergeableBlock(obj) {
+        const at = obj.appearanceType;
+        if (at !== 'ground') return false;
+        if (obj.type !== 'block') return false;
+        if (obj.rotation !== 0) return false;
+        if (obj.flipHorizontal) return false;
+        if (obj.width !== GRID_SIZE || obj.height !== GRID_SIZE) return false;
+        if (Math.round(obj.x) % GRID_SIZE !== 0 || Math.round(obj.y) % GRID_SIZE !== 0) return false;
+        return true;
+    }
+
+    _buildMergedBlocks(objects) {
+        const mergeable = [];
+        const nonMergeable = [];
+
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (this._isMergeableBlock(obj)) {
+                mergeable.push(obj);
+            } else {
+                nonMergeable.push(obj);
+            }
+        }
+
+        if (mergeable.length === 0) return { merged: [], nonMerged: nonMergeable };
+
+        const groups = new Map();
+        for (let i = 0; i < mergeable.length; i++) {
+            const obj = mergeable[i];
+            const key = `${obj.color}|${obj.texture || 'solid'}|${obj.opacity}|${obj.layer || 1}`;
+            let list = groups.get(key);
+            if (!list) { list = []; groups.set(key, list); }
+            list.push(obj);
+        }
+
+        const merged = [];
+
+        for (const [, blocks] of groups) {
+            const grid = new Set();
+            for (let i = 0; i < blocks.length; i++) {
+                const gx = Math.round(blocks[i].x / GRID_SIZE);
+                const gy = Math.round(blocks[i].y / GRID_SIZE);
+                grid.add(`${gx},${gy}`);
+            }
+
+            blocks.sort((a, b) => {
+                const ay = Math.round(a.y / GRID_SIZE);
+                const by = Math.round(b.y / GRID_SIZE);
+                if (ay !== by) return ay - by;
+                return Math.round(a.x / GRID_SIZE) - Math.round(b.x / GRID_SIZE);
+            });
+
+            const visited = new Set();
+            const sample = blocks[0];
+
+            for (let i = 0; i < blocks.length; i++) {
+                const startGx = Math.round(blocks[i].x / GRID_SIZE);
+                const startGy = Math.round(blocks[i].y / GRID_SIZE);
+                const startKey = `${startGx},${startGy}`;
+
+                if (visited.has(startKey)) continue;
+
+                let endGx = startGx;
+                while (grid.has(`${endGx + 1},${startGy}`) && !visited.has(`${endGx + 1},${startGy}`)) {
+                    endGx++;
+                }
+
+                let endGy = startGy;
+                let canExtend = true;
+                while (canExtend) {
+                    const nextGy = endGy + 1;
+                    for (let gx = startGx; gx <= endGx; gx++) {
+                        const k = `${gx},${nextGy}`;
+                        if (!grid.has(k) || visited.has(k)) {
+                            canExtend = false;
+                            break;
+                        }
+                    }
+                    if (canExtend) endGy = nextGy;
+                }
+
+                for (let gy = startGy; gy <= endGy; gy++) {
+                    for (let gx = startGx; gx <= endGx; gx++) {
+                        visited.add(`${gx},${gy}`);
+                    }
+                }
+
+                merged.push({
+                    x: startGx * GRID_SIZE,
+                    y: startGy * GRID_SIZE,
+                    width: (endGx - startGx + 1) * GRID_SIZE,
+                    height: (endGy - startGy + 1) * GRID_SIZE,
+                    color: sample.color,
+                    texture: sample.texture || 'solid',
+                    opacity: sample.opacity,
+                    layer: sample.layer || 1
+                });
+            }
+        }
+
+        return { merged, nonMerged: nonMergeable };
+    }
+
+    _renderMergedBlock(ctx, x, y, w, h, color, texture, opacity) {
+        if (opacity !== 1) {
+            ctx.save();
+            ctx.globalAlpha = opacity;
+        }
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+
+        if (texture !== 'solid' && BlockTextures[texture]?.loaded && BlockTextures[texture]?.image) {
+            if (!BlockTextures[texture]._pattern) {
+                BlockTextures[texture]._pattern = ctx.createPattern(BlockTextures[texture].image, 'repeat');
+            }
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.clip();
+            ctx.fillStyle = BlockTextures[texture]._pattern;
+            ctx.fillRect(x, y, w, h);
+            ctx.restore();
+        } else if (texture === 'solid' && w >= 16 && h >= 16) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
+            ctx.fillRect(x + 4, y + h - 4, w - 4, 4);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(x, y, w - 4, 4);
+            ctx.fillRect(x, y, 4, h - 4);
+        }
+
+        if (opacity !== 1) {
+            ctx.restore();
+        }
+    }
+
     // ---- Tile cache for static world rendering ----
 
     _isStaticObject(obj) {
@@ -1829,6 +1990,7 @@ class World {
     invalidateTileCache() {
         this._tiles.clear();
         this._tileCacheReady = false;
+        this._mergedBlockCache = null;
     }
 
     buildTileCache() {
@@ -1840,17 +2002,59 @@ class World {
             touched: this.checkpointTouchedColor
         };
 
-        // Pre-build list of dynamic objects for fast per-frame iteration
         this._dynamicObjects = [];
-        const fakeCamera = { x: 0, y: 0, width: ts, height: ts, zoom: 1 };
 
+        const staticObjects = [];
         for (let i = 0; i < this.objects.length; i++) {
             const obj = this.objects[i];
             if (!this._isStaticObject(obj)) {
                 if (this._isDynamicRenderable(obj)) this._dynamicObjects.push(obj);
                 continue;
             }
+            staticObjects.push(obj);
+        }
 
+        const { merged, nonMerged } = this._buildMergedBlocks(staticObjects);
+        this._mergedBlockCache = merged;
+
+        const fakeCamera = { x: 0, y: 0, width: ts, height: ts, zoom: 1 };
+
+        const _getTile = (layer, tx, ty) => {
+            const key = layer * 67108864 + (tx + 32768) * 65536 + (ty + 32768);
+            let tile = this._tiles.get(key);
+            if (!tile) {
+                tile = document.createElement('canvas');
+                tile.width = ts;
+                tile.height = ts;
+                tile._ctx = tile.getContext('2d');
+                this._tiles.set(key, tile);
+            }
+            return tile;
+        };
+
+        for (let i = 0; i < merged.length; i++) {
+            const m = merged[i];
+            const layer = m.layer;
+            const tx0 = Math.floor(m.x / ts);
+            const ty0 = Math.floor(m.y / ts);
+            const tx1 = Math.floor((m.x + m.width - 1) / ts);
+            const ty1 = Math.floor((m.y + m.height - 1) / ts);
+
+            for (let tx = tx0; tx <= tx1; tx++) {
+                for (let ty = ty0; ty <= ty1; ty++) {
+                    const tile = _getTile(layer, tx, ty);
+                    this._renderMergedBlock(
+                        tile._ctx,
+                        m.x - tx * ts, m.y - ty * ts,
+                        m.width, m.height,
+                        m.color, m.texture, m.opacity
+                    );
+                }
+            }
+        }
+
+        for (let i = 0; i < nonMerged.length; i++) {
+            const obj = nonMerged[i];
             const layer = obj.layer || 1;
             const tx0 = Math.floor(obj.x / ts);
             const ty0 = Math.floor(obj.y / ts);
@@ -1859,21 +2063,14 @@ class World {
 
             for (let tx = tx0; tx <= tx1; tx++) {
                 for (let ty = ty0; ty <= ty1; ty++) {
-                    const key = layer * 67108864 + (tx + 32768) * 65536 + (ty + 32768);
-                    let tile = this._tiles.get(key);
-                    if (!tile) {
-                        tile = document.createElement('canvas');
-                        tile.width = ts;
-                        tile.height = ts;
-                        tile._ctx = tile.getContext('2d');
-                        this._tiles.set(key, tile);
-                    }
+                    const tile = _getTile(layer, tx, ty);
                     fakeCamera.x = tx * ts;
                     fakeCamera.y = ty * ts;
                     obj.render(tile._ctx, fakeCamera, cpColors);
                 }
             }
         }
+
         this._tileCacheReady = true;
     }
 
@@ -1963,16 +2160,39 @@ class World {
             }
         }
         
-        for (let i = 0; i < this._layer0.length; i++) {
-            this._layer0[i].render(ctx, camera, checkpointColors);
+        const { merged: merged0, nonMerged: nonMerged0 } = this._buildMergedBlocks(this._layer0);
+        const { merged: merged1, nonMerged: nonMerged1 } = this._buildMergedBlocks(this._layer1);
+        const { merged: merged2, nonMerged: nonMerged2 } = this._buildMergedBlocks(this._layer2);
+
+        this._editorMerged2 = merged2;
+        this._editorNonMerged2 = nonMerged2;
+
+        for (let i = 0; i < merged0.length; i++) {
+            const m = merged0[i];
+            this._renderMergedBlock(ctx, m.x - camera.x, m.y - camera.y, m.width, m.height, m.color, m.texture, m.opacity);
+        }
+        for (let i = 0; i < nonMerged0.length; i++) {
+            nonMerged0[i].render(ctx, camera, checkpointColors);
+        }
+
+        for (let i = 0; i < merged1.length; i++) {
+            const m = merged1[i];
+            this._renderMergedBlock(ctx, m.x - camera.x, m.y - camera.y, m.width, m.height, m.color, m.texture, m.opacity);
         }
         
-        return { layers: [this._layer0, this._layer1, this._layer2], checkpointColors };
+        return { layers: [nonMerged0, nonMerged1, nonMerged2], checkpointColors };
     }
 
     renderAbovePlayer(ctx, camera, checkpointColors) {
-        for (let i = 0; i < this._layer2.length; i++) {
-            this._layer2[i].render(ctx, camera, checkpointColors);
+        if (this._editorMerged2) {
+            for (let i = 0; i < this._editorMerged2.length; i++) {
+                const m = this._editorMerged2[i];
+                this._renderMergedBlock(ctx, m.x - camera.x, m.y - camera.y, m.width, m.height, m.color, m.texture, m.opacity);
+            }
+        }
+        const list = this._editorNonMerged2 || this._layer2;
+        for (let i = 0; i < list.length; i++) {
+            list[i].render(ctx, camera, checkpointColors);
         }
     }
     
@@ -2210,7 +2430,7 @@ class World {
         this.additionalAirjump = data.additionalAirjump || false;
         this.collideWithEachOther = data.collideWithEachOther !== false;
         this.mapName = data.mapName || 'Untitled Map';
-        this.dieLineY = data.dieLineY ?? 2000;
+        this.dieLineY = data.dieLineY ?? 1000;
         
         // Physics settings with defaults for backward compatibility
         this.playerSpeed = (typeof data.playerSpeed === 'number' && data.playerSpeed > 0) ? data.playerSpeed : DEFAULT_MOVE_SPEED;
@@ -2472,167 +2692,130 @@ class GameEngine {
         ctx.globalAlpha = 1;
     }
     
-    // Generate a single cloud shape (multiple rectangles combined with flat bottom)
-    generateCloudShape() {
-        const rects = [];
-        const numRects = 3 + Math.floor(Math.random() * 4); // 3-6 rectangles
-
-        const maxHeight = 30 + Math.random() * 50; // 30-80 height
-        const baseWidth = maxHeight * (2.5 + Math.random() * 2.5); // 2.5-5x width ratio
-
-        let currentX = 0;
-        for (let i = 0; i < numRects; i++) {
-            const rectWidth = (baseWidth / numRects) * (0.7 + Math.random() * 0.6);
-            const rectHeight = maxHeight * (0.4 + Math.random() * 0.6);
-
-            rects.push({
-                x: currentX,
-                y: maxHeight - rectHeight,
-                width: rectWidth,
-                height: rectHeight
-            });
-
-            currentX += rectWidth * (0.5 + Math.random() * 0.4);
-        }
-
-        // Compute actual bounding box from all rects
-        let totalWidth = 0;
-        for (const r of rects) {
-            totalWidth = Math.max(totalWidth, r.x + r.width);
-        }
-
-        return { rects, totalWidth, totalHeight: maxHeight };
-    }
-    
-    // Generate all clouds for the current session
     generateClouds() {
         this.clouds = [];
-        const numClouds = 10 + Math.floor(Math.random() * 6); // 10-15 clouds
-        
+        if (!CloudImages.loaded) return;
+
+        const numClouds = 10 + Math.floor(Math.random() * 6);
+
         const screenWidth = this.camera.width / this.camera.zoom;
         const screenHeight = this.camera.height / this.camera.zoom;
-        
-        // Wide horizontal spread for drift and parallax movement
+
         const cloudAreaWidth = screenWidth * 3;
-        const cloudAreaHeight = screenHeight * 0.45; // Upper 45% of screen
-        
+        const cloudAreaHeight = screenHeight * 0.45;
+
         let lastY = Math.random() * cloudAreaHeight + 15;
-        
+
         for (let i = 0; i < numClouds; i++) {
-            const shape = this.generateCloudShape();
-            
+            const imgIndex = Math.floor(Math.random() * CloudImages.images.length);
+            const img = CloudImages.images[imgIndex];
+
             const screenX = (i / numClouds) * cloudAreaWidth - cloudAreaWidth / 3 + (Math.random() - 0.5) * 200;
-            
-            // Each cloud's Y is 50-1000px different from the previous one
+
             const yOffset = (50 + Math.random() * 950) * (Math.random() < 0.5 ? -1 : 1);
             let screenY = lastY + yOffset;
-            // Keep within the cloud area
             if (screenY < 15) screenY = 15 + Math.random() * 100;
             if (screenY > cloudAreaHeight) screenY = cloudAreaHeight - Math.random() * 100;
             lastY = screenY;
-            
-            const scale = 0.8 + Math.random() * 1.4;
-            
-            const normalizedScale = (scale - 0.8) / 1.4;
+
+            const scale = 0.15 + Math.random() * 0.35;
+
+            const normalizedScale = (scale - 0.15) / 0.35;
             const parallaxFactor = 0.15 + normalizedScale * 0.35;
-            
+
             const opacity = 0.4 + normalizedScale * 0.35;
-            
-            const driftSpeed = -(14 + Math.random() * 22); // -14 to -36 px/s (faster)
-            
+
+            const driftSpeed = -(14 + Math.random() * 22);
+
             this.clouds.push({
                 screenX,
                 screenY,
                 scale,
-                shape,
+                imgIndex,
+                sourceWidth: img.naturalWidth || img.width,
+                sourceHeight: img.naturalHeight || img.height,
                 parallaxFactor,
                 opacity,
                 driftSpeed,
                 driftOffset: Math.random() * 5000
             });
         }
-        
+
         this.clouds.sort((a, b) => a.scale - b.scale);
         this.cloudsGenerated = true;
     }
-    
-    // Render clouds with parallax effect
+
     renderClouds() {
         const background = this.world?.background;
         if (background === 'custom') return;
-        
+        if (!CloudImages.loaded) return;
+
         if (!this.cloudsGenerated) {
             this.generateClouds();
         }
-        
+
         this.cloudTime += 1 / 60;
-        
+
         let cloudColor;
         if (background === 'galaxy') {
             cloudColor = this.world?.cloudColorGalaxy || '#9382a8';
         } else {
             cloudColor = this.world?.cloudColorSky || '#ffffff';
         }
-        
-        // Pre-render cloud images once (or when color changes)
+
         if (!this._cloudCacheColor || this._cloudCacheColor !== cloudColor) {
             this._cloudCacheColor = cloudColor;
             this._preRenderCloudImages(cloudColor);
         }
-        
+
         const viewWidth = this.camera.width / this.camera.zoom;
         const viewHeight = this.camera.height / this.camera.zoom;
         const cameraX = this.camera.x;
         const cameraY = this.camera.y;
         const wrapWidth = viewWidth * 3;
-        
+
         let lastAlpha = -1;
         for (const cloud of this.clouds) {
             const cloudWidth = cloud._cachedWidth;
             const cloudHeight = cloud._cachedHeight;
-            
+
             const driftX = cloud.driftOffset + this.cloudTime * cloud.driftSpeed;
             const parallaxX = -cameraX * cloud.parallaxFactor;
             const parallaxY = -cameraY * cloud.parallaxFactor;
-            
+
             let screenX = cloud.screenX + driftX + parallaxX;
             const screenY = cloud.screenY + parallaxY;
-            
+
             screenX = ((screenX % wrapWidth) + wrapWidth) % wrapWidth - viewWidth * 0.5;
-            
+
             if (screenY + cloudHeight < -50 || screenY > viewHeight + 50) continue;
             if (screenX + cloudWidth < -50 || screenX > viewWidth + 50) continue;
-            
+
             if (cloud.opacity !== lastAlpha) { this.ctx.globalAlpha = cloud.opacity; lastAlpha = cloud.opacity; }
             this.ctx.drawImage(cloud._cachedImage, screenX, screenY);
         }
         this.ctx.globalAlpha = 1;
     }
-    
+
     _preRenderCloudImages(color) {
         for (const cloud of this.clouds) {
-            const w = Math.ceil(cloud.shape.totalWidth * cloud.scale) + 2;
-            const h = Math.ceil(cloud.shape.totalHeight * cloud.scale) + 2;
+            const w = Math.ceil(cloud.sourceWidth * cloud.scale) + 2;
+            const h = Math.ceil(cloud.sourceHeight * cloud.scale) + 2;
             const offscreen = document.createElement('canvas');
             offscreen.width = w;
             offscreen.height = h;
             const offCtx = offscreen.getContext('2d');
+            const img = CloudImages.images[cloud.imgIndex];
+            offCtx.drawImage(img, 0, 0, w, h);
+            offCtx.globalCompositeOperation = 'source-in';
             offCtx.fillStyle = color;
-            for (const rect of cloud.shape.rects) {
-                offCtx.fillRect(
-                    rect.x * cloud.scale,
-                    rect.y * cloud.scale,
-                    rect.width * cloud.scale,
-                    rect.height * cloud.scale
-                );
-            }
+            offCtx.fillRect(0, 0, w, h);
             cloud._cachedImage = offscreen;
             cloud._cachedWidth = w;
             cloud._cachedHeight = h;
         }
     }
-    
-    // Regenerate clouds (call when starting new game or resetting)
+
     regenerateClouds() {
         this.cloudsGenerated = false;
         this.cloudTime = 0;
@@ -3127,7 +3310,7 @@ class GameEngine {
                 }
                 
                 // Die line check
-                const dieLineY = this.world.dieLineY ?? 2000;
+                const dieLineY = this.world.dieLineY ?? 1000;
                 if (this.localPlayer.y > dieLineY) {
                     if (this.invincibilityEnabled) {
                         if (!this._voidConfirmShowing) {
