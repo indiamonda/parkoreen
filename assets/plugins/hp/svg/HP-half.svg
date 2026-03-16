@@ -1,9 +1,0 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <clipPath id="half-clip">
-      <rect x="0" y="0" width="32" height="64"/>
-    </clipPath>
-  </defs>
-  <path d="M32 56 C32 56 8 40 8 22 C8 14 14 8 22 8 C27 8 31 11 32 14 C33 11 37 8 42 8 C50 8 56 14 56 22 C56 40 32 56 32 56Z" fill="#333333" stroke="#555555" stroke-width="2" opacity="0.5"/>
-  <path d="M32 56 C32 56 8 40 8 22 C8 14 14 8 22 8 C27 8 31 11 32 14 C33 11 37 8 42 8 C50 8 56 14 56 22 C56 40 32 56 32 56Z" fill="#E53935" stroke="#B71C1C" stroke-width="2" clip-path="url(#half-clip)"/>
-</svg>

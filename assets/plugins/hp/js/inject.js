@@ -9,15 +9,12 @@
     // Get config from world or use defaults
     const config = world?.plugins?.hp || { defaultHP: 3 };
     
-    // Load HP SVG images (full, half, empty)
+    // Load HP SVG images (full, empty)
     const hpFullImg = new Image();
     hpFullImg.src = 'assets/plugins/hp/svg/HP-full.svg';
     
-    const hpHalfImg = new Image();
-    hpHalfImg.src = 'assets/plugins/hp/svg/HP-half.svg';
-    
     const hpEmptyImg = new Image();
-    hpEmptyImg.src = 'assets/plugins/hp/svg/hpempty.svg';
+    hpEmptyImg.src = 'assets/plugins/hp/svg/empty.svg';
     
     // ============================================
     // PLAYER INITIALIZATION HOOK
@@ -25,11 +22,8 @@
     pluginManager.registerHook('player.init', (data) => {
         const { player } = data;
         
-        // Each mask has 2 hit points (full → half → empty)
-        const masks = config.defaultHP;
-        player.hp = masks * 2;
-        player.maxHP = masks * 2;
-        player.hpMasks = masks;
+        player.hp = config.defaultHP;
+        player.maxHP = config.defaultHP;
         player.useHPSystem = true;
         player.invincibleUntil = 0;
         player.safeGroundHistory = [];
@@ -269,23 +263,19 @@
         const hpSize = 24;
         const hpSpacing = 28;
         let currentX = xOffset;
-        const masks = player.hpMasks || Math.ceil(player.maxHP / 2);
         
-        for (let i = 0; i < masks; i++) {
+        for (let i = 0; i < player.maxHP; i++) {
             const hpX = currentX + i * hpSpacing;
             const hpY = yOffset;
-            const pointsInMask = player.hp - i * 2;
             
-            if (pointsInMask >= 2) {
+            if (i < player.hp) {
                 if (hpFullImg.complete) ctx.drawImage(hpFullImg, hpX, hpY, hpSize, hpSize);
-            } else if (pointsInMask === 1) {
-                if (hpHalfImg.complete) ctx.drawImage(hpHalfImg, hpX, hpY, hpSize, hpSize);
             } else {
                 if (hpEmptyImg.complete) ctx.drawImage(hpEmptyImg, hpX, hpY, hpSize, hpSize);
             }
         }
         
-        data.xOffset = currentX + masks * hpSpacing + 10;
+        data.xOffset = currentX + player.maxHP * hpSpacing + 10;
         return data;
     }, pluginId, 20);
     

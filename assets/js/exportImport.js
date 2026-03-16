@@ -21,6 +21,8 @@ const PKRN_DEFAULTS = {
     defaultBlockColor: '#787878',
     defaultSpikeColor: '#c45a3f',
     defaultTextColor: '#000000',
+    cloudColorSky: '#ffffff',
+    cloudColorGalaxy: '#9382a8',
     checkpointDefaultColor: '#808080',
     checkpointActiveColor: '#4CAF50',
     checkpointTouchedColor: '#2196F3',
@@ -28,7 +30,7 @@ const PKRN_DEFAULTS = {
     infiniteJumps: false,
     additionalAirjump: false,
     collideWithEachOther: true,
-    dieLineY: 2000,
+    dieLineY: 1000,
     playerSpeed: 5,
     jumpForce: -14,
     gravity: 0.8,
@@ -403,6 +405,8 @@ class ExportManager {
                 defaultBlockColor: world.defaultBlockColor,
                 defaultSpikeColor: world.defaultSpikeColor,
                 defaultTextColor: world.defaultTextColor,
+                cloudColorSky: world.cloudColorSky,
+                cloudColorGalaxy: world.cloudColorGalaxy,
                 checkpointDefaultColor: world.checkpointDefaultColor,
                 checkpointActiveColor: world.checkpointActiveColor,
                 checkpointTouchedColor: world.checkpointTouchedColor,
@@ -460,8 +464,23 @@ class ExportManager {
             l: obj.layer,
             r: obj.rotation,
             fh: obj.flipHorizontal ? 1 : 0,
-            n: obj.name
+            n: obj.name,
+            tex: obj.texture || 'solid'
         };
+
+        // Spinner-specific properties
+        if (obj.type === 'spinner' || obj.appearanceType === 'spinner') {
+            data.ss = obj.spinSpeed !== undefined ? obj.spinSpeed : 1;
+        }
+
+        // Button-specific properties
+        if (obj.appearanceType === 'button' || obj.actingType === 'button') {
+            if (obj.displayName) data.bdn = obj.displayName;
+            if (obj.displayDescription) data.bdd = obj.displayDescription;
+            if (obj.buttonVisible === false) data.bv = 0;
+            if (obj.buttonWidth) data.bw = obj.buttonWidth;
+            if (obj.buttonHeight) data.bh = obj.buttonHeight;
+        }
 
         // Text-specific properties
         if (obj.type === 'text') {
@@ -694,6 +713,8 @@ class ImportManager {
             defaultBlockColor: getString(settings.defaultBlockColor, PKRN_DEFAULTS.defaultBlockColor),
             defaultSpikeColor: getString(settings.defaultSpikeColor, PKRN_DEFAULTS.defaultSpikeColor),
             defaultTextColor: getString(settings.defaultTextColor, PKRN_DEFAULTS.defaultTextColor),
+            cloudColorSky: getString(settings.cloudColorSky, PKRN_DEFAULTS.cloudColorSky),
+            cloudColorGalaxy: getString(settings.cloudColorGalaxy, PKRN_DEFAULTS.cloudColorGalaxy),
             checkpointDefaultColor: getString(settings.checkpointDefaultColor, PKRN_DEFAULTS.checkpointDefaultColor),
             checkpointActiveColor: getString(settings.checkpointActiveColor, PKRN_DEFAULTS.checkpointActiveColor),
             checkpointTouchedColor: getString(settings.checkpointTouchedColor, PKRN_DEFAULTS.checkpointTouchedColor),
@@ -844,8 +865,23 @@ class ImportManager {
             layer: obj.l !== undefined ? obj.l : (obj.layer !== undefined ? obj.layer : 1),
             rotation: obj.r || obj.rotation || 0,
             flipHorizontal: obj.fh ? !!obj.fh : (obj.flipHorizontal || false),
-            name: obj.n || obj.name || 'Object'
+            name: obj.n || obj.name || 'Object',
+            texture: obj.tex || obj.texture || 'solid'
         };
+
+        // Spinner-specific properties
+        if (data.type === 'spinner' || data.appearanceType === 'spinner') {
+            data.spinSpeed = obj.ss !== undefined ? obj.ss : (obj.spinSpeed !== undefined ? obj.spinSpeed : 1);
+        }
+
+        // Button-specific properties
+        if (data.appearanceType === 'button' || data.actingType === 'button') {
+            data.displayName = obj.bdn || obj.displayName || '';
+            data.displayDescription = obj.bdd || obj.displayDescription || '';
+            data.buttonVisible = obj.bv !== undefined ? !!obj.bv : (obj.buttonVisible !== false);
+            data.buttonWidth = obj.bw || obj.buttonWidth || null;
+            data.buttonHeight = obj.bh || obj.buttonHeight || null;
+        }
 
         // Text-specific properties
         if (data.type === 'text') {

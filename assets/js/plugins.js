@@ -22,7 +22,7 @@ class PluginManager {
     
     async discoverPlugins() {
         // List of known plugins (could be made dynamic later)
-        const pluginIds = ['hp', 'hk', 'code'];
+        const pluginIds = ['hp', 'hk', 'cj', 'code'];
         
         for (const id of pluginIds) {
             try {

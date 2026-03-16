@@ -293,6 +293,8 @@
                         player.vy = worldJumpForce * pogoMultiplier;
                         player.monarchWingsUsed = 0;
                         player._pogoJumping = true;
+                        player.isOnGround = false;
+                        player.canJump = false;
                     } else if (player.attackDirection === 'up') {
                         player.vy = 2;
                         player._hitUpward = true;
@@ -600,9 +602,7 @@
             ctx.save();
             ctx.globalAlpha = 1 - progress * 0.5; // Fade out as attack progresses
             
-            // Draw oval attack effect
             ctx.strokeStyle = '#fff';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = 2;
 
             if (player.attackDirection === 'up') {
@@ -610,32 +610,24 @@
                 const cy = screenY + hitbox.height;
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, hitbox.width / 2, hitbox.height, 0, Math.PI, Math.PI * 2);
-                ctx.closePath();
-                ctx.fill();
                 ctx.stroke();
             } else if (player.attackDirection === 'down') {
                 const cx = screenX + hitbox.width / 2;
                 const cy = screenY;
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, hitbox.width / 2, hitbox.height, 0, 0, Math.PI);
-                ctx.closePath();
-                ctx.fill();
                 ctx.stroke();
             } else if (player.facingDirection > 0) {
                 const cx = screenX;
                 const cy = screenY + hitbox.height / 2;
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, hitbox.width, hitbox.height / 2, 0, -Math.PI / 2, Math.PI / 2);
-                ctx.closePath();
-                ctx.fill();
                 ctx.stroke();
             } else {
                 const cx = screenX + hitbox.width;
                 const cy = screenY + hitbox.height / 2;
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, hitbox.width, hitbox.height / 2, 0, Math.PI / 2, Math.PI * 3 / 2);
-                ctx.closePath();
-                ctx.fill();
                 ctx.stroke();
             }
             
