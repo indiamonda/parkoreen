@@ -353,17 +353,21 @@ class Editor {
                     <span class="material-symbols-outlined">grid_on</span>
                     <span class="toolbar-btn-label">Grid (H)</span>
                 </button>
-                <button class="toolbar-btn" data-action="toggle-invincibility" title="Invincibility">
-                    <span class="material-symbols-outlined">shield</span>
-                    <span class="toolbar-btn-label">Invincible</span>
-                </button>
-                <button class="toolbar-btn" data-action="toggle-touchboxes" title="Show Touchboxes">
-                    <span class="material-symbols-outlined">select_check_box</span>
-                    <span class="toolbar-btn-label">Touchbox</span>
-                </button>
             </div>
             <button class="toolbar-btn toolbar-expand-btn" id="toolbar-expand-btn" title="More Tools">
                 <span class="material-symbols-outlined toolbar-expand-icon">chevron_right</span>
+            </button>
+            <button class="toolbar-btn hidden test-mode-tool" data-action="toggle-invincibility" title="Invincibility">
+                <span class="material-symbols-outlined">shield</span>
+                <span class="toolbar-btn-label">Invincible</span>
+            </button>
+            <button class="toolbar-btn hidden test-mode-tool" data-action="toggle-touchboxes" title="Show Touchboxes">
+                <span class="material-symbols-outlined">select</span>
+                <span class="toolbar-btn-label">Touchbox</span>
+            </button>
+            <button class="toolbar-btn hidden test-mode-tool" data-action="respawn" title="Respawn at Checkpoint">
+                <span class="material-symbols-outlined">restart_alt</span>
+                <span class="toolbar-btn-label">Respawn</span>
             </button>
         `;
         document.body.appendChild(toolbar);
@@ -4709,6 +4713,9 @@ class Editor {
             case 'toggle-touchboxes':
                 this.toggleTouchboxes();
                 break;
+            case 'respawn':
+                this.respawnAtCheckpoint();
+                break;
         }
     }
     
@@ -4732,6 +4739,18 @@ class Editor {
         this.showTouchboxes = !this.showTouchboxes;
         const btn = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
         if (btn) btn.classList.toggle('active', this.showTouchboxes);
+    }
+
+    respawnAtCheckpoint() {
+        if (this.engine.state !== GameState.TESTING || !this.engine.localPlayer) return;
+        this.engine.respawnPlayer();
+        this.engine.localPlayer.isFlying = this.isFlying;
+        if (window.PluginManager) {
+            if (!this.engine._respawnData) this.engine._respawnData = {};
+            this.engine._respawnData.player = this.engine.localPlayer;
+            this.engine._respawnData.world = this.engine.world;
+            window.PluginManager.executeHook('player.respawn', this.engine._respawnData);
+        }
     }
 
     rotateObjectUnderMouse(degrees) {
@@ -7075,17 +7094,19 @@ class Editor {
         this.ui.toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
             const tool = btn.dataset.tool;
             const action = btn.dataset.action;
-            // Show only fly, zoom-in, zoom-out
             if (tool === 'fly' || action === 'zoom-in' || action === 'zoom-out') {
+                btn.classList.remove('hidden');
+            } else if (btn.classList.contains('test-mode-tool')) {
                 btn.classList.remove('hidden');
             } else {
                 btn.classList.add('hidden');
             }
         });
-        // Hide dividers
         this.ui.toolbar.querySelectorAll('.toolbar-divider').forEach(div => {
             div.classList.add('hidden');
         });
+        const extraEl = document.getElementById('toolbar-extra');
+        if (extraEl) extraEl.classList.add('hidden');
         
         this.closePanel('config');
         this.closePanel('layers');
@@ -7119,11 +7140,17 @@ class Editor {
         // Restore full toolbar
         this.ui.toolbar.classList.remove('hidden');
         this.ui.toolbar.querySelectorAll('.toolbar-btn').forEach(btn => {
-            btn.classList.remove('hidden');
+            if (btn.classList.contains('test-mode-tool')) {
+                btn.classList.add('hidden');
+            } else {
+                btn.classList.remove('hidden');
+            }
         });
         this.ui.toolbar.querySelectorAll('.toolbar-divider').forEach(div => {
             div.classList.remove('hidden');
         });
+        const extraEl = document.getElementById('toolbar-extra');
+        if (extraEl) extraEl.classList.remove('hidden');
         
         // Restore correct button active states
         this.ui.toolbar.querySelectorAll('.toolbar-btn[data-tool]').forEach(btn => {
