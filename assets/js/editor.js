@@ -8569,16 +8569,18 @@ class Editor {
             ctx.strokeRect(sx, sy, bw, bh);
         };
 
-        // World objects
         const objects = this.world?.objects;
         if (objects) {
+            const gs = GRID_SIZE;
+            const collisionBlocks = [];
+            const nonMergeableCollision = [];
+
             for (let i = 0; i < objects.length; i++) {
                 const obj = objects[i];
                 const at = obj.appearanceType;
                 const act = obj.actingType;
 
                 if (act === 'spike' || obj.type === 'spinner' || at === 'spinner') {
-                    // Red: spike/spinner danger touchbox
                     if (obj.type === 'spinner' || at === 'spinner') {
                         const cx = obj.x + obj.width / 2 - camera.x;
                         const cy = obj.y + obj.height / 2 - camera.y;
@@ -8602,35 +8604,82 @@ class Editor {
                                 const t = player.getSpikeTip(obj);
                                 drawBox(t.x, t.y, t.width, t.height, '#ff0000');
                             }
-                            // Blue: spike flat part ground touchbox
                             const f = player.getSpikeFlat(obj);
                             drawBox(f.x, f.y, f.width, f.height, '#2196f3');
                         }
                     }
                 } else if (at === 'zone' || at === 'button') {
-                    // Purple: zones and buttons
                     drawBox(obj.x, obj.y, obj.width, obj.height, '#a855f7');
                 } else if (obj.type === 'teleportal' || at === 'teleportal') {
-                    // Cyan: teleportals
                     drawBox(obj.x, obj.y, obj.width, obj.height, '#00e5ff');
                 } else if (at === 'spawnpoint' || at === 'endpoint' || at === 'checkpoint') {
-                    // Green: koreens (spawn, endpoint, checkpoint)
                     drawBox(obj.x, obj.y, obj.width, obj.height, '#4caf50');
                 } else if (obj.collision) {
-                    // Blue: ground / solid blocks
-                    drawBox(obj.x, obj.y, obj.width, obj.height, '#2196f3');
+                    if (obj.type === 'block' && obj.rotation === 0 && !obj.flipHorizontal &&
+                        obj.width === gs && obj.height === gs &&
+                        Math.round(obj.x) % gs === 0 && Math.round(obj.y) % gs === 0) {
+                        collisionBlocks.push(obj);
+                    } else {
+                        nonMergeableCollision.push(obj);
+                    }
                 }
+            }
+
+            // Greedy-merge collision blocks into larger rectangles
+            if (collisionBlocks.length > 0) {
+                const grid = new Set();
+                for (let i = 0; i < collisionBlocks.length; i++) {
+                    const gx = Math.round(collisionBlocks[i].x / gs);
+                    const gy = Math.round(collisionBlocks[i].y / gs);
+                    grid.add(`${gx},${gy}`);
+                }
+                collisionBlocks.sort((a, b) => {
+                    const ay = Math.round(a.y / gs), by = Math.round(b.y / gs);
+                    if (ay !== by) return ay - by;
+                    return Math.round(a.x / gs) - Math.round(b.x / gs);
+                });
+                const visited = new Set();
+                for (let i = 0; i < collisionBlocks.length; i++) {
+                    const startGx = Math.round(collisionBlocks[i].x / gs);
+                    const startGy = Math.round(collisionBlocks[i].y / gs);
+                    const sk = `${startGx},${startGy}`;
+                    if (visited.has(sk)) continue;
+
+                    let endGx = startGx;
+                    while (grid.has(`${endGx + 1},${startGy}`) && !visited.has(`${endGx + 1},${startGy}`)) endGx++;
+
+                    let endGy = startGy;
+                    let canExtend = true;
+                    while (canExtend) {
+                        const ny = endGy + 1;
+                        for (let gx = startGx; gx <= endGx; gx++) {
+                            if (!grid.has(`${gx},${ny}`) || visited.has(`${gx},${ny}`)) { canExtend = false; break; }
+                        }
+                        if (canExtend) endGy = ny;
+                    }
+
+                    for (let gy = startGy; gy <= endGy; gy++) {
+                        for (let gx = startGx; gx <= endGx; gx++) {
+                            visited.add(`${gx},${gy}`);
+                        }
+                    }
+
+                    drawBox(startGx * gs, startGy * gs, (endGx - startGx + 1) * gs, (endGy - startGy + 1) * gs, '#2196f3');
+                }
+            }
+
+            for (let i = 0; i < nonMergeableCollision.length; i++) {
+                const obj = nonMergeableCollision[i];
+                drawBox(obj.x, obj.y, obj.width, obj.height, '#2196f3');
             }
         }
 
         // Player touchboxes
         const player = this.engine.localPlayer;
         if (player && !player.isDead) {
-            // Yellow: player ground touchbox
             const gt = player.getGroundTouchbox();
             drawBox(gt.x, gt.y, gt.width, gt.height, '#ffeb3b');
 
-            // Orange: player hurt/spike touchbox
             const ht = player.getHurtTouchbox();
             drawBox(ht.x, ht.y, ht.width, ht.height, '#ff9800');
         }
