@@ -1579,6 +1579,10 @@ class Editor {
                                 <button class="placement-opt-btn" id="object-edit-spin-dir-ccw" data-spin-dir="-1">Counter-CW</button>
                             </div>
                         </div>
+                        <div style="margin-top: 8px;">
+                            <label class="form-label">Damage Amount</label>
+                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-damage" min="0" step="1" value="1" style="width: 72px;">
+                        </div>
                     </div>
 
                     <div class="form-group" id="object-edit-spike-group" style="display: none;">
@@ -1611,6 +1615,10 @@ class Editor {
                         <div id="object-edit-spike-attached" style="margin-top: 8px; padding: 8px; background: rgba(255,193,7,0.15); border-radius: 6px; font-size: 11px; color: #ffc107; line-height: 1.4; display: none;">
                             <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">info</span>
                             This spike is attached to ground - its flat side will act as ground regardless of the touchbox setting.
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <label class="form-label">Damage Amount</label>
+                            <input type="number" class="form-input form-input-sm" id="object-edit-spike-damage" min="0" step="1" value="1" style="width: 72px;">
                         </div>
                     </div>
                     
@@ -1812,6 +1820,24 @@ class Editor {
                     this.triggerMapChange();
                 }
             });
+        });
+
+        // Spinner damage amount
+        document.getElementById('object-edit-spinner-damage').addEventListener('change', (e) => {
+            if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
+                this.editingObject.damageAmount = Math.max(0, parseInt(e.target.value) || 1);
+                e.target.value = this.editingObject.damageAmount;
+                this.triggerMapChange();
+            }
+        });
+
+        // Spike damage amount
+        document.getElementById('object-edit-spike-damage').addEventListener('change', (e) => {
+            if (this.editingObject && (this.editingObject.appearanceType === 'spike' || this.editingObject.actingType === 'spike')) {
+                this.editingObject.damageAmount = Math.max(0, parseInt(e.target.value) || 1);
+                e.target.value = this.editingObject.damageAmount;
+                this.triggerMapChange();
+            }
         });
 
         // Spike touchbox
@@ -2522,6 +2548,7 @@ class Editor {
             const dir = obj.spinDirection || 1;
             document.getElementById('object-edit-spin-dir-cw').classList.toggle('active', dir === 1);
             document.getElementById('object-edit-spin-dir-ccw').classList.toggle('active', dir === -1);
+            document.getElementById('object-edit-spinner-damage').value = obj.damageAmount !== undefined ? obj.damageAmount : 1;
         } else {
             spinnerGroup.style.display = 'none';
         }
@@ -2543,6 +2570,7 @@ class Editor {
             } else {
                 dropHurtOnlySelect.value = '';
             }
+            document.getElementById('object-edit-spike-damage').value = obj.damageAmount !== undefined ? obj.damageAmount : 1;
         } else {
             spikeGroup.style.display = 'none';
         }
@@ -8680,10 +8708,10 @@ class Editor {
         ctx.setLineDash([15 / camera.zoom, 10 / camera.zoom]);
         
         ctx.beginPath();
-        ctx.moveTo(-camera.x, screenY);
-        ctx.lineTo(-camera.x + camera.width / camera.zoom, screenY);
+        ctx.moveTo(0, screenY);
+        ctx.lineTo(camera.width / camera.zoom, screenY);
         ctx.stroke();
-        
+
         // Draw label
         const fontSize = 14 / camera.zoom;
         ctx.font = `bold ${fontSize}px monospace`;
@@ -8691,17 +8719,17 @@ class Editor {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
         ctx.setLineDash([]);
-        
+
         // Background for text
         const text = '☠ DEATH LINE - Players die below this point';
         const textWidth = ctx.measureText(text).width;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         const padding = 10 / camera.zoom;
-        ctx.fillRect(-camera.x + padding, screenY - 24 / camera.zoom, textWidth + padding, 22 / camera.zoom);
+        ctx.fillRect(padding, screenY - 24 / camera.zoom, textWidth + padding, 22 / camera.zoom);
         
         // Text
         ctx.fillStyle = '#ff3333';
-        ctx.fillText(text, -camera.x + 15 / camera.zoom, screenY - 6 / camera.zoom);
+        ctx.fillText(text, 15 / camera.zoom, screenY - 6 / camera.zoom);
         
         ctx.restore();
     }

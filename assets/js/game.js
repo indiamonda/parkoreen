@@ -514,10 +514,10 @@ class Player {
         const r = spike.rotation || 0;
         const w = spike.width;
         const h = spike.height;
-        // Danger zone covers the lower body of the spike, barely overlapping the flat base.
-        // Flat zone is 22% from base (78%-100%). Danger spans 48%-86%.
-        const dangerStart = 0.48;
-        const dangerLen = 0.38;
+        // Danger zone sits near the flat base of the spike.
+        // Flat zone is 22% from base (78%-100%). Danger spans 58%-86%.
+        const dangerStart = 0.58;
+        const dangerLen = 0.28;
         const b = this._spikeDanger || (this._spikeDanger = { x: 0, y: 0, width: 0, height: 0 });
         if (r === 0 || (r !== 90 && r !== 180 && r !== 270)) {
             b.x = spike.x; b.y = spike.y + h * dangerStart; b.width = w; b.height = h * dangerLen;
@@ -896,6 +896,9 @@ class WorldObject {
         
         // Zone-specific property
         this.zoneName = config.zoneName || null;
+
+        // Damage amount (for spikes and spinners)
+        this.damageAmount = config.damageAmount !== undefined ? config.damageAmount : 1;
 
         // Spinner-specific properties
         this.spinSpeed = config.spinSpeed !== undefined ? config.spinSpeed : 1;

@@ -156,10 +156,10 @@
             return data;
         }
         
-        // Take damage
-        player.hp--;
-        player.invincibleUntil = now + 1000; // 1 second invincibility
-        player.damageStunUntil = now + 500; // 0.5 second stun (can't move)
+        const dmg = (source && source.damageAmount !== undefined) ? source.damageAmount : 1;
+        player.hp -= dmg;
+        player.invincibleUntil = now + 1000;
+        player.damageStunUntil = now + 500;
         
         // Store original color if not already stored
         if (!player.originalColor) {

@@ -468,6 +468,11 @@ class ExportManager {
             tex: obj.texture || 'solid'
         };
 
+        // Damage amount (spikes and spinners)
+        if (obj.damageAmount !== undefined && obj.damageAmount !== 1) {
+            data.da = obj.damageAmount;
+        }
+
         // Spinner-specific properties
         if (obj.type === 'spinner' || obj.appearanceType === 'spinner') {
             data.ss = obj.spinSpeed !== undefined ? obj.spinSpeed : 1;
@@ -869,6 +874,11 @@ class ImportManager {
             name: obj.n || obj.name || 'Object',
             texture: obj.tex || obj.texture || 'solid'
         };
+
+        // Damage amount (spikes and spinners)
+        if (obj.da !== undefined || obj.damageAmount !== undefined) {
+            data.damageAmount = obj.da !== undefined ? obj.da : obj.damageAmount;
+        }
 
         // Spinner-specific properties
         if (data.type === 'spinner' || data.appearanceType === 'spinner') {
