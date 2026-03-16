@@ -1,0 +1,24 @@
+{
+    "id": "cj",
+    "name": "Controllable Jump",
+    "version": "1.0.0",
+    "description": "Adds variable jump height. Hold the jump key to jump higher, tap for a short hop. Release the jump key mid-air to cut upward velocity.",
+    "author": "Parkoreen",
+    "color": "#4CAF50",
+    "coverHeight": 120,
+    "dependencies": [],
+    "scripts": {
+        "globals": "js/globals.js",
+        "inject": "js/inject.js"
+    },
+    "config": {
+        "cutStrength": {
+            "type": "number",
+            "label": "Cut Strength",
+            "description": "How much upward velocity is preserved when jump is released (0.0 = instant stop, 1.0 = no cut). Lower = more control.",
+            "default": 0.4,
+            "min": 0,
+            "max": 1
+        }
+    }
+}

@@ -6,7 +6,7 @@
     "author": "Parkoreen",
     "color": "#667eea",
     "coverHeight": 120,
-    "dependencies": ["hp"],
+    "dependencies": ["cj", "hp"],
     "scripts": {
         "globals": "js/globals.js",
         "inject": "js/inject.js",

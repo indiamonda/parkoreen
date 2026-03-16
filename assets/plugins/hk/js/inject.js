@@ -448,16 +448,6 @@
             }
         }
         
-        // ===== VARIABLE JUMP HEIGHT =====
-        // When jump is released while ascending, cut the upward velocity
-        // BUT don't interfere with pogo bounce or upward hit
-        if (!player.input?.jump && player.vy < 0 && !player.isOnGround && !player._pogoJumping) {
-            // Cap upward velocity to -2 so player starts falling sooner
-            if (player.vy < -2) {
-                player.vy = -2;
-            }
-        }
-        
         // Reset pogo jumping flag when player starts falling or lands
         if (player._pogoJumping && (player.vy >= 0 || player.isOnGround)) {
             player._pogoJumping = false;
