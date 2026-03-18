@@ -3963,9 +3963,9 @@ class Editor {
         // Ensure HK config object exists with defaults
         if (!this.world.plugins.hk) {
             this.world.plugins.hk = {
-                defaultGravity: 1.14,
-                defaultCameraLerpX: 0.04,  // Very smooth horizontal
-                defaultCameraLerpY: 0.15,  // Slightly above default vertical
+                defaultGravity: 0.71,
+                defaultCameraLerpX: 0.15,  // Very smooth horizontal
+                defaultCameraLerpY: 0.04,  // Slightly above default vertical
                 maxSoul: 99,
                 monarchWing: false,
                 monarchWingAmount: 1,
@@ -7595,17 +7595,17 @@ class Editor {
         
         // Die line Y
         const dieLineY = document.getElementById('config-die-line-y');
-        if (dieLineY) dieLineY.value = this.world.dieLineY || 2000;
+        if (dieLineY) dieLineY.value = this.world.dieLineY || 1000;
         
         // Physics settings
         const playerSpeed = document.getElementById('config-player-speed');
         if (playerSpeed) playerSpeed.value = this.world.playerSpeed || 5;
         
         const jumpForce = document.getElementById('config-jump-force');
-        if (jumpForce) jumpForce.value = this.world.jumpForce || -14;
+        if (jumpForce) jumpForce.value = this.world.jumpForce || -13.2;
         
         const gravity = document.getElementById('config-gravity');
-        if (gravity) gravity.value = this.world.gravity || 0.8;
+        if (gravity) gravity.value = this.world.gravity || 0.71;
         
         const cameraLerpX = document.getElementById('config-camera-lerp-x');
         const cameraLerpXValue = document.getElementById('config-camera-lerp-x-value');
