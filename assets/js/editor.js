@@ -881,8 +881,8 @@ class Editor {
                     <div class="config-section-content">
                     <div class="form-group">
                             <label class="form-label">Gravity</label>
-                            <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.8">
-                            <small style="color: #888; font-size: 11px;">Default: 0.8 - Higher = faster fall</small>
+                            <input type="number" class="form-input" id="config-gravity" min="0.1" step="0.1" value="0.71">
+                            <small style="color: #888; font-size: 11px;">Default: 0.71 - Higher = faster fall</small>
                     </div>
                         <div class="form-group">
                             <label class="form-label">Camera Horizontal Smoothness</label>
@@ -3548,7 +3548,7 @@ class Editor {
 
         document.getElementById('config-gravity').addEventListener('change', (e) => {
             const value = parseFloat(e.target.value);
-            this.world.gravity = (value > 0) ? value : 0.8;
+            this.world.gravity = (value > 0) ? value : 0.71;
             e.target.value = this.world.gravity;
             this.triggerMapChange();
         });
