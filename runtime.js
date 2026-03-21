@@ -26,6 +26,13 @@ async function fetchWithTimeout(url, options = {}, timeout = API_TIMEOUT) {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
+
+        if (response.status === 401 && window.Auth) {
+            window.Auth.logout();
+            const currentPath = window.location.pathname + window.location.search;
+            window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(currentPath);
+        }
+
         return response;
     } catch (error) {
         clearTimeout(timeoutId);
