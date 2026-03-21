@@ -1212,7 +1212,8 @@ class SettingsManager {
         this.defaults = {
             volume: 100,
             touchscreenMode: false,
-            fontSize: 100 // percentage (50-150)
+            fontSize: 100, // percentage (50-150)
+            keyboardLayout: 'jimmyqrg'
         };
         this.settings = { ...this.defaults };
         this.load();

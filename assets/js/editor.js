@@ -824,54 +824,6 @@ class Editor {
                     </div>
                 </div>
                 
-                <!-- Keyboard -->
-                <div class="config-section collapsible">
-                    <div class="config-section-header">
-                        <span class="config-section-title">Keyboard</span>
-                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
-                    </div>
-                    <div class="config-section-content">
-                    <div class="form-group">
-                            <label class="form-label">Layout</label>
-                            <select class="form-select" id="config-keyboard-layout">
-                                <option value="jimmyqrg">JimmyQrg (Default)</option>
-                                <option value="default">Parkoreen</option>
-                                <option value="hk">Hollow Knight Original</option>
-                            </select>
-                            <small style="color: #888; font-size: 11px;">Applies in test mode & room play only</small>
-                        </div>
-                        <div id="keyboard-layout-info" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px; color: #aaa; line-height: 1.6;">
-                            <div id="keyboard-info-jimmyqrg">
-                                <strong style="color: #fff;">JimmyQrg (Default):</strong><br>
-                                Move: A/D<br>
-                                Jump: W<br>
-                                Attack: N<br>
-                                Heal: LeftShift<br>
-                                Dash: , (comma)<br>
-                                Super Dash: F<br>
-                                Up/Down: ↑/↓
-                            </div>
-                            <div id="keyboard-info-default" style="display: none;">
-                                <strong style="color: #fff;">Parkoreen:</strong><br>
-                                Move: A/D or ←/→<br>
-                                Jump: Space or W or ↑<br>
-                                Up/Down: W/S or ↑/↓<br>
-                                <span style="color: #667eea;">Plugin:</span> Attack: X, Heal: F, Dash: , (comma), Super Dash: . (period)
-                            </div>
-                            <div id="keyboard-info-hk" style="display: none;">
-                                <strong style="color: #fff;">Hollow Knight Original:</strong><br>
-                                Move: ←/→<br>
-                                Jump: Z<br>
-                                Attack: X<br>
-                                Heal: A<br>
-                                Dash: C<br>
-                                Super Dash: S<br>
-                                Up/Down: ↑/↓
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- World -->
                 <div class="config-section collapsible">
                     <div class="config-section-header">
@@ -1495,6 +1447,23 @@ class Editor {
                         <input type="checkbox" id="settings-touchscreen">
                         <span class="toggle-slider"></span>
                     </label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Keyboard Layout</label>
+                    <select class="form-select" id="settings-keyboard-layout">
+                        <option value="jimmyqrg">JimmyQrg (Default)</option>
+                        <option value="hk">Hollow Knight Original</option>
+                    </select>
+                    <div id="settings-keyboard-info" style="margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 11px; color: #aaa; line-height: 1.5;">
+                        <div id="settings-kb-jimmyqrg">
+                            Move: A/D &nbsp; Jump: W &nbsp; Up/Down: ↑/↓<br>
+                            Attack: N &nbsp; Heal: Shift &nbsp; Dash: , &nbsp; Super Dash: F
+                        </div>
+                        <div id="settings-kb-hk" style="display: none;">
+                            Move: ←/→ &nbsp; Jump: Z &nbsp; Up/Down: ↑/↓<br>
+                            Attack: X &nbsp; Heal: A &nbsp; Dash: C &nbsp; Super Dash: S
+                        </div>
+                    </div>
                 </div>
                 <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
                     <button class="btn btn-secondary" id="settings-how-to-play" style="width: 100%; margin-bottom: 8px;">
@@ -3518,13 +3487,6 @@ class Editor {
             this.triggerMapChange();
         });
         
-        // Keyboard layout
-        document.getElementById('config-keyboard-layout').addEventListener('change', (e) => {
-            this.world.keyboardLayout = e.target.value;
-            this.updateKeyboardLayoutInfo(e.target.value);
-            this.triggerMapChange();
-        });
-
         // Die line Y
         document.getElementById('config-die-line-y').addEventListener('change', (e) => {
             this.world.dieLineY = parseInt(e.target.value) || 2000;
@@ -3922,7 +3884,6 @@ class Editor {
         
         this.updatePluginsPopupState();
         this.updatePluginConfigSections();
-        this.updateKeyboardLayoutOptions();
         this.refreshTouchControls();
         this.updateTouchButtonVisibility();
         this.triggerMapChange();
@@ -4166,6 +4127,17 @@ class Editor {
             const savedFontSize = Settings.get('fontSize') || 100;
             fontsizeRange.value = savedFontSize;
             fontsizeNumber.value = savedFontSize;
+        }
+
+        // Keyboard layout
+        const kbSelect = document.getElementById('settings-keyboard-layout');
+        if (kbSelect && typeof Settings !== 'undefined') {
+            kbSelect.value = Settings.get('keyboardLayout') || 'jimmyqrg';
+            this._updateSettingsKBInfo(kbSelect.value);
+            kbSelect.addEventListener('change', (e) => {
+                Settings.set('keyboardLayout', e.target.value);
+                this._updateSettingsKBInfo(e.target.value);
+            });
         }
         
         // How To Play button
@@ -5553,6 +5525,14 @@ class Editor {
             settings: this.ui.settingsPanel
         };
         panels[panel]?.classList.remove('active');
+    }
+
+    _updateSettingsKBInfo(layout) {
+        const ids = ['jimmyqrg', 'hk'];
+        ids.forEach(id => {
+            const el = document.getElementById('settings-kb-' + id);
+            if (el) el.style.display = id === layout ? 'block' : 'none';
+        });
     }
 
     toggleAddMenu() {
@@ -7641,14 +7621,6 @@ class Editor {
             this.updateStoredDataTypeDescription(this.world.storedDataType || 'json');
         }
         
-        // Keyboard layout
-        const keyboardLayout = document.getElementById('config-keyboard-layout');
-        if (keyboardLayout) {
-            keyboardLayout.value = this.world.keyboardLayout || 'jimmyqrg';
-            this.updateKeyboardLayoutInfo(this.world.keyboardLayout || 'jimmyqrg');
-            this.updateKeyboardLayoutOptions();
-        }
-        
         // Music settings
         const musicSelect = document.getElementById('config-music');
         const customMusicOptions = document.getElementById('custom-music-options');
@@ -7861,37 +7833,6 @@ class Editor {
         };
         
         descEl.innerHTML = descriptions[type] || descriptions['json'];
-    }
-    
-    updateKeyboardLayoutInfo(layout) {
-        const layouts = ['default', 'hk', 'jimmyqrg'];
-        layouts.forEach(l => {
-            const el = document.getElementById(`keyboard-info-${l}`);
-            if (el) {
-                el.style.display = l === layout ? 'block' : 'none';
-            }
-        });
-    }
-    
-    updateKeyboardLayoutOptions() {
-        const layoutSelect = document.getElementById('config-keyboard-layout');
-        if (!layoutSelect) return;
-        
-        const hkEnabled = this.world.plugins.enabled.includes('hk');
-        const hkOption = layoutSelect.querySelector('option[value="hk"]');
-        
-        if (hkOption) {
-            // Disable/enable the HK layout option based on plugin status
-            hkOption.disabled = !hkEnabled;
-            hkOption.textContent = hkEnabled ? 'Hollow Knight Original' : 'Hollow Knight Original (requires HK plugin)';
-            
-            // If HK layout is selected but plugin is disabled, switch to default
-            if (!hkEnabled && this.world.keyboardLayout === 'hk') {
-                this.world.keyboardLayout = 'default';
-                layoutSelect.value = 'default';
-                this.updateKeyboardLayoutInfo('default');
-            }
-        }
     }
     
     handleMusicUpload(file) {

@@ -1768,12 +1768,6 @@ class World {
             // Plugin configs are added dynamically: this.plugins[pluginId] = {...}
         };
         
-        // Keyboard layout (applies in test/play mode only)
-        // 'jimmyqrg' - Default JimmyQrg layout
-        // 'default' - Standard Parkoreen controls
-        // 'hk' - Hollow Knight style controls
-        this.keyboardLayout = 'jimmyqrg';
-        
         // Code plugin data (triggers and actions)
         this.codeData = {
             triggers: [],
@@ -2580,8 +2574,6 @@ class World {
             music: this.music,
             // Plugins
             plugins: this.plugins,
-            // Keyboard layout
-            keyboardLayout: this.keyboardLayout,
             // Code plugin data
             codeData: this.codeData
         };
@@ -2682,10 +2674,6 @@ class World {
                 }
             }
         }
-        
-        // Keyboard layout
-        const validLayouts = ['default', 'hk', 'jimmyqrg'];
-        this.keyboardLayout = validLayouts.includes(data.keyboardLayout) ? data.keyboardLayout : 'jimmyqrg';
         
         // Code plugin data
         if (data.codeData && typeof data.codeData === 'object') {
@@ -3220,23 +3208,11 @@ class GameEngine {
     updatePlayerInput() {
         if (!this.localPlayer) return;
         
-        const inGameMode = this.state === GameState.PLAYING || this.state === GameState.TESTING;
-        const layout = inGameMode ? (this.world?.keyboardLayout || 'jimmyqrg') : 'jimmyqrg';
+        const layout = (typeof Settings !== 'undefined' ? Settings.get('keyboardLayout') : null) || 'jimmyqrg';
         const k = this.keys;
         const inp = this.localPlayer.input;
 
-        if (layout === 'jimmyqrg') {
-            inp.left = k['KeyA'];
-            inp.right = k['KeyD'];
-            inp.up = k['ArrowUp'];
-            inp.down = k['ArrowDown'];
-            inp.jump = k['KeyW'] || k['Space'];
-            inp.shift = k['ShiftLeft'] || k['ShiftRight'];
-            inp.attack = k['KeyN'];
-            inp.heal = k['ShiftLeft'];
-            inp.dash = k['Comma'];
-            inp.superDash = k['KeyF'];
-        } else if (layout === 'hk') {
+        if (layout === 'hk') {
             inp.left = k['ArrowLeft'];
             inp.right = k['ArrowRight'];
             inp.up = k['ArrowUp'];
@@ -3248,16 +3224,16 @@ class GameEngine {
             inp.dash = k['KeyC'];
             inp.superDash = k['KeyS'];
         } else {
-            inp.left = k['KeyA'] || k['ArrowLeft'];
-            inp.right = k['KeyD'] || k['ArrowRight'];
-            inp.up = k['KeyW'] || k['ArrowUp'];
-            inp.down = k['KeyS'] || k['ArrowDown'];
-            inp.jump = k['Space'] || k['KeyW'] || k['ArrowUp'];
+            inp.left = k['KeyA'];
+            inp.right = k['KeyD'];
+            inp.up = k['ArrowUp'];
+            inp.down = k['ArrowDown'];
+            inp.jump = k['KeyW'] || k['Space'];
             inp.shift = k['ShiftLeft'] || k['ShiftRight'];
-            inp.attack = k['KeyX'];
-            inp.heal = k['KeyF'];
+            inp.attack = k['KeyN'];
+            inp.heal = k['ShiftLeft'];
             inp.dash = k['Comma'];
-            inp.superDash = k['Period'];
+            inp.superDash = k['KeyF'];
         }
         inp.space = !!k['Space'];
 

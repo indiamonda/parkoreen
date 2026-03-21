@@ -50,6 +50,26 @@
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+
+                <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <span class="settings-row-label">Keyboard Layout</span>
+                    <select class="form-select" id="keyboard-layout" style="width: 100%;">
+                        <option value="jimmyqrg">JimmyQrg (Default)</option>
+                        <option value="hk">Hollow Knight Original</option>
+                    </select>
+                    <div id="keyboard-layout-info" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px; color: #aaa; line-height: 1.6;">
+                        <div id="keyboard-info-jimmyqrg">
+                            <strong style="color: #fff;">JimmyQrg (Default):</strong><br>
+                            Move: A/D &nbsp; Jump: W &nbsp; Up/Down: ↑/↓<br>
+                            Attack: N &nbsp; Heal: LeftShift &nbsp; Dash: , &nbsp; Super Dash: F
+                        </div>
+                        <div id="keyboard-info-hk" style="display: none;">
+                            <strong style="color: #fff;">Hollow Knight Original:</strong><br>
+                            Move: ←/→ &nbsp; Jump: Z &nbsp; Up/Down: ↑/↓<br>
+                            Attack: X &nbsp; Heal: A &nbsp; Dash: C &nbsp; Super Dash: S
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Account Settings -->
@@ -181,6 +201,25 @@
             fontsizeNumber.value = savedFontSize;
             
             touchscreenToggle.checked = Settings.get('touchscreenMode');
+
+            // Keyboard layout
+            var keyboardLayout = document.getElementById('keyboard-layout');
+            var savedLayout = Settings.get('keyboardLayout') || 'jimmyqrg';
+            keyboardLayout.value = savedLayout;
+            updateKeyboardInfo(savedLayout);
+
+            keyboardLayout.onchange = function(e) {
+                Settings.set('keyboardLayout', e.target.value);
+                updateKeyboardInfo(e.target.value);
+            };
+
+            function updateKeyboardInfo(layout) {
+                var ids = ['jimmyqrg', 'hk'];
+                ids.forEach(function(id) {
+                    var el = document.getElementById('keyboard-info-' + id);
+                    if (el) el.style.display = id === layout ? 'block' : 'none';
+                });
+            }
 
             // Back button
             document.getElementById('btn-back').onclick = function() {

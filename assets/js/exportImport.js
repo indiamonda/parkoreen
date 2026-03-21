@@ -39,7 +39,6 @@ const PKRN_DEFAULTS = {
     spikeTouchbox: 'normal',
     dropHurtOnly: false,
     storedDataType: 'json', // 'json' or 'dat'
-    keyboardLayout: 'jimmyqrg',
     customBackground: {
         enabled: false,
         type: null,
@@ -430,9 +429,7 @@ class ExportManager {
                 // Custom background
                 customBackground: world.customBackground,
                 // Music
-                music: world.music,
-                // Keyboard layout
-                keyboardLayout: world.keyboardLayout
+                music: world.music
             },
             // Plugins configuration
             plugins: world.plugins,
@@ -747,9 +744,6 @@ class ImportManager {
             customBackground: this.deserializeCustomBackground(settings.customBackground),
             // Music with validation
             music: this.deserializeMusic(settings.music),
-            // Keyboard layout
-            keyboardLayout: ['default', 'hk', 'jimmyqrg'].includes(settings.keyboardLayout)
-                ? settings.keyboardLayout : 'jimmyqrg',
             // Plugins configuration
             plugins: this.deserializePlugins(data.plugins),
             // Code plugin data (triggers & actions)
