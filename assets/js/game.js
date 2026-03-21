@@ -3260,6 +3260,12 @@ class GameEngine {
             inp.superDash = k['Period'];
         }
         inp.space = !!k['Space'];
+
+        // Flying always uses WASD regardless of layout
+        if (this.localPlayer.isFlying) {
+            inp.up = inp.up || k['KeyW'];
+            inp.down = inp.down || k['KeyS'];
+        }
         
         if (window.PluginManager) {
             if (!this._inputHookData) this._inputHookData = {};
