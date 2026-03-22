@@ -4723,10 +4723,6 @@ class Editor {
             addBtnIcon.textContent = 'close';
         }
         this.ui.btnAdd.title = 'Stop Erasing (Q or Esc)';
-        
-        // Hide toolbar and layers button
-        this.ui.toolbar.classList.add('hidden');
-        this.ui.btnLayers.classList.add('hidden');
     }
     
     hideEraseMode() {
@@ -4751,10 +4747,6 @@ class Editor {
             addBtnIcon.textContent = 'add';
         }
         this.ui.btnAdd.title = 'Add';
-        
-        // Show toolbar and layers button
-        this.ui.toolbar.classList.remove('hidden');
-        this.ui.btnLayers.classList.remove('hidden');
     }
     
     toggleFlyMode() {
@@ -4883,8 +4875,7 @@ class Editor {
         this.selectionRect = null;
         this.selectionMovingObjects = null;
         
-        // Hide main toolbar, show selection toolbar
-        this.ui.toolbar.classList.add('hidden');
+        // Show selection toolbar above main toolbar
         this.ui.selectionToolbar.classList.remove('hidden');
         
         // Replace Add button with Cancel button
@@ -4909,8 +4900,7 @@ class Editor {
         this.selectionMovingObjects = null;
         this.selectionMoveStart = null;
         
-        // Restore toolbars
-        this.ui.toolbar.classList.remove('hidden');
+        // Hide secondary toolbars
         this.ui.selectionToolbar.classList.add('hidden');
         this.ui.selectionMouseToolbar.classList.add('hidden');
         
@@ -5666,8 +5656,6 @@ class Editor {
         // Update UI - change add button to close icon (click handler checks placementMode)
         this.ui.btnAdd.innerHTML = '<span class="material-symbols-outlined">close</span>';
         
-        this.ui.btnLayers.classList.add('hidden');
-        this.ui.toolbar.classList.add('hidden');
         this.ui.placementToolbar.classList.add('active');
 
         // Show/hide options based on mode
@@ -5687,8 +5675,6 @@ class Editor {
         this.ui.btnAdd.disabled = false;
         this.ui.btnAdd.style.pointerEvents = '';
         
-        this.ui.btnLayers.classList.remove('hidden');
-        this.ui.toolbar.classList.remove('hidden');
         this.ui.placementToolbar.classList.remove('active');
         
         // Ensure add menu is closed
@@ -8829,10 +8815,13 @@ class Editor {
                 const act = obj.actingType;
 
                 if (act === 'spike' || obj.type === 'spinner' || at === 'spinner') {
+                    // Collision disabled → no touchbox at all (matches game.js line 465)
+                    if (obj.collision === false) continue;
+
                     if (obj.type === 'spinner' || at === 'spinner') {
                         const cx = obj.x + obj.width / 2 - camera.x;
                         const cy = obj.y + obj.height / 2 - camera.y;
-                        const r = Math.min(obj.width, obj.height) / 2;
+                        const r = Math.min(obj.width, obj.height) / 2 * 0.82;
                         ctx.strokeStyle = '#ff0000';
                         ctx.beginPath();
                         ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -8840,11 +8829,18 @@ class Editor {
                     } else {
                         const spikeMode = obj.spikeTouchbox || this.world?.spikeTouchbox || 'normal';
                         const player = this.engine.localPlayer;
+
+                        // 'air' and 'flag' modes: no damage AND no ground collision
+                        if (spikeMode === 'air' || spikeMode === 'flag') continue;
+
                         if (spikeMode === 'full') {
+                            // Full mode: entire sprite is a damage zone, no ground collision
                             drawBox(obj.x, obj.y, obj.width, obj.height, '#ff0000');
                         } else if (spikeMode === 'ground') {
+                            // Ground mode: entire sprite acts as ground, no damage
                             drawBox(obj.x, obj.y, obj.width, obj.height, '#2196f3');
                         } else if (player && (spikeMode === 'normal' || spikeMode === 'tip')) {
+                            // Damage zone
                             if (spikeMode === 'normal') {
                                 const d = player.getSpikeDanger(obj);
                                 drawBox(d.x, d.y, d.width, d.height, '#ff0000');
@@ -8852,8 +8848,11 @@ class Editor {
                                 const t = player.getSpikeTip(obj);
                                 drawBox(t.x, t.y, t.width, t.height, '#ff0000');
                             }
-                            const f = player.getSpikeFlat(obj);
-                            drawBox(f.x, f.y, f.width, f.height, '#2196f3');
+                            // Flat ground zone only if no adjacent block on the flat side
+                            if (!player._spikeHasAdjacentBlock(obj, this.world)) {
+                                const f = player.getSpikeFlat(obj);
+                                drawBox(f.x, f.y, f.width, f.height, '#2196f3');
+                            }
                         }
                     }
                 } else if (at === 'zone' || at === 'button') {

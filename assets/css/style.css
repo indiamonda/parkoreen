@@ -1066,11 +1066,11 @@ a:hover {
 
 /* Selection Toolbar */
 .selection-toolbar {
-    bottom: var(--spacing-lg);
+    bottom: calc(var(--spacing-lg) + 80px);
 }
 
 .selection-mouse-toolbar {
-    bottom: calc(var(--spacing-lg) + 80px);
+    bottom: calc(var(--spacing-lg) + 160px);
 }
 
 .sel-toolbar-section {
@@ -1537,7 +1537,7 @@ a:hover {
    ==================================== */
 .placement-toolbar {
     position: fixed;
-    bottom: var(--spacing-lg);
+    bottom: calc(var(--spacing-lg) + 80px);
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     display: flex;
@@ -2228,6 +2228,103 @@ a:hover {
 
 .hud-btn:hover {
     background: rgba(0, 0, 0, 0.7);
+}
+
+/* HUD three-dots menu */
+.hud-menu-wrapper {
+    position: relative;
+}
+
+.hud-menu-btn-inner {
+    position: relative;
+    display: inline-flex;
+}
+
+.hud-menu-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.hud-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    background: rgba(15, 15, 25, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius-lg);
+    padding: 6px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.95);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.hud-menu-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.hud-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-radius: var(--border-radius);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.88);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+}
+
+.hud-menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.hud-menu-item .material-symbols-outlined {
+    font-size: 20px;
+    opacity: 0.8;
+}
+
+.hud-menu-item-badge {
+    margin-left: auto;
+    background: #ef4444;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
 }
 
 /* Players list */

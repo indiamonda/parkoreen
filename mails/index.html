@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Parkoreen Mailbox">
+    <title>Mails - Parkoreen</title>
+    <link rel="manifest" href="/parkoreen/manifest.json">
+    <meta name="theme-color" content="#2d5a27">
+    <link rel="icon" type="image/png" sizes="32x32" href="/parkoreen/assets/png/icons/icon-settings-32.png">
+    <link rel="stylesheet" href="/parkoreen/assets/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
+    <style>
+        .mail-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 32px 16px 80px;
+            min-height: 100vh;
+        }
+        .mail-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .mail-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        .mail-header .unread-count {
+            background: #ef4444;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .mail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .mail-card {
+            background: var(--bg-medium);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--surface-light);
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+            cursor: pointer;
+        }
+        .mail-card:hover {
+            border-color: var(--primary);
+        }
+        .mail-card.unread {
+            border-left: 3px solid var(--primary);
+        }
+        .mail-card-header {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            gap: 12px;
+        }
+        .mail-unread-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            flex-shrink: 0;
+        }
+        .mail-card.unread .mail-unread-dot { display: block; }
+        .mail-card:not(.unread) .mail-unread-dot { display: none; }
+        .mail-meta {
+            flex: 1;
+            min-width: 0;
+        }
+        .mail-subject {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .mail-from-date {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 3px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .mail-delete-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: var(--border-radius);
+            transition: color 0.15s ease, background 0.15s ease;
+            flex-shrink: 0;
+        }
+        .mail-delete-btn:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .mail-body-wrap {
+            display: none;
+            padding: 0 16px 14px 36px;
+        }
+        .mail-card.expanded .mail-body-wrap {
+            display: block;
+        }
+        .mail-body {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .mail-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+        .mail-empty .material-symbols-outlined {
+            font-size: 48px;
+            opacity: 0.3;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .mail-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="mail-container">
+        <div class="mail-header">
+            <button class="btn btn-icon btn-secondary" id="btn-back">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2>Mailbox</h2>
+            <span class="unread-count hidden" id="unread-count">0</span>
+        </div>
+        <div id="mail-content">
+            <div class="mail-loading">Loading mails...</div>
+        </div>
+    </div>
+
+    <script src="/parkoreen/runtime.js"></script>
+    <script src="/parkoreen/assets/js/style.js"></script>
+    <script>
+        const Auth = window.Auth;
+        const API_URL = window.API_URL;
+
+        if (!Auth.getToken()) {
+            window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(window.location.pathname);
+        }
+
+        let mails = [];
+        let expandedId = null;
+
+        async function loadMails() {
+            try {
+                const resp = await fetch(API_URL + '/mail', {
+                    headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+                });
+                if (!resp.ok) throw new Error('Failed to load mails');
+                mails = await resp.json();
+                renderMails();
+            } catch (e) {
+                document.getElementById('mail-content').innerHTML =
+                    '<div class="mail-empty"><span class="material-symbols-outlined">error</span>Failed to load mails.</div>';
+            }
+        }
+
+        function renderMails() {
+            const container = document.getElementById('mail-content');
+            const unreadCount = mails.filter(m => !m.read).length;
+            const badge = document.getElementById('unread-count');
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            if (mails.length === 0) {
+                container.innerHTML = '<div class="mail-empty"><span class="material-symbols-outlined">mail</span>No mails yet.</div>';
+                return;
+            }
+
+            container.innerHTML = '<div class="mail-list">' + mails.map(m => {
+                const date = new Date(m.createdAt);
+                const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const isExpanded = expandedId === m.id;
+                return `<div class="mail-card ${m.read ? '' : 'unread'} ${isExpanded ? 'expanded' : ''}" data-id="${m.id}">
+                    <div class="mail-card-header">
+                        <span class="mail-unread-dot"></span>
+                        <div class="mail-meta">
+                            <div class="mail-subject">${escapeHtml(m.subject)}</div>
+                            <div class="mail-from-date">
+                                <span>From: ${escapeHtml(m.fromName || 'System')}</span>
+                                <span>·</span>
+                                <span>${dateStr}</span>
+                            </div>
+                        </div>
+                        <button class="mail-delete-btn" data-delete="${m.id}" title="Delete">
+                            <span class="material-symbols-outlined" style="font-size:20px">delete</span>
+                        </button>
+                    </div>
+                    <div class="mail-body-wrap">
+                        <div class="mail-body">${escapeHtml(m.body)}</div>
+                    </div>
+                </div>`;
+            }).join('') + '</div>';
+
+            container.querySelectorAll('.mail-card-header').forEach(header => {
+                header.addEventListener('click', (e) => {
+                    if (e.target.closest('.mail-delete-btn')) return;
+                    const card = header.closest('.mail-card');
+                    const id = card.dataset.id;
+                    if (expandedId === id) {
+                        expandedId = null;
+                        card.classList.remove('expanded');
+                    } else {
+                        const prev = container.querySelector('.mail-card.expanded');
+                        if (prev) prev.classList.remove('expanded');
+                        expandedId = id;
+                        card.classList.add('expanded');
+                        const mail = mails.find(m => m.id === id);
+                        if (mail && !mail.read) {
+                            markRead(id);
+                            mail.read = true;
+                            card.classList.remove('unread');
+                            updateUnreadBadge();
+                        }
+                    }
+                });
+            });
+
+            container.querySelectorAll('.mail-delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteMail(btn.dataset.delete);
+                });
+            });
+        }
+
+        function updateUnreadBadge() {
+            const count = mails.filter(m => !m.read).length;
+            const badge = document.getElementById('unread-count');
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        async function markRead(mailId) {
+            try {
+                await fetch(API_URL + '/mail/' + mailId, {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+                });
+            } catch (e) { /* best-effort */ }
+        }
+
+        async function deleteMail(mailId) {
+            try {
+                await fetch(API_URL + '/mail/' + mailId, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+                });
+                mails = mails.filter(m => m.id !== mailId);
+                if (expandedId === mailId) expandedId = null;
+                renderMails();
+            } catch (e) { /* ignore */ }
+        }
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.textContent = text || '';
+            return d.innerHTML;
+        }
+
+        document.getElementById('btn-back').onclick = function() {
+            if (document.referrer && document.referrer.includes('/parkoreen/')) {
+                history.back();
+            } else {
+                Navigation.toDashboard();
+            }
+        };
+
+        loadMails();
+    </script>
+</body>
+</html>

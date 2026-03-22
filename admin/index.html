@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Parkoreen Admin Panel">
+    <title>Admin - Parkoreen</title>
+    <link rel="manifest" href="/parkoreen/manifest.json">
+    <meta name="theme-color" content="#2d5a27">
+    <link rel="icon" type="image/png" sizes="32x32" href="/parkoreen/assets/png/icons/icon-settings-32.png">
+    <link rel="stylesheet" href="/parkoreen/assets/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
+    <style>
+        .admin-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 32px 16px 80px;
+            min-height: 100vh;
+        }
+        .admin-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .admin-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        .admin-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-medium);
+            border-radius: var(--border-radius-lg);
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+        .admin-tab {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .admin-tab:hover { color: var(--text-primary); }
+        .admin-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        .admin-tab .material-symbols-outlined { font-size: 18px; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Rooms tab */
+        .room-card {
+            background: var(--bg-medium);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--surface-light);
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+        .room-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .room-code {
+            font-family: 'Parkoreen Game', monospace;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .room-info {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .room-info span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .room-info .material-symbols-outlined { font-size: 16px; }
+        .room-players {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .room-player-chip {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 0.78rem;
+            color: var(--text-primary);
+        }
+        .room-player-chip.host {
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        /* Users tab */
+        .users-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .users-search {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--surface-light);
+            border-radius: var(--border-radius);
+            background: var(--bg-medium);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .users-search:focus { border-color: var(--primary); }
+        .users-search::placeholder { color: var(--text-secondary); }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .user-table th {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--surface-light);
+            white-space: nowrap;
+        }
+        .user-table td {
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            vertical-align: middle;
+        }
+        .user-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .user-name-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .user-display-name { font-weight: 600; }
+        .user-username {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .user-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .user-action-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: var(--border-radius);
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .user-action-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+        .user-action-btn.danger:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+        .user-action-btn .material-symbols-outlined { font-size: 18px; }
+        .user-stat { white-space: nowrap; }
+
+        /* Modal */
+        .admin-modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+        }
+        .admin-modal {
+            background: var(--bg-medium);
+            border-radius: var(--border-radius-lg);
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+        }
+        .admin-modal-header {
+            padding: 18px 20px 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .admin-modal-body { padding: 16px 20px; }
+        .admin-modal-body label {
+            display: block;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .admin-modal-body input,
+        .admin-modal-body textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--surface-light);
+            border-radius: var(--border-radius);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+        .admin-modal-body textarea { resize: vertical; min-height: 100px; }
+        .admin-modal-body input:focus,
+        .admin-modal-body textarea:focus { border-color: var(--primary); }
+        .admin-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 0 20px 18px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+        .empty-state .material-symbols-outlined {
+            font-size: 48px; opacity: 0.3; display: block; margin-bottom: 12px;
+        }
+        .loading-state {
+            text-align: center; padding: 60px 20px; color: var(--text-secondary);
+        }
+
+        /* Responsive table scroll */
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <button class="btn btn-icon btn-secondary" id="btn-back">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2>Admin Panel</h2>
+        </div>
+
+        <div class="admin-tabs">
+            <button class="admin-tab active" data-tab="rooms">
+                <span class="material-symbols-outlined">meeting_room</span> Rooms
+            </button>
+            <button class="admin-tab" data-tab="users">
+                <span class="material-symbols-outlined">group</span> Users
+            </button>
+        </div>
+
+        <div class="tab-panel active" id="tab-rooms">
+            <div class="loading-state" id="rooms-loading">Loading rooms...</div>
+            <div id="rooms-content"></div>
+        </div>
+
+        <div class="tab-panel" id="tab-users">
+            <div class="users-toolbar">
+                <input class="users-search" id="users-search" type="text" placeholder="Search by name or username...">
+            </div>
+            <div class="loading-state" id="users-loading">Loading users...</div>
+            <div id="users-content"></div>
+        </div>
+    </div>
+
+    <script src="/parkoreen/runtime.js"></script>
+    <script src="/parkoreen/assets/js/style.js"></script>
+    <script>
+        const Auth = window.Auth;
+        const API_URL = window.API_URL;
+        const Settings = window.Settings;
+
+        if (!Auth.getToken()) {
+            window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(window.location.pathname);
+        }
+
+        // Block non-admin users
+        (function() {
+            const user = Auth.getUser();
+            if (!user || user.username !== 'jimmyqrg' || Settings.get('roleMode') !== 'admin') {
+                document.querySelector('.admin-container').innerHTML =
+                    '<div class="empty-state"><span class="material-symbols-outlined">block</span>Access denied.</div>';
+                return;
+            }
+            init();
+        })();
+
+        // ============================================
+        // TABS
+        // ============================================
+        document.querySelectorAll('.admin-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('btn-back').onclick = function() {
+            if (document.referrer && document.referrer.includes('/parkoreen/')) {
+                history.back();
+            } else {
+                Navigation.toDashboard();
+            }
+        };
+
+        // ============================================
+        // DATA
+        // ============================================
+        let rooms = [];
+        let users = [];
+        let roomsTimer = null;
+
+        function authHeaders() {
+            return { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' };
+        }
+
+        function init() {
+            loadRooms();
+            loadUsers();
+            roomsTimer = setInterval(loadRooms, 15000);
+        }
+
+        // ============================================
+        // ROOMS
+        // ============================================
+        async function loadRooms() {
+            try {
+                const resp = await fetch(API_URL + '/admin/rooms', { headers: authHeaders() });
+                if (!resp.ok) throw new Error();
+                rooms = await resp.json();
+                renderRooms();
+            } catch (e) {
+                document.getElementById('rooms-content').innerHTML =
+                    '<div class="empty-state"><span class="material-symbols-outlined">error</span>Failed to load rooms.</div>';
+            }
+            document.getElementById('rooms-loading').style.display = 'none';
+        }
+
+        function renderRooms() {
+            const container = document.getElementById('rooms-content');
+            if (rooms.length === 0) {
+                container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">meeting_room</span>No active rooms.</div>';
+                return;
+            }
+            container.innerHTML = rooms.map(r => {
+                const created = r.createdAt ? new Date(r.createdAt).toLocaleTimeString() : '—';
+                return `<div class="room-card">
+                    <div class="room-card-top">
+                        <span class="room-code">${esc(r.code)}</span>
+                        <span style="font-size:0.78rem;color:var(--text-secondary)">${created}</span>
+                    </div>
+                    <div class="room-info">
+                        <span><span class="material-symbols-outlined">person</span> ${esc(r.hostName)} (${esc(r.hostUsername)})</span>
+                        <span><span class="material-symbols-outlined">group</span> ${r.playerCount}/${r.maxPlayers}</span>
+                        ${r.usePassword ? '<span><span class="material-symbols-outlined">lock</span> Password</span>' : ''}
+                    </div>
+                    <div class="room-players">
+                        ${(r.players || []).map(p =>
+                            `<span class="room-player-chip ${p.isHost ? 'host' : ''}">${esc(p.name || p.username)}${p.isHost ? ' ★' : ''}</span>`
+                        ).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ============================================
+        // USERS
+        // ============================================
+        async function loadUsers() {
+            try {
+                const resp = await fetch(API_URL + '/admin/users', { headers: authHeaders() });
+                if (!resp.ok) throw new Error();
+                users = await resp.json();
+                renderUsers();
+            } catch (e) {
+                document.getElementById('users-content').innerHTML =
+                    '<div class="empty-state"><span class="material-symbols-outlined">error</span>Failed to load users.</div>';
+            }
+            document.getElementById('users-loading').style.display = 'none';
+        }
+
+        function formatPlayTime(ms) {
+            if (!ms || ms < 1000) return '—';
+            const totalSec = Math.floor(ms / 1000);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            if (h > 0) return h + 'h ' + m + 'm';
+            return m + 'm';
+        }
+
+        function renderUsers(filter) {
+            const container = document.getElementById('users-content');
+            let list = users;
+            if (filter) {
+                const q = filter.toLowerCase();
+                list = users.filter(u =>
+                    (u.username || '').toLowerCase().includes(q) ||
+                    (u.name || '').toLowerCase().includes(q)
+                );
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">group</span>No users found.</div>';
+                return;
+            }
+
+            container.innerHTML = `<div class="table-wrap"><table class="user-table">
+                <thead><tr>
+                    <th>User</th>
+                    <th>Maps</th>
+                    <th>Total Time</th>
+                    <th>This Week</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                </tr></thead>
+                <tbody>${list.map(u => {
+                    const joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                    return `<tr data-uid="${u.id}">
+                        <td><div class="user-name-cell">
+                            <span class="user-display-name">${esc(u.name)}</span>
+                            <span class="user-username">@${esc(u.username)}</span>
+                        </div></td>
+                        <td class="user-stat">${u.mapsCount ?? 0}</td>
+                        <td class="user-stat">${formatPlayTime(u.totalPlayTime)}</td>
+                        <td class="user-stat">${formatPlayTime(u.weekPlayTime)}</td>
+                        <td class="user-stat">${joined}</td>
+                        <td><div class="user-actions">
+                            <button class="user-action-btn btn-msg" data-uid="${u.id}" data-name="${esc(u.name)}" title="Send Message">
+                                <span class="material-symbols-outlined">mail</span>
+                            </button>
+                            <button class="user-action-btn danger btn-del" data-uid="${u.id}" data-uname="${esc(u.username)}" title="Delete User">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        </div></td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table></div>`;
+
+            container.querySelectorAll('.btn-msg').forEach(btn => {
+                btn.addEventListener('click', () => openMessageModal(btn.dataset.uid, btn.dataset.name));
+            });
+            container.querySelectorAll('.btn-del').forEach(btn => {
+                btn.addEventListener('click', () => confirmDeleteUser(btn.dataset.uid, btn.dataset.uname));
+            });
+        }
+
+        document.getElementById('users-search').addEventListener('input', (e) => {
+            renderUsers(e.target.value);
+        });
+
+        // ============================================
+        // ACTIONS
+        // ============================================
+        function openMessageModal(userId, displayName) {
+            closeModal();
+            const overlay = document.createElement('div');
+            overlay.className = 'admin-modal-overlay';
+            overlay.id = 'admin-modal';
+            overlay.innerHTML = `<div class="admin-modal">
+                <div class="admin-modal-header">Message ${esc(displayName)}</div>
+                <div class="admin-modal-body">
+                    <label for="msg-subject">Subject</label>
+                    <input type="text" id="msg-subject" placeholder="Subject..." maxlength="200">
+                    <label for="msg-body">Message</label>
+                    <textarea id="msg-body" placeholder="Write your message..." maxlength="2000"></textarea>
+                </div>
+                <div class="admin-modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="msg-send-btn">Send</button>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+            document.getElementById('msg-send-btn').addEventListener('click', async () => {
+                const subject = document.getElementById('msg-subject').value.trim();
+                const body = document.getElementById('msg-body').value.trim();
+                if (!subject || !body) return;
+                const btn = document.getElementById('msg-send-btn');
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                try {
+                    const resp = await fetch(API_URL + '/admin/users/' + userId + '/mail', {
+                        method: 'POST',
+                        headers: authHeaders(),
+                        body: JSON.stringify({ subject, body })
+                    });
+                    if (!resp.ok) throw new Error();
+                    closeModal();
+                    showToast('Message sent');
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = 'Send';
+                    showToast('Failed to send');
+                }
+            });
+        }
+
+        function confirmDeleteUser(userId, username) {
+            closeModal();
+            const overlay = document.createElement('div');
+            overlay.className = 'admin-modal-overlay';
+            overlay.id = 'admin-modal';
+            overlay.innerHTML = `<div class="admin-modal">
+                <div class="admin-modal-header">Delete User</div>
+                <div class="admin-modal-body">
+                    <p style="color:var(--text-secondary);margin:0">Are you sure you want to permanently delete <strong style="color:var(--text-primary)">@${esc(username)}</strong>? This will remove all their data, maps, and mail.</p>
+                </div>
+                <div class="admin-modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn" id="delete-confirm-btn" style="background:#ef4444;color:white;border:none;padding:10px 20px;border-radius:var(--border-radius);cursor:pointer;font-family:inherit;font-weight:600">Delete</button>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+            document.getElementById('delete-confirm-btn').addEventListener('click', async () => {
+                const btn = document.getElementById('delete-confirm-btn');
+                btn.disabled = true;
+                btn.textContent = 'Deleting...';
+                try {
+                    const resp = await fetch(API_URL + '/admin/users/' + userId, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    if (!resp.ok) throw new Error();
+                    closeModal();
+                    users = users.filter(u => u.id !== userId);
+                    renderUsers(document.getElementById('users-search').value);
+                    showToast('User deleted');
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = 'Delete';
+                    showToast('Failed to delete');
+                }
+            });
+        }
+
+        function closeModal() {
+            const m = document.getElementById('admin-modal');
+            if (m) m.remove();
+        }
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;padding:10px 24px;border-radius:8px;font-size:0.88rem;z-index:999999;pointer-events:none;';
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+    </script>
+</body>
+</html>

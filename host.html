@@ -38,10 +38,27 @@
             <span class="material-symbols-outlined">logout</span>
         </button>
         
-        <!-- Settings button -->
-        <button class="hud-btn" id="hud-settings" style="position: fixed; top: 16px; right: 16px;">
-            <span class="material-symbols-outlined">settings</span>
-        </button>
+        <!-- Three-dots menu -->
+        <div class="hud-menu-wrapper" id="hud-menu-wrapper" style="position: fixed; top: 16px; right: 16px;">
+            <button class="hud-btn" id="hud-menu-btn">
+                <span class="hud-menu-btn-inner">
+                    <span class="material-symbols-outlined">more_vert</span>
+                    <span class="hud-menu-badge hidden" id="hud-mail-badge">0</span>
+                </span>
+            </button>
+            <div class="hud-menu-dropdown" id="hud-menu-dropdown">
+                <button class="hud-menu-item" id="hud-menu-settings">
+                    <span class="material-symbols-outlined">settings</span> Settings
+                </button>
+                <button class="hud-menu-item" id="hud-menu-mails">
+                    <span class="material-symbols-outlined">mail</span> Mails
+                    <span class="hud-menu-item-badge hidden" id="hud-menu-mail-badge">0</span>
+                </button>
+                <button class="hud-menu-item hidden" id="hud-menu-admin">
+                    <span class="material-symbols-outlined">admin_panel_settings</span> Admin
+                </button>
+            </div>
+        </div>
         
         <!-- Chat button -->
         <button class="hud-btn" id="hud-chat" style="position: fixed; bottom: 16px; left: 16px;">
@@ -1362,10 +1379,64 @@
                 }
             });
 
-            // Settings button
-            document.getElementById('hud-settings').addEventListener('click', () => {
+            // Three-dots menu
+            const hudMenuBtn = document.getElementById('hud-menu-btn');
+            const hudMenuDropdown = document.getElementById('hud-menu-dropdown');
+            hudMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hudMenuDropdown.classList.toggle('active');
+                // Show/hide admin button based on admin status
+                const adminItem = document.getElementById('hud-menu-admin');
+                if (typeof isAdminUser === 'function' && isAdminUser()) {
+                    adminItem.classList.remove('hidden');
+                } else {
+                    adminItem.classList.add('hidden');
+                }
+            });
+            document.addEventListener('click', () => {
+                hudMenuDropdown.classList.remove('active');
+            });
+            hudMenuDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+            document.getElementById('hud-menu-settings').addEventListener('click', () => {
+                hudMenuDropdown.classList.remove('active');
                 document.getElementById('settings-panel')?.classList.toggle('active');
             });
+            document.getElementById('hud-menu-mails').addEventListener('click', () => {
+                hudMenuDropdown.classList.remove('active');
+                window.open('../mails/', '_blank');
+            });
+            document.getElementById('hud-menu-admin').addEventListener('click', () => {
+                hudMenuDropdown.classList.remove('active');
+                window.open('../admin/', '_blank');
+            });
+
+            // Poll unread mail count
+            async function pollUnreadMail() {
+                try {
+                    const token = Auth.getToken();
+                    if (!token) return;
+                    const resp = await fetch(API_URL + '/mail/unread', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    const count = data.count || 0;
+                    const badge = document.getElementById('hud-mail-badge');
+                    const itemBadge = document.getElementById('hud-menu-mail-badge');
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.classList.remove('hidden');
+                        itemBadge.textContent = count;
+                        itemBadge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                        itemBadge.classList.add('hidden');
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            pollUnreadMail();
+            setInterval(pollUnreadMail, 30000);
 
             // Chat button
             document.getElementById('hud-chat').addEventListener('click', () => {
@@ -1952,6 +2023,27 @@
                     break;
                 }
 
+                case '/kill': {
+                    const selector = parts[1] || '@s';
+                    const targets = resolveSelector(selector);
+                    if (targets.length === 0) { addCommandFeedback('No player found for: ' + selector); return; }
+                    for (const t of targets) {
+                        if (t.id === '__self__') {
+                            if (engine.localPlayer) {
+                                engine.localPlayer.die();
+                                addCommandFeedback('Killed yourself');
+                            }
+                        } else {
+                            const rp = engine.remotePlayers.get(t.id);
+                            if (rp) {
+                                rp.die();
+                                addCommandFeedback('Killed ' + t.name);
+                            }
+                        }
+                    }
+                    break;
+                }
+
                 case '/echo': {
                     const text = raw.slice(parts[0].length).trim();
                     if (!text) { addCommandFeedback('Usage: /echo {message}'); return; }
@@ -2015,6 +2107,10 @@
             const toolbar = document.getElementById('admin-toolbar');
             toolbar.classList.remove('hidden');
 
+            // Unlock zoom limits for admin
+            engine.camera.minZoom = 0.5;
+            engine.camera.maxZoom = 4;
+
             // Tool buttons
             toolbar.querySelectorAll('[data-admin-tool]').forEach(btn => {
                 btn.addEventListener('click', () => setAdminTool(btn.dataset.adminTool));
@@ -2053,9 +2149,20 @@
                 return;
             }
             document.body.classList.forEach(c => { if (c.startsWith('admin-tool-')) document.body.classList.remove(c); });
+            const prevTool = adminState.tool;
             adminState.tool = adminState.tool === tool ? null : tool;
             if (adminState.tool) {
                 document.body.classList.add('admin-tool-' + adminState.tool);
+            }
+            // Show/hide placement toolbar for block tool
+            const pt = document.getElementById('placement-toolbar');
+            if (adminState.tool === 'placeblock' && pt && editor) {
+                editor.placementMode = 'block';
+                pt.classList.add('active');
+                editor.updatePlacementOptions();
+                editor.updateDefaultColor();
+            } else if (prevTool === 'placeblock' && pt) {
+                pt.classList.remove('active');
             }
             updateAdminToolbarUI();
         }
@@ -2239,16 +2346,20 @@
         }
 
         function adminPlaceBlock(x, y) {
-            const gs = 32;
-            const existing = engine.world.getObjectAt(x + gs / 2, y + gs / 2);
-            if (existing) return;
-            const obj = new WorldObject({
-                x: x, y: y, width: gs, height: gs,
-                type: 'block', appearanceType: 'ground', actingType: 'ground',
-                texture: 'solid', collision: true,
-                color: adminState.blockColor, opacity: 1, layer: 1
-            });
-            engine.world.addObject(obj);
+            if (editor && editor.placementSettings) {
+                editor.placeObject(x, y);
+            } else {
+                const gs = 32;
+                const existing = engine.world.getObjectAt(x + gs / 2, y + gs / 2);
+                if (existing) return;
+                const obj = new WorldObject({
+                    x: x, y: y, width: gs, height: gs,
+                    type: 'block', appearanceType: 'ground', actingType: 'ground',
+                    texture: 'solid', collision: true,
+                    color: '#787878', opacity: 1, layer: 1
+                });
+                engine.world.addObject(obj);
+            }
         }
 
         function adminErase(x, y) {
@@ -2288,7 +2399,17 @@
         function renderAdminOverlays() {
             if (!adminState.active || engine.state !== GameState.PLAYING) return;
             const ctx = engine.ctx;
-            const cam = editor?.camera || engine.camera;
+            const cam = engine.camera;
+
+            // Touchbox overlay
+            if (adminState.showTouchboxes && editor && editor.renderTouchboxes) {
+                ctx.save();
+                ctx.scale(cam.zoom, cam.zoom);
+                editor.renderTouchboxes(ctx, cam);
+                ctx.restore();
+            }
+
+            // Tool previews need mouse position
             const wp = adminState._mouseWorld;
             if (!wp) return;
 

@@ -1235,6 +1235,14 @@ class SettingsManager {
                 this.settings = { ...this.defaults };
             }
         }
+        // Only jimmyqrg is allowed admin mode
+        if (this.settings.roleMode === 'admin') {
+            const user = JSON.parse(localStorage.getItem('parkoreen_user') || '{}');
+            if (user.username !== 'jimmyqrg') {
+                this.settings.roleMode = 'normal';
+                this.save();
+            }
+        }
     }
 
     save() {
@@ -1280,6 +1288,14 @@ const Navigation = {
     toSettings() {
         window.location.href = '/parkoreen/settings/';
     },
+
+    toMails() {
+        window.location.href = '/parkoreen/mails/';
+    },
+
+    toAdmin() {
+        window.location.href = '/parkoreen/admin/';
+    },
     
     toHowToPlay() {
         window.location.href = '/parkoreen/howtoplay/';
@@ -1291,6 +1307,14 @@ const Navigation = {
     
     toSignup() {
         window.location.href = '/parkoreen/signup/';
+    },
+
+    toMails() {
+        window.location.href = '/parkoreen/mails/';
+    },
+
+    toAdmin() {
+        window.location.href = '/parkoreen/admin/';
     }
 };
 

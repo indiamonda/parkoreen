@@ -466,11 +466,11 @@ class Player {
             {
                 let gotHit = false;
                 
-                // Spinners (saw blades) use circular hitbox matching their shape
+                // Spinners (saw blades) use circular hitbox slightly smaller than visual
                 if (obj.type === 'spinner' || obj.appearanceType === 'spinner') {
                     const cx = obj.x + obj.width / 2;
                     const cy = obj.y + obj.height / 2;
-                    const r = Math.min(obj.width, obj.height) / 2;
+                    const r = Math.min(obj.width, obj.height) / 2 * 0.82;
                     if (this.circleIntersectsBox(cx, cy, r, hurtBox)) {
                         gotHit = true;
                     }

@@ -657,6 +657,10 @@ class GameRoom {
     async fetch(request) {
         const url = new URL(request.url);
         
+        if (url.pathname === '/admin/rooms') {
+            return this.handleAdminListRooms();
+        }
+
         if (url.pathname === '/ws') {
             if (request.headers.get('Upgrade') !== 'websocket') {
                 return new Response('Expected websocket', { status: 400 });
@@ -671,6 +675,37 @@ class GameRoom {
         }
 
         return new Response('Not found', { status: 404 });
+    }
+
+    async handleAdminListRooms() {
+        const rooms = [];
+        const seen = new Set();
+        for (const [, session] of this.sessions) {
+            if (session.roomCode && !seen.has(session.roomCode)) {
+                seen.add(session.roomCode);
+                const roomData = await this.state.storage.get(`room:${session.roomCode}`);
+                const room = roomData ? JSON.parse(roomData) : {};
+                const players = this.getPlayersInRoom(session.roomCode);
+                rooms.push({
+                    code: session.roomCode,
+                    hostUsername: players.find(p => p.isHost)?.user?.username || 'unknown',
+                    hostName: players.find(p => p.isHost)?.user?.name || 'unknown',
+                    playerCount: players.length,
+                    maxPlayers: room.maxPlayers || 10,
+                    usePassword: room.usePassword || false,
+                    createdAt: room.createdAt,
+                    players: players.map(p => ({
+                        id: p.id,
+                        username: p.user?.username,
+                        name: p.user?.name,
+                        isHost: p.isHost
+                    }))
+                });
+            }
+        }
+        return new Response(JSON.stringify(rooms), {
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 
     async handleSession(webSocket, request) {
@@ -765,6 +800,7 @@ class GameRoom {
         const color = user.color || generatePlayerColorFromId(user.id);
         session.user = { id: user.id, name: user.name, username: user.username, color };
         session.playerColor = color;
+        session.connectedAt = Date.now();
 
         this.send(session, { type: 'auth_success' });
     }
@@ -1036,9 +1072,27 @@ class GameRoom {
         });
     }
 
-    handleDisconnect(session) {
+    async handleDisconnect(session) {
         if (session.roomCode) {
             this.handleLeaveRoom(session);
+        }
+        // Track play time
+        if (session.userId && session.connectedAt) {
+            try {
+                const duration = Date.now() - session.connectedAt;
+                if (duration > 5000) {
+                    const userData = await this.env.USERS.get(`user:${session.userId}`);
+                    if (userData) {
+                        const user = JSON.parse(userData);
+                        user.totalPlayTime = (user.totalPlayTime || 0) + duration;
+                        const sessions = user.recentSessions || [];
+                        sessions.push({ start: session.connectedAt, end: Date.now() });
+                        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                        user.recentSessions = sessions.filter(s => s.end > weekAgo);
+                        await this.env.USERS.put(`user:${session.userId}`, JSON.stringify(user));
+                    }
+                }
+            } catch (e) { /* best-effort */ }
         }
         this.sessions.delete(session.id);
     }
@@ -1068,6 +1122,202 @@ class GameRoom {
             // Connection might be closed
         }
     }
+}
+
+// ============================================
+// MAIL HANDLERS
+// ============================================
+async function handleListMail(env, userId) {
+    const mailData = await env.USERS.get(`mail:${userId}`);
+    const mails = mailData ? JSON.parse(mailData) : [];
+    return jsonResponse(mails);
+}
+
+async function handleUnreadMailCount(env, userId) {
+    const mailData = await env.USERS.get(`mail:${userId}`);
+    const mails = mailData ? JSON.parse(mailData) : [];
+    const count = mails.filter(m => !m.read).length;
+    return jsonResponse({ count });
+}
+
+async function handleMarkMailRead(mailId, env, userId) {
+    const mailData = await env.USERS.get(`mail:${userId}`);
+    if (!mailData) return errorResponse('No mail found', 404);
+    const mails = JSON.parse(mailData);
+    const mail = mails.find(m => m.id === mailId);
+    if (!mail) return errorResponse('Mail not found', 404);
+    mail.read = true;
+    await env.USERS.put(`mail:${userId}`, JSON.stringify(mails));
+    return jsonResponse({ success: true });
+}
+
+async function handleDeleteMail(mailId, env, userId) {
+    const mailData = await env.USERS.get(`mail:${userId}`);
+    if (!mailData) return errorResponse('No mail found', 404);
+    const mails = JSON.parse(mailData);
+    const filtered = mails.filter(m => m.id !== mailId);
+    await env.USERS.put(`mail:${userId}`, JSON.stringify(filtered));
+    return jsonResponse({ success: true });
+}
+
+// ============================================
+// ADMIN HANDLERS
+// ============================================
+const ADMIN_USERNAMES = ['jimmyqrg'];
+
+async function resolveAdminUser(env, userId) {
+    const userData = await env.USERS.get(`user:${userId}`);
+    if (!userData) return null;
+    const user = JSON.parse(userData);
+    if (!ADMIN_USERNAMES.includes(user.username.toLowerCase())) return null;
+    return user;
+}
+
+async function handleAdminListUsers(env) {
+    const userKeys = await env.USERS.list({ prefix: 'user:' });
+    const users = [];
+    for (const key of userKeys.keys) {
+        if (key.name.startsWith('user:') && !key.name.includes(':') && key.name.length > 5) {
+            // user:USERID keys only (skip username: and flag: etc)
+        }
+    }
+    // Better approach: iterate all keys with prefix 'user:' and filter by structure
+    const allKeys = [];
+    let cursor = undefined;
+    while (true) {
+        const list = await env.USERS.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            const name = key.name;
+            // Only match user:{id} pattern, not username:{x} or user:{id}:sessions etc.
+            if (/^user:[A-Za-z0-9]{10,}$/.test(name)) {
+                allKeys.push(name);
+            }
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+
+    for (const key of allKeys) {
+        const userData = await env.USERS.get(key);
+        if (!userData) continue;
+        const user = JSON.parse(userData);
+        const uid = user.id;
+
+        // Count maps
+        const mapListData = await env.MAPS.get(`user:${uid}:maps`);
+        const mapList = mapListData ? JSON.parse(mapListData) : [];
+
+        users.push({
+            id: uid,
+            username: user.username,
+            name: user.name,
+            color: user.color,
+            createdAt: user.createdAt,
+            mapsCount: mapList.length,
+            totalPlayTime: user.totalPlayTime || 0,
+            weekPlayTime: computeWeekPlayTime(user.recentSessions || [])
+        });
+    }
+
+    return jsonResponse(users);
+}
+
+function computeWeekPlayTime(sessions) {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    let total = 0;
+    for (const s of sessions) {
+        if (s.end > weekAgo) {
+            const start = Math.max(s.start, weekAgo);
+            total += s.end - start;
+        }
+    }
+    return total;
+}
+
+async function handleAdminDeleteUser(targetUserId, env) {
+    const userData = await env.USERS.get(`user:${targetUserId}`);
+    if (!userData) return errorResponse('User not found', 404);
+    const user = JSON.parse(userData);
+
+    // Delete user data
+    await env.USERS.delete(`user:${targetUserId}`);
+    if (user.username) {
+        await env.USERS.delete(`username:${user.username.toLowerCase()}`);
+    }
+
+    // Delete user's maps
+    const mapListData = await env.MAPS.get(`user:${targetUserId}:maps`);
+    if (mapListData) {
+        const mapList = JSON.parse(mapListData);
+        for (const mapId of mapList) {
+            await env.MAPS.delete(`map:${mapId}`);
+        }
+        await env.MAPS.delete(`user:${targetUserId}:maps`);
+    }
+
+    // Delete user's mail
+    await env.USERS.delete(`mail:${targetUserId}`);
+
+    // Delete user's sessions
+    const sessionKeys = await env.SESSIONS.list({ prefix: `user:${targetUserId}:` });
+    for (const key of sessionKeys.keys) {
+        await env.SESSIONS.delete(key.name);
+    }
+
+    // Delete user's flags
+    let flagCursor = undefined;
+    while (true) {
+        const list = await env.USERS.list({ prefix: `flag:${targetUserId}:`, cursor: flagCursor });
+        for (const key of list.keys) {
+            await env.USERS.delete(key.name);
+        }
+        if (list.list_complete) break;
+        flagCursor = list.cursor;
+    }
+
+    return jsonResponse({ success: true, deletedUsername: user.username });
+}
+
+async function handleAdminSendMail(targetUserId, request, env, senderUserId) {
+    const targetUserData = await env.USERS.get(`user:${targetUserId}`);
+    if (!targetUserData) return errorResponse('User not found', 404);
+
+    const senderData = await env.USERS.get(`user:${senderUserId}`);
+    const sender = senderData ? JSON.parse(senderData) : { name: 'System', username: 'system' };
+
+    const { subject, body } = await request.json();
+    if (!subject || !body) return errorResponse('Subject and body are required');
+
+    const mailData = await env.USERS.get(`mail:${targetUserId}`);
+    const mails = mailData ? JSON.parse(mailData) : [];
+
+    mails.unshift({
+        id: 'mail_' + generateId(12),
+        from: senderUserId,
+        fromName: sender.name,
+        fromUsername: sender.username,
+        subject: subject.slice(0, 200),
+        body: body.slice(0, 2000),
+        read: false,
+        createdAt: new Date().toISOString()
+    });
+
+    // Keep max 100 mails per user
+    if (mails.length > 100) mails.length = 100;
+
+    await env.USERS.put(`mail:${targetUserId}`, JSON.stringify(mails));
+    return jsonResponse({ success: true });
+}
+
+async function handleAdminListRooms(env) {
+    if (!env.GAME_ROOMS) return jsonResponse([]);
+    const id = env.GAME_ROOMS.idFromName('main');
+    const room = env.GAME_ROOMS.get(id);
+    const resp = await room.fetch(new Request('https://internal/admin/rooms'));
+    return new Response(resp.body, {
+        status: resp.status,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+    });
 }
 
 // ============================================
@@ -1174,6 +1424,51 @@ export default {
                 }
                 if (method === 'DELETE') {
                     return handleDeleteMap(mapId, env, userId);
+                }
+            }
+
+            // Mail routes
+            if (path === '/mail' && method === 'GET') {
+                return handleListMail(env, userId);
+            }
+            if (path === '/mail/unread' && method === 'GET') {
+                return handleUnreadMailCount(env, userId);
+            }
+            const mailMatch = path.match(/^\/mail\/([a-zA-Z0-9_]+)$/);
+            if (mailMatch) {
+                const mailId = mailMatch[1];
+                if (method === 'PUT') {
+                    return handleMarkMailRead(mailId, env, userId);
+                }
+                if (method === 'DELETE') {
+                    return handleDeleteMail(mailId, env, userId);
+                }
+            }
+
+            // Admin routes (require admin privileges)
+            if (path.startsWith('/admin/')) {
+                const admin = await resolveAdminUser(env, userId);
+                if (!admin) return errorResponse('Forbidden', 403);
+
+                if (path === '/admin/users' && method === 'GET') {
+                    return handleAdminListUsers(env);
+                }
+                if (path === '/admin/rooms' && method === 'GET') {
+                    return handleAdminListRooms(env);
+                }
+                const adminUserMatch = path.match(/^\/admin\/users\/([a-zA-Z0-9]+)$/);
+                if (adminUserMatch) {
+                    const targetUserId = adminUserMatch[1];
+                    if (method === 'DELETE') {
+                        return handleAdminDeleteUser(targetUserId, env);
+                    }
+                }
+                const adminMailMatch = path.match(/^\/admin\/users\/([a-zA-Z0-9]+)\/mail$/);
+                if (adminMailMatch) {
+                    const targetUserId = adminMailMatch[1];
+                    if (method === 'POST') {
+                        return handleAdminSendMail(targetUserId, request, env, userId);
+                    }
                 }
             }
 
