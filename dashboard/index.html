@@ -23,6 +23,108 @@
         }
         .map-card:hover .btn-download { opacity: 1; }
         .map-card .btn-download:hover { background: rgba(0,0,0,0.65) !important; }
+
+        /* Header menu: hamburger right of New Map */
+        .dashboard-menu-trigger {
+            position: relative;
+            padding: 10px 12px !important;
+            min-width: 44px;
+        }
+        .dashboard-menu-trigger .material-symbols-outlined {
+            font-size: 26px;
+        }
+
+        .dashboard-menu-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 100000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+        }
+        .dashboard-menu-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .dashboard-menu-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: min(320px, 92vw);
+            max-width: 100%;
+            height: 100%;
+            background: var(--bg-medium, #1a1a2e);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+            z-index: 100001;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 1px solid var(--surface-light, rgba(255,255,255,0.08));
+        }
+        .dashboard-menu-panel.active {
+            transform: translateX(0);
+        }
+
+        .dashboard-menu-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--surface-light, rgba(255,255,255,0.08));
+        }
+        .dashboard-menu-panel-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary, #fff);
+        }
+
+        .dashboard-menu-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .dashboard-menu-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary, rgba(255,255,255,0.9));
+            font-family: inherit;
+            font-size: 0.95rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .dashboard-menu-row:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .dashboard-menu-row .material-symbols-outlined {
+            font-size: 22px;
+            opacity: 0.85;
+        }
+        .dashboard-menu-row-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+        }
+        .dashboard-menu-row-badge.hidden { display: none; }
     </style>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,29 +141,15 @@
             </div>
             <h1 class="page-title">Parkoreen</h1>
             <div class="page-header-right">
-                <div style="position:relative;" id="dash-menu-wrapper">
-                    <button class="btn btn-secondary" id="btn-menu">
-                        <span class="hud-menu-btn-inner">
-                            <span class="material-symbols-outlined">more_vert</span>
-                            <span class="hud-menu-badge hidden" id="dash-mail-badge">0</span>
-                        </span>
-                    </button>
-                    <div class="hud-menu-dropdown" id="dash-menu-dropdown">
-                        <button class="hud-menu-item" id="dash-menu-settings">
-                            <span class="material-symbols-outlined">settings</span> Settings
-                        </button>
-                        <button class="hud-menu-item" id="dash-menu-mails">
-                            <span class="material-symbols-outlined">mail</span> Mails
-                            <span class="hud-menu-item-badge hidden" id="dash-menu-mail-badge">0</span>
-                        </button>
-                        <button class="hud-menu-item hidden" id="dash-menu-admin">
-                            <span class="material-symbols-outlined">admin_panel_settings</span> Admin
-                        </button>
-                    </div>
-                </div>
                 <button class="btn btn-primary" id="btn-new-map">
                     <span class="material-symbols-outlined">add_box</span>
                     New Map
+                </button>
+                <button class="btn btn-secondary dashboard-menu-trigger" id="btn-menu" type="button" title="Menu" aria-label="Open menu">
+                    <span class="hud-menu-btn-inner" style="position:relative;display:inline-flex;align-items:center;">
+                        <span class="material-symbols-outlined">menu</span>
+                        <span class="hud-menu-badge hidden" id="dash-mail-badge">0</span>
+                    </span>
                 </button>
             </div>
         </header>
@@ -84,6 +172,31 @@
             <div class="map-grid hidden" id="map-grid"></div>
         </main>
     </div>
+
+    <div class="dashboard-menu-backdrop" id="dash-menu-backdrop" aria-hidden="true"></div>
+    <aside class="dashboard-menu-panel" id="dash-menu-panel" role="dialog" aria-modal="true" aria-labelledby="dash-menu-panel-title" aria-hidden="true">
+        <div class="dashboard-menu-panel-header">
+            <h2 class="dashboard-menu-panel-title" id="dash-menu-panel-title">Menu</h2>
+            <button type="button" class="btn btn-icon btn-ghost" id="dash-menu-close" aria-label="Close menu">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="dashboard-menu-panel-body">
+            <button type="button" class="dashboard-menu-row" id="dash-menu-settings">
+                <span class="material-symbols-outlined">settings</span>
+                <span>Settings</span>
+            </button>
+            <button type="button" class="dashboard-menu-row" id="dash-menu-mails">
+                <span class="material-symbols-outlined">mail</span>
+                <span>Mails</span>
+                <span class="dashboard-menu-row-badge hidden" id="dash-menu-mail-badge">0</span>
+            </button>
+            <button type="button" class="dashboard-menu-row hidden" id="dash-menu-admin">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                <span>Admin</span>
+            </button>
+        </div>
+    </aside>
 
     <script>
         // Inline toast fallback (no browser alerts)
@@ -219,29 +332,50 @@
             await loadMaps();
 
             document.getElementById('btn-join').onclick = function() { window.open('../join.html', '_blank'); };
-            // Three-dots menu
-            var dashDropdown = document.getElementById('dash-menu-dropdown');
-            document.getElementById('btn-menu').onclick = function(e) {
-                e.stopPropagation();
-                dashDropdown.classList.toggle('active');
+
+            var dashBackdrop = document.getElementById('dash-menu-backdrop');
+            var dashPanel = document.getElementById('dash-menu-panel');
+
+            function openDashMenu() {
                 var user = window.Auth?.getUser?.();
                 var isAdmin = user && user.username === 'jimmyqrg' && window.Settings?.get('roleMode') === 'admin';
                 document.getElementById('dash-menu-admin').classList.toggle('hidden', !isAdmin);
+                dashBackdrop.classList.add('active');
+                dashPanel.classList.add('active');
+                dashBackdrop.setAttribute('aria-hidden', 'false');
+                dashPanel.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeDashMenu() {
+                dashBackdrop.classList.remove('active');
+                dashPanel.classList.remove('active');
+                dashBackdrop.setAttribute('aria-hidden', 'true');
+                dashPanel.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            }
+
+            document.getElementById('btn-menu').onclick = function(e) {
+                e.stopPropagation();
+                if (dashPanel.classList.contains('active')) closeDashMenu();
+                else openDashMenu();
             };
-            document.addEventListener('click', function() { dashDropdown.classList.remove('active'); });
-            dashDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+            dashBackdrop.onclick = closeDashMenu;
+            document.getElementById('dash-menu-close').onclick = closeDashMenu;
             document.getElementById('dash-menu-settings').onclick = function() {
-                dashDropdown.classList.remove('active');
+                closeDashMenu();
                 Navigation.toSettings();
             };
             document.getElementById('dash-menu-mails').onclick = function() {
-                dashDropdown.classList.remove('active');
+                closeDashMenu();
                 window.open('../mails/', '_blank');
             };
             document.getElementById('dash-menu-admin').onclick = function() {
-                dashDropdown.classList.remove('active');
+                closeDashMenu();
                 window.open('../admin/', '_blank');
             };
+            document.addEventListener('keydown', function(ev) {
+                if (ev.key === 'Escape' && dashPanel.classList.contains('active')) closeDashMenu();
+            });
 
             async function pollDashMail() {
                 try {

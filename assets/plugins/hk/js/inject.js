@@ -811,5 +811,30 @@
             pluginManager.playSound(pluginId, 'superdashTriggerstop');
         }
     }
+
+    // Soul statue sprite — only referenced from HK plugin folder
+    let _soulStatueImg = null;
+    function getSoulStatueImage() {
+        if (!_soulStatueImg) {
+            _soulStatueImg = new Image();
+            const meta = pluginManager.plugins.get(pluginId);
+            const base = (meta && meta.path) ? meta.path : '';
+            _soulStatueImg.src = base + 'png/soul-statue.png';
+        }
+        return _soulStatueImg;
+    }
+
+    pluginManager.registerHook('render.soulStatue', (data) => {
+        const { ctx, screenX, screenY, width, height, obj } = data;
+        const img = getSoulStatueImage();
+        if (typeof WorldObject !== 'undefined' && WorldObject.prototype._renderSoulStatueWithImage) {
+            WorldObject.prototype._renderSoulStatueWithImage.call(obj, ctx, screenX, screenY, width, height, img);
+        } else {
+            ctx.fillStyle = '#3a3a4a';
+            ctx.fillRect(screenX, screenY, width, height);
+        }
+        data.handled = true;
+        return data;
+    }, pluginId, 5);
     
 })(ctx);

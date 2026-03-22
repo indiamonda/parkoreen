@@ -1053,7 +1053,21 @@ class WorldObject {
         } else if (at === 'teleportal' || this.type === 'teleportal') {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
         } else if (at === 'soulStatue') {
-            this.renderSoulStatue(ctx, screenX, screenY, width, height);
+            const hookData = {
+                ctx,
+                screenX,
+                screenY,
+                width,
+                height,
+                obj: this,
+                handled: false
+            };
+            if (window.PluginManager) {
+                window.PluginManager.executeHook('render.soulStatue', hookData);
+            }
+            if (!hookData.handled) {
+                this.renderSoulStatueFallback(ctx, screenX, screenY, width, height);
+            }
         } else if (at === 'spinner' || this.type === 'spinner') {
             this.renderSpinner(ctx, screenX, screenY, width, height, camera);
         } else {
@@ -1215,28 +1229,25 @@ class WorldObject {
         ctx.fill();
     }
     
-    renderSoulStatue(ctx, x, y, w, h) {
-        // Soul Statue - use PNG image from HK plugin
-        // Touchbox: 3 blocks wide (w), 10 blocks tall (h)
-        // Appearance: Maintain image aspect ratio, centered within touchbox
-        if (!WorldObject.soulStatueImg) {
-            WorldObject.soulStatueImg = new Image();
-            WorldObject.soulStatueImg.src = 'assets/plugins/hk/png/soul-statue.png';
-        }
-        
-        const img = WorldObject.soulStatueImg;
+    /** Fallback if no plugin draws soul statue (e.g. HK not loaded) */
+    renderSoulStatueFallback(ctx, x, y, w, h) {
+        ctx.fillStyle = 'rgba(100, 80, 140, 0.35)';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(180, 160, 220, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+    }
+
+    _renderSoulStatueWithImage(ctx, x, y, w, h, img) {
         if (img.complete && img.naturalWidth > 0) {
-            // Calculate dimensions to maintain aspect ratio while fitting within bounds
             const imgAspect = img.naturalWidth / img.naturalHeight;
             const boxAspect = w / h;
             
             let drawWidth, drawHeight;
             if (imgAspect > boxAspect) {
-                // Image is wider than box - fit to width
                 drawWidth = w;
                 drawHeight = w / imgAspect;
             } else {
-                // Image is taller than box - fit to height
                 drawHeight = h;
                 drawWidth = h * imgAspect;
             }
@@ -2725,21 +2736,12 @@ class World {
         }
     }
     
-    // Get objects using a specific plugin
+    // Get objects using a specific plugin (metadata from each plugin's plugin.json)
     getPluginObjects(pluginId) {
-        // Returns objects that use features from a specific plugin
-        const pluginObjects = [];
-        
-        if (pluginId === 'hk') {
-            // Check for soul status objects
-            for (const obj of this.objects) {
-                if (obj.actingType === 'soulStatus') {
-                    pluginObjects.push({ section: 'Map', name: 'Soul Status', obj });
-                }
-            }
+        if (window.PluginManager) {
+            return window.PluginManager.getPluginObjects(pluginId, this);
         }
-
-        return pluginObjects;
+        return [];
     }
 }
 

@@ -1,5 +1,6 @@
 {
     "id": "cj",
+    "cover": "cover.png",
     "name": "Controllable Jump",
     "version": "1.0.0",
     "description": "Adds variable jump height. Hold the jump key to jump higher, tap for a short hop. Release the jump key mid-air to cut upward velocity.",

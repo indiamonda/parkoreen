@@ -1,5 +1,6 @@
 {
     "id": "code",
+    "hideInPluginLibrary": true,
     "name": "Code",
     "version": "0.1.0-beta",
     "description": "Add triggers and actions to your map. Create interactive experiences with player events, zones, and custom logic.",

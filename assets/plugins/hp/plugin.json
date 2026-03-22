@@ -1,5 +1,11 @@
 {
     "id": "hp",
+    "cover": "cover.png",
+    "scripts": {
+        "globals": "js/globals.js",
+        "inject": "js/inject.js",
+        "editorUi": "js/editor-ui.js"
+    },
     "name": "HP (Health Points)",
     "version": "1.0.0",
     "description": "Adds a health system to the game. Players start with configurable HP. Touching spikes removes 1 HP and teleports player to the last safe ground they stood on.",
@@ -8,10 +14,6 @@
     "color": "#FF6B6B",
     "coverHeight": 120,
     "dependencies": [],
-    "scripts": {
-        "globals": "js/globals.js",
-        "inject": "js/inject.js"
-    },
     "config": {
         "defaultHP": {
             "type": "number",

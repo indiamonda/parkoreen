@@ -342,11 +342,8 @@
     <script src="assets/js/style.js?v=11"></script>
     <script src="assets/js/plugins.js?v=1"></script>
     <script src="assets/js/game.js?v=13"></script>
-    <!-- Mechanics (Code) system - always loaded -->
-    <script src="assets/plugins/code/js/globals.js?v=1"></script>
-    <script src="assets/plugins/code/js/inject.js?v=1"></script>
-    <script src="assets/plugins/code/js/editor.js?v=1"></script>
-    <script src="assets/js/editor.js?v=15"></script>
+    <!-- Code plugin loader (scripts loaded before editor, see DOMContentLoaded) -->
+    <script src="assets/plugins/code/js/loader.js?v=1"></script>
     <script src="assets/js/exportImport.js?v=12"></script>
     <script>
         // Global state
@@ -856,6 +853,18 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // Check auth
             if (!Auth.requireAuth()) return;
+
+            // Code plugin first, then main editor (both stay out of inline game code)
+            if (typeof window.loadParkoreenCodePluginScripts === 'function') {
+                await window.loadParkoreenCodePluginScripts();
+            }
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'assets/js/editor.js?v=15';
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('Failed to load editor.js'));
+                document.head.appendChild(s);
+            });
 
             // Parse URL params
             const params = new URLSearchParams(window.location.search);

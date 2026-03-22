@@ -21,25 +21,36 @@ class PluginManager {
     // ============================================
     
     async discoverPlugins() {
-        // List of known plugins (could be made dynamic later)
-        const pluginIds = ['hp', 'hk', 'cj', 'code'];
-        
-        for (const id of pluginIds) {
+        let ids = [];
+        try {
+            const man = await fetch(`${this.basePath}manifest.json`);
+            if (man.ok) {
+                const j = await man.json();
+                ids = Array.isArray(j.plugins) ? j.plugins : [];
+            }
+        } catch (e) {
+            console.warn('[PluginManager] manifest.json failed:', e);
+        }
+        if (ids.length === 0) {
+            ids = ['code', 'cj', 'hp', 'hk'];
+        }
+
+        for (const id of ids) {
             try {
-                const pluginPath = id === 'hk' ? 'hk' : id;
-                const response = await fetch(`${this.basePath}${pluginPath}/plugin.json`);
+                const response = await fetch(`${this.basePath}${id}/plugin.json`);
                 if (response.ok) {
                     const metadata = await response.json();
-                    this.plugins.set(metadata.id, {
+                    const folderId = metadata.id || id;
+                    this.plugins.set(folderId, {
                         ...metadata,
-                        path: `${this.basePath}${pluginPath}/`
+                        path: `${this.basePath}${id}/`
                     });
                 }
             } catch (e) {
                 console.warn(`Failed to load plugin ${id}:`, e);
             }
         }
-        
+
         return Array.from(this.plugins.values());
     }
     
@@ -284,16 +295,77 @@ class PluginManager {
     
     getPluginObjects(pluginId, world) {
         const objects = [];
-        
-        if (pluginId === 'hk') {
-            for (const obj of world.objects) {
-                if (obj.actingType === 'soulStatus' || obj.appearanceType === 'soulStatue') {
-                    objects.push({ section: 'Map', name: 'Soul Statue', obj });
+        const plugin = this.plugins.get(pluginId);
+        const guards = plugin?.worldObjectGuards;
+        if (!guards || !world?.objects) return objects;
+
+        for (const obj of world.objects) {
+            for (const g of guards) {
+                let match = true;
+                if (g.actingType !== undefined && obj.actingType !== g.actingType) match = false;
+                if (g.appearanceType !== undefined && obj.appearanceType !== g.appearanceType) match = false;
+                if (g.type !== undefined && obj.type !== g.type) match = false;
+                if (match) {
+                    objects.push({
+                        section: g.section || 'Map',
+                        name: g.name || 'Object',
+                        obj
+                    });
+                    break;
                 }
             }
         }
-        
         return objects;
+    }
+
+    /** True if any enabled plugin on the world declares editorFeatures[key] === true */
+    hasEditorFeature(world, featureKey) {
+        if (!world?.plugins?.enabled) return false;
+        for (const id of world.plugins.enabled) {
+            const p = this.plugins.get(id);
+            if (p?.editorFeatures?.[featureKey]) return true;
+        }
+        return false;
+    }
+
+    /** Plugins that list depId in dependencies and are currently enabled */
+    getEnabledDependents(world, depId) {
+        const out = [];
+        if (!world?.plugins?.enabled) return out;
+        for (const id of world.plugins.enabled) {
+            const p = this.plugins.get(id);
+            if ((p?.dependencies || []).includes(depId)) out.push(id);
+        }
+        return out;
+    }
+
+    /** Load optional editor UI scripts (editorUi from plugin.json), then invoke ParkoreenEditorPluginUI[id](editor) */
+    async loadEditorPluginPanels(editor) {
+        if (this.plugins.size === 0) await this.discoverPlugins();
+        const loadOrder = Array.from(this.plugins.keys());
+        for (const id of loadOrder) {
+            const p = this.plugins.get(id);
+            const rel = p?.scripts?.editorUi;
+            if (!rel) continue;
+            const url = p.path + rel;
+            try {
+                await this.loadScriptTag(url);
+            } catch (e) {
+                console.warn(`[PluginManager] editor UI load failed ${id}:`, e);
+            }
+        }
+        const reg = window.ParkoreenEditorPluginUI;
+        if (reg && typeof reg === 'object') {
+            for (const id of loadOrder) {
+                if (typeof reg[id] === 'function') {
+                    try {
+                        reg[id](editor);
+                    } catch (e) {
+                        console.error(`[PluginManager] editor UI init failed ${id}:`, e);
+                    }
+                }
+            }
+        }
     }
     
     // ============================================

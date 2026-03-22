@@ -1,5 +1,15 @@
 {
     "id": "hk",
+    "cover": "cover.png",
+    "worldObjectGuards": [
+        { "actingType": "soulStatus", "section": "Map", "name": "Soul Status" },
+        { "appearanceType": "soulStatue", "section": "Map", "name": "Soul Statue" }
+    ],
+    "editorFeatures": {
+        "showSoulActingOnBlocks": true,
+        "showSoulStatueOnObstacles": true,
+        "showSoulStatueOnKoreen": true
+    },
     "name": "Hollow Knight",
     "version": "1.0.0",
     "description": "Adds Hollow Knight-style mechanics: Soul system, nail attacks, Monarch Wings (double jump), Mantis Claw (wall cling & wall jump), Mothwing Cloak (dash), Crystal Heart (super dash), and Focus healing.",
@@ -10,7 +20,8 @@
     "scripts": {
         "globals": "js/globals.js",
         "inject": "js/inject.js",
-        "script": "js/script.js"
+        "script": "js/script.js",
+        "editorUi": "js/editor-ui.js"
     },
     "sounds": {
         "dash": "mp3/dash.mp3",
