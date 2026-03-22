@@ -48,7 +48,8 @@ const ALLOWED_USERNAME_CHARS = /^[a-zA-Z0-9,""''\.?/:;\-_=+{}\[\]\\|~`【】<> ]
 
 // Reserved display names (case-insensitive) - only specific usernames can use these
 const RESERVED_NAMES = {
-    'jimmyqrg': ['jimmyqrg', 'jimmyqrgschool']
+    'jimmyqrg': ['jimmyqrg', 'jimmyqrg160', 'jimmyqrgschool', 'parkoreen'],
+    'parkoreen': ['jimmyqrg', 'jimmyqrg160', 'jimmyqrgschool', 'parkoreen']
 };
 
 // Invisible/problematic characters to block in display names
@@ -407,12 +408,27 @@ async function handleLogin(request, env) {
     }
 
     // For existing users without a color, generate one deterministically from their ID
-    // This ensures the same color every time
     const color = user.color || generatePlayerColorFromId(user.id);
-    
-    // If user didn't have a color, save it
+    let needsSave = false;
+
     if (!user.color) {
         user.color = color;
+        needsSave = true;
+    }
+
+    // Auto-rename users with reserved display names they're not allowed to use
+    if (user.name) {
+        const nameLower = user.name.toLowerCase().trim();
+        for (const [reservedName, allowedUsernames] of Object.entries(RESERVED_NAMES)) {
+            if (nameLower === reservedName && !allowedUsernames.includes(user.username.toLowerCase())) {
+                user.name = 'Change Me';
+                needsSave = true;
+                break;
+            }
+        }
+    }
+
+    if (needsSave) {
         await env.USERS.put(`user:${userId}`, JSON.stringify(user));
     }
 
@@ -732,11 +748,23 @@ class GameRoom {
 
         const user = JSON.parse(userData);
         session.userId = payload.userId;
-        
+
+        // Auto-rename reserved display names for unauthorized users
+        if (user.name) {
+            const nameLower = user.name.toLowerCase().trim();
+            for (const [reservedName, allowedUsernames] of Object.entries(RESERVED_NAMES)) {
+                if (nameLower === reservedName && !allowedUsernames.includes(user.username.toLowerCase())) {
+                    user.name = 'Change Me';
+                    await this.env.USERS.put(`user:${session.userId}`, JSON.stringify(user));
+                    break;
+                }
+            }
+        }
+
         // Get or generate user color
         const color = user.color || generatePlayerColorFromId(user.id);
         session.user = { id: user.id, name: user.name, username: user.username, color };
-        session.playerColor = color; // Use user's persistent color
+        session.playerColor = color;
 
         this.send(session, { type: 'auth_success' });
     }

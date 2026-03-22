@@ -1509,7 +1509,7 @@
                 item.className = 'player-item';
                 item.innerHTML = `
                     <div class="player-color" style="background: ${player.color}"></div>
-                    <span class="player-name">${escapeHtml(player.name)}</span>
+                    <span class="player-name">${escapeHtml(sanitizeRemoteName(player.name))}</span>
                     ${isHost ? `
                         <button class="layer-btn" data-kick="${player.id}" title="Kick Player">
                             <span class="material-symbols-outlined">person_remove</span>
@@ -1547,15 +1547,18 @@
                     addCommandFeedback(data.playerName + ' tried to join but is banned');
                     return;
                 }
-                engine.addRemotePlayer(data.playerId, data.playerName, data.playerColor, 0, 0);
-                addSystemNotice(`${data.playerName} joined the room`);
+                const joinName = sanitizeRemoteName(data.playerName);
+                engine.addRemotePlayer(data.playerId, joinName, data.playerColor, 0, 0);
+                addSystemNotice(`${joinName} joined the room`);
                 updatePlayersList();
             });
 
             // Player left
             mp.on('playerLeft', (data) => {
+                const rp = engine.remotePlayers.get(data.playerId);
+                const leftName = rp ? rp.name : sanitizeRemoteName(data.playerName);
                 engine.removeRemotePlayer(data.playerId);
-                addSystemNotice(`${data.playerName} left the room`);
+                addSystemNotice(`${leftName} left the room`);
                 updatePlayersList();
             });
 
@@ -1572,9 +1575,10 @@
                     _echoSuppressNext = null;
                     return;
                 }
-                addChatMessage(data.playerName, data.message, data.playerColor, {
-                    displayName: data.playerName,
-                    username: data.playerUsername || data.playerName
+                const chatName = sanitizeRemoteName(data.playerName);
+                addChatMessage(chatName, data.message, data.playerColor, {
+                    displayName: chatName,
+                    username: data.playerUsername || chatName
                 });
             });
 
@@ -1602,7 +1606,7 @@
                 // Add existing players to the game
                 if (data.players) {
                     data.players.forEach(p => {
-                        engine.addRemotePlayer(p.id, p.name, p.color, 0, 0);
+                        engine.addRemotePlayer(p.id, sanitizeRemoteName(p.name), p.color, 0, 0);
                     });
                 }
                 updatePlayersList();
@@ -1757,6 +1761,10 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function sanitizeRemoteName(displayName) {
+            return displayName || '';
         }
 
         function showCopyToast(msg) {

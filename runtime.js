@@ -824,7 +824,7 @@ class MultiplayerManager {
 // ============================================
 // JIMMYQRG EASTER EGG MANAGER
 // ============================================
-const RESERVED_DISPLAY_NAMES = ['jimmyqrg'];
+const RESERVED_DISPLAY_NAMES = ['jimmyqrg', 'parkoreen'];
 
 class JimmyQrgManager {
     constructor() {
