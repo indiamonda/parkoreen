@@ -155,7 +155,7 @@
     <script src="/parkoreen/assets/js/style.js"></script>
     <script>
         const Auth = window.Auth;
-        const API_URL = window.API_URL;
+        // API_URL is already declared in runtime.js — do not redeclare
 
         if (!Auth.getToken()) {
             window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(window.location.pathname);
