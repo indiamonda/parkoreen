@@ -3572,6 +3572,7 @@ class GameEngine {
             
             // Remote player prediction
             for (const player of this.remotePlayers.values()) {
+                if (player._adminDragged) continue;
                 if (player.lastUpdateTime && player.vx !== undefined) {
                     const timeSinceUpdate = (performance.now() - player.lastUpdateTime) / 1000;
                     if (timeSinceUpdate < 0.2) {
@@ -4189,6 +4190,7 @@ class GameEngine {
     updateRemotePlayer(id, x, y, vx = 0, vy = 0) {
         const player = this.remotePlayers.get(id);
         if (player) {
+            if (player._adminDragged) return;
             // Store actual server position
             player.serverX = x;
             player.serverY = y;

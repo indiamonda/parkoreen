@@ -17,6 +17,11 @@
         body.game-active {
             overflow: hidden;
         }
+        body.admin-tool-quickkill #game-canvas { cursor: crosshair; }
+        body.admin-tool-drag #game-canvas { cursor: grab; }
+        body.admin-tool-drag.admin-dragging #game-canvas { cursor: grabbing; }
+        body.admin-tool-placeblock #game-canvas { cursor: cell; }
+        body.admin-tool-erase #game-canvas { cursor: pointer; }
     </style>
 </head>
 <body class="game-active">
@@ -52,6 +57,49 @@
         <div id="room-code-display" class="hidden" style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 12px; font-family: 'Parkoreen Game', monospace; font-size: 1.5rem; letter-spacing: 6px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); box-shadow: 0 4px 20px rgba(0,0,0,0.5);"></div>
     </div>
 
+    <!-- Admin Toolbar (visible during play mode for admin role) -->
+    <div class="toolbar hidden" id="admin-toolbar" style="z-index: 1000;">
+        <button class="toolbar-btn" data-admin-tool="fly" title="Fly (G)">
+            <span class="material-symbols-outlined">flight</span>
+            <span class="toolbar-btn-label">Fly</span>
+        </button>
+        <button class="toolbar-btn" data-admin-action="zoom-in" title="Zoom In">
+            <span class="material-symbols-outlined">zoom_in</span>
+        </button>
+        <button class="toolbar-btn" data-admin-action="zoom-out" title="Zoom Out">
+            <span class="material-symbols-outlined">zoom_out</span>
+        </button>
+        <button class="toolbar-btn" data-admin-action="toggle-invincibility" title="Invincibility">
+            <span class="material-symbols-outlined">shield</span>
+            <span class="toolbar-btn-label">Invincible</span>
+        </button>
+        <button class="toolbar-btn" data-admin-action="toggle-touchboxes" title="Show Touchboxes">
+            <span class="material-symbols-outlined">select_all</span>
+            <span class="toolbar-btn-label">Touchbox</span>
+        </button>
+        <button class="toolbar-btn" data-admin-action="respawn" title="Respawn at Checkpoint">
+            <span class="material-symbols-outlined">restart_alt</span>
+            <span class="toolbar-btn-label">Respawn</span>
+        </button>
+        <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15); margin: 0 2px;"></div>
+        <button class="toolbar-btn" data-admin-tool="quickkill" title="Quick Kill (K)">
+            <span class="material-symbols-outlined">dangerous</span>
+            <span class="toolbar-btn-label">Kill (K)</span>
+        </button>
+        <button class="toolbar-btn" data-admin-tool="drag" title="Drag Player">
+            <span class="material-symbols-outlined">drag_indicator</span>
+            <span class="toolbar-btn-label">Drag</span>
+        </button>
+        <button class="toolbar-btn" data-admin-tool="placeblock" title="Place Block">
+            <span class="material-symbols-outlined">add_box</span>
+            <span class="toolbar-btn-label">Block</span>
+        </button>
+        <button class="toolbar-btn" data-admin-tool="erase" title="Eraser">
+            <span class="material-symbols-outlined">ink_eraser</span>
+            <span class="toolbar-btn-label">Erase</span>
+        </button>
+    </div>
+
     <!-- Players Panel -->
     <div class="players-panel" id="players-panel">
         <div class="panel-header">
@@ -67,6 +115,21 @@
 
     <!-- Chat Panel -->
     <div class="chat-panel" id="chat-panel">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 12px 2px; position: relative;">
+            <span style="font-size: 0.75rem; color: #888;">Chat</span>
+            <button class="btn btn-icon btn-ghost" id="chat-settings-btn" title="Chat Settings" style="width: 28px; height: 28px; min-width: 28px; padding: 0;">
+                <span class="material-symbols-outlined" style="font-size: 16px;">settings</span>
+            </button>
+            <div id="chat-settings-dropdown" class="hidden" style="position: absolute; top: 32px; right: 8px; background: rgba(30,30,30,0.95); border-radius: 8px; padding: 10px 14px; z-index: 10; min-width: 180px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
+                <div style="font-size: 0.75rem; color: #aaa; margin-bottom: 6px;">Display names as</div>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #ddd; cursor: pointer; margin-bottom: 4px;">
+                    <input type="radio" name="chat-name-display" value="displayName" checked> Display Name
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #ddd; cursor: pointer;">
+                    <input type="radio" name="chat-name-display" value="username"> Username
+                </label>
+            </div>
+        </div>
         <div class="chat-messages" id="chat-messages">
             <!-- Chat messages will appear here -->
         </div>
@@ -1199,6 +1262,7 @@
             
             // Start position update loop
             startPositionUpdates();
+            initAdminMode();
         }
         
         async function reconnectToRoom(roomCode) {
@@ -1326,6 +1390,41 @@
                     sendChatMessage();
                 }
             });
+
+            // Chat settings dropdown
+            document.getElementById('chat-settings-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('chat-settings-dropdown').classList.toggle('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                const dd = document.getElementById('chat-settings-dropdown');
+                if (dd && !dd.contains(e.target) && e.target.id !== 'chat-settings-btn') {
+                    dd.classList.add('hidden');
+                }
+            });
+
+            // Quick Copy on chat messages
+            document.getElementById('chat-messages').addEventListener('click', (e) => {
+                const msg = e.target.closest('.chat-message');
+                if (!msg || msg.classList.contains('chat-notice')) return;
+                const nameMode = document.querySelector('input[name="chat-name-display"]:checked')?.value || 'displayName';
+                const name = nameMode === 'username' ? (msg.dataset.senderUsername || '') : (msg.dataset.senderName || '');
+                if (name) {
+                    navigator.clipboard.writeText(name).catch(() => {});
+                    showCopyToast('Copied name');
+                }
+            });
+            document.getElementById('chat-messages').addEventListener('contextmenu', (e) => {
+                const msg = e.target.closest('.chat-message');
+                if (!msg || msg.classList.contains('chat-notice')) return;
+                e.preventDefault();
+                const textEl = msg.querySelector('.chat-message-text');
+                const text = textEl ? textEl.textContent : msg.textContent;
+                if (text) {
+                    navigator.clipboard.writeText(text).catch(() => {});
+                    showCopyToast('Copied message');
+                }
+            });
         }
 
         function sendChatMessage() {
@@ -1340,15 +1439,29 @@
             }
         }
 
-        function addChatMessage(name, message, color) {
+        function addChatMessage(name, message, color, extra) {
             const container = document.getElementById('chat-messages');
             const messageEl = document.createElement('div');
             messageEl.className = 'chat-message';
+            if (extra) {
+                messageEl.dataset.senderName = extra.displayName || '';
+                messageEl.dataset.senderUsername = extra.username || '';
+            }
             messageEl.innerHTML = `
                 <span class="chat-message-name" style="color: ${color || '#fff'};">${escapeHtml(name)}:</span>
-                <span>${escapeHtml(message)}</span>
+                <span class="chat-message-text">${escapeHtml(message)}</span>
             `;
             container.appendChild(messageEl);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addSystemNotice(text) {
+            const container = document.getElementById('chat-messages');
+            const el = document.createElement('div');
+            el.className = 'chat-message chat-notice';
+            el.style.cssText = 'color: #FFD600; font-style: italic; font-size: 0.8rem;';
+            el.textContent = text;
+            container.appendChild(el);
             container.scrollTop = container.scrollHeight;
         }
 
@@ -1394,14 +1507,14 @@
             // Player joined
             mp.on('playerJoined', (data) => {
                 engine.addRemotePlayer(data.playerId, data.playerName, data.playerColor, 0, 0);
-                addChatMessage('System', `${data.playerName} joined the parky!`, '#4CAF50');
+                addSystemNotice(`${data.playerName} joined the room`);
                 updatePlayersList();
             });
 
             // Player left
             mp.on('playerLeft', (data) => {
                 engine.removeRemotePlayer(data.playerId);
-                addChatMessage('System', `${data.playerName} left the parky.`, '#f44336');
+                addSystemNotice(`${data.playerName} left the room`);
                 updatePlayersList();
             });
 
@@ -1414,7 +1527,10 @@
 
             // Chat message
             mp.on('chatMessage', (data) => {
-                addChatMessage(data.playerName, data.message, data.playerColor);
+                addChatMessage(data.playerName, data.message, data.playerColor, {
+                    displayName: data.playerName,
+                    username: data.playerUsername || data.playerName
+                });
             });
 
             // Kicked
@@ -1559,6 +1675,7 @@
             startPositionUpdates();
             
             toastSuccess('Room created! Share the code: ' + roomCode);
+            initAdminMode();
         }
 
         // Save on page visibility change (user switches tabs)
@@ -1595,6 +1712,357 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function showCopyToast(msg) {
+            let t = document.getElementById('copy-toast');
+            if (t) t.remove();
+            t = document.createElement('div');
+            t.id = 'copy-toast';
+            t.textContent = msg;
+            t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:6px 16px;border-radius:8px;font-size:0.8rem;z-index:99999;pointer-events:none;';
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; }, 1200);
+            setTimeout(() => { if (t.parentNode) t.remove(); }, 1600);
+        }
+
+        // ========================================
+        // ADMIN MODE
+        // ========================================
+        const adminState = {
+            active: false,
+            tool: null, // 'fly', 'quickkill', 'drag', 'placeblock', 'erase'
+            isFlying: false,
+            invincible: false,
+            showTouchboxes: false,
+            // Drag state
+            dragTarget: null,
+            dragOffset: { x: 0, y: 0 },
+            isDragging: false,
+            // Place block color
+            blockColor: '#787878'
+        };
+
+        function isAdminUser() {
+            const user = Auth.getUser();
+            if (!user || user.username !== 'jimmyqrg') return false;
+            return Settings.get('roleMode') === 'admin';
+        }
+
+        function initAdminMode() {
+            if (!isAdminUser()) return;
+            if (adminState.active) return;
+            adminState.active = true;
+
+            const toolbar = document.getElementById('admin-toolbar');
+            toolbar.classList.remove('hidden');
+
+            // Tool buttons
+            toolbar.querySelectorAll('[data-admin-tool]').forEach(btn => {
+                btn.addEventListener('click', () => setAdminTool(btn.dataset.adminTool));
+            });
+            toolbar.querySelectorAll('[data-admin-action]').forEach(btn => {
+                btn.addEventListener('click', () => handleAdminAction(btn.dataset.adminAction));
+            });
+
+            // Canvas events for admin tools
+            const canvas = document.getElementById('game-canvas');
+            canvas.addEventListener('mousedown', adminMouseDown);
+            canvas.addEventListener('mousemove', adminMouseMove);
+            canvas.addEventListener('mouseup', adminMouseUp);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', adminKeyDown);
+
+            // Render hook for admin overlays
+            const origRender = engine.render.bind(engine);
+            engine.render = function() {
+                origRender();
+                renderAdminOverlays();
+            };
+        }
+
+        function setAdminTool(tool) {
+            if (tool === 'fly') {
+                adminState.isFlying = !adminState.isFlying;
+                if (engine.localPlayer) {
+                    engine.localPlayer.isFlying = adminState.isFlying;
+                    engine.localPlayer.vx = 0;
+                    engine.localPlayer.vy = 0;
+                    if (!adminState.isFlying) engine.localPlayer.resetJumps();
+                }
+                updateAdminToolbarUI();
+                return;
+            }
+            document.body.classList.forEach(c => { if (c.startsWith('admin-tool-')) document.body.classList.remove(c); });
+            adminState.tool = adminState.tool === tool ? null : tool;
+            if (adminState.tool) {
+                document.body.classList.add('admin-tool-' + adminState.tool);
+            }
+            updateAdminToolbarUI();
+        }
+
+        function handleAdminAction(action) {
+            const cam = editor?.camera || engine.camera;
+            let cx, cy;
+            if (engine.localPlayer) {
+                cx = engine.localPlayer.x + engine.localPlayer.width / 2;
+                cy = engine.localPlayer.y + engine.localPlayer.height / 2;
+            } else {
+                cx = cam.x + cam.width / 2 / cam.zoom;
+                cy = cam.y + cam.height / 2 / cam.zoom;
+            }
+
+            switch (action) {
+                case 'zoom-in':
+                    cam.zoomIn(cx, cy);
+                    break;
+                case 'zoom-out':
+                    cam.zoomOut(cx, cy);
+                    break;
+                case 'toggle-invincibility':
+                    adminState.invincible = !adminState.invincible;
+                    engine.invincibilityEnabled = adminState.invincible;
+                    GameEngine._invincible = adminState.invincible;
+                    break;
+                case 'toggle-touchboxes':
+                    adminState.showTouchboxes = !adminState.showTouchboxes;
+                    if (editor) editor.showTouchboxes = adminState.showTouchboxes;
+                    break;
+                case 'respawn':
+                    if (engine.localPlayer) {
+                        engine.respawnPlayer();
+                        engine.localPlayer.isFlying = adminState.isFlying;
+                    }
+                    break;
+            }
+            updateAdminToolbarUI();
+        }
+
+        function updateAdminToolbarUI() {
+            const toolbar = document.getElementById('admin-toolbar');
+            toolbar.querySelectorAll('[data-admin-tool]').forEach(btn => {
+                const t = btn.dataset.adminTool;
+                if (t === 'fly') {
+                    btn.classList.toggle('active', adminState.isFlying);
+                } else {
+                    btn.classList.toggle('active', adminState.tool === t);
+                }
+            });
+            toolbar.querySelectorAll('[data-admin-action]').forEach(btn => {
+                const a = btn.dataset.adminAction;
+                if (a === 'toggle-invincibility') btn.classList.toggle('active', adminState.invincible);
+                if (a === 'toggle-touchboxes') btn.classList.toggle('active', adminState.showTouchboxes);
+            });
+        }
+
+        function adminKeyDown(e) {
+            if (!adminState.active || engine.state !== GameState.PLAYING) return;
+            if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+            if (e.code === 'KeyG') {
+                e.preventDefault();
+                setAdminTool('fly');
+            }
+            if (e.code === 'KeyK') {
+                e.preventDefault();
+                setAdminTool('quickkill');
+            }
+        }
+
+        function getWorldPosFromEvent(e) {
+            const canvas = document.getElementById('game-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const cam = editor?.camera || engine.camera;
+            const mx = (e.clientX - rect.left) / cam.zoom + cam.x;
+            const my = (e.clientY - rect.top) / cam.zoom + cam.y;
+            return { x: mx, y: my };
+        }
+
+        function getGridPos(wx, wy) {
+            const gs = 32;
+            return { x: Math.floor(wx / gs) * gs, y: Math.floor(wy / gs) * gs };
+        }
+
+        function findPlayerAt(wx, wy) {
+            for (const [id, player] of engine.remotePlayers) {
+                if (player.isDead) continue;
+                if (wx >= player.x && wx <= player.x + player.width &&
+                    wy >= player.y && wy <= player.y + player.height) {
+                    return { id, player };
+                }
+            }
+            return null;
+        }
+
+        function adminMouseDown(e) {
+            if (!adminState.active || engine.state !== GameState.PLAYING) return;
+            if (!adminState.tool) return;
+            // Ignore if clicking on UI
+            if (e.target !== document.getElementById('game-canvas')) return;
+
+            const wp = getWorldPosFromEvent(e);
+
+            switch (adminState.tool) {
+                case 'quickkill': {
+                    const found = findPlayerAt(wp.x, wp.y);
+                    if (found) {
+                        found.player.die();
+                    }
+                    break;
+                }
+                case 'drag': {
+                    const found = findPlayerAt(wp.x, wp.y);
+                    if (found) {
+                        adminState.dragTarget = found;
+                        adminState.dragOffset.x = wp.x - found.player.x;
+                        adminState.dragOffset.y = wp.y - found.player.y;
+                        adminState.isDragging = true;
+                        document.body.classList.add('admin-dragging');
+                        found.player._adminDragged = true;
+                        found.player.vx = 0;
+                        found.player.vy = 0;
+                    }
+                    break;
+                }
+                case 'placeblock': {
+                    const gp = getGridPos(wp.x, wp.y);
+                    adminPlaceBlock(gp.x, gp.y);
+                    adminState._placing = true;
+                    break;
+                }
+                case 'erase': {
+                    const gp = getGridPos(wp.x, wp.y);
+                    adminErase(gp.x, gp.y);
+                    adminState._erasing = true;
+                    break;
+                }
+            }
+        }
+
+        function adminMouseMove(e) {
+            if (!adminState.active || engine.state !== GameState.PLAYING) return;
+            const wp = getWorldPosFromEvent(e);
+            adminState._mouseWorld = wp;
+
+            if (adminState.isDragging && adminState.dragTarget) {
+                const p = adminState.dragTarget.player;
+                p.x = wp.x - adminState.dragOffset.x;
+                p.y = wp.y - adminState.dragOffset.y;
+                p.vx = 0;
+                p.vy = 0;
+                p.serverX = p.x;
+                p.serverY = p.y;
+            }
+
+            if (adminState._placing && adminState.tool === 'placeblock') {
+                const gp = getGridPos(wp.x, wp.y);
+                adminPlaceBlock(gp.x, gp.y);
+            }
+
+            if (adminState._erasing && adminState.tool === 'erase') {
+                const gp = getGridPos(wp.x, wp.y);
+                adminErase(gp.x, gp.y);
+            }
+        }
+
+        function adminMouseUp(e) {
+            if (adminState.isDragging && adminState.dragTarget) {
+                const p = adminState.dragTarget.player;
+                p._adminDragged = false;
+                p.vx = 0;
+                p.vy = 0;
+                adminState.dragTarget = null;
+                adminState.isDragging = false;
+                document.body.classList.remove('admin-dragging');
+            }
+            adminState._placing = false;
+            adminState._erasing = false;
+        }
+
+        function adminPlaceBlock(x, y) {
+            const gs = 32;
+            const existing = engine.world.getObjectAt(x + gs / 2, y + gs / 2);
+            if (existing) return;
+            const obj = new WorldObject({
+                x: x, y: y, width: gs, height: gs,
+                type: 'block', appearanceType: 'ground', actingType: 'ground',
+                texture: 'solid', collision: true,
+                color: adminState.blockColor, opacity: 1, layer: 1
+            });
+            engine.world.addObject(obj);
+        }
+
+        function adminErase(x, y) {
+            const gs = 32;
+            const obj = engine.world.getObjectAt(x + gs / 2, y + gs / 2);
+            if (!obj) return;
+            // For merged blocks, only erase the single cell
+            const isMerged = obj.type === 'block' && obj.appearanceType === 'ground' &&
+                obj.rotation === 0 && !obj.flipHorizontal &&
+                (obj.width > gs || obj.height > gs);
+            if (!isMerged) {
+                engine.world.removeObject(obj.id);
+                return;
+            }
+            const cols = Math.round(obj.width / gs);
+            const rows = Math.round(obj.height / gs);
+            const kept = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cx = obj.x + c * gs;
+                    const cy = obj.y + r * gs;
+                    if (cx === x && cy === y) continue;
+                    kept.push({ x: cx, y: cy });
+                }
+            }
+            engine.world.removeObject(obj.id);
+            for (const cell of kept) {
+                engine.world.addObject(new WorldObject({
+                    type: obj.type, x: cell.x, y: cell.y, width: gs, height: gs,
+                    color: obj.color, texture: obj.texture, opacity: obj.opacity,
+                    layer: obj.layer, collision: obj.collision,
+                    appearanceType: obj.appearanceType, actingType: obj.actingType
+                }));
+            }
+        }
+
+        function renderAdminOverlays() {
+            if (!adminState.active || engine.state !== GameState.PLAYING) return;
+            const ctx = engine.ctx;
+            const cam = editor?.camera || engine.camera;
+            const wp = adminState._mouseWorld;
+            if (!wp) return;
+
+            const gs = 32;
+            const gp = getGridPos(wp.x, wp.y);
+
+            ctx.save();
+            ctx.scale(cam.zoom, cam.zoom);
+
+            if (adminState.tool === 'placeblock') {
+                const sx = gp.x - cam.x;
+                const sy = gp.y - cam.y;
+                ctx.fillStyle = 'rgba(120, 120, 120, 0.4)';
+                ctx.fillRect(sx, sy, gs, gs);
+                ctx.strokeStyle = '#aaa';
+                ctx.lineWidth = 1 / cam.zoom;
+                ctx.strokeRect(sx, sy, gs, gs);
+            }
+
+            if (adminState.tool === 'erase') {
+                const sx = gp.x - cam.x;
+                const sy = gp.y - cam.y;
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+                ctx.fillRect(sx, sy, gs, gs);
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2 / cam.zoom;
+                ctx.setLineDash([6 / cam.zoom, 3 / cam.zoom]);
+                ctx.strokeRect(sx, sy, gs, gs);
+                ctx.setLineDash([]);
+            }
+
+            ctx.restore();
         }
 
         let lastEndGameData = null;

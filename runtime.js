@@ -1213,7 +1213,8 @@ class SettingsManager {
             volume: 100,
             touchscreenMode: false,
             fontSize: 100, // percentage (50-150)
-            keyboardLayout: 'jimmyqrg'
+            keyboardLayout: 'jimmyqrg',
+            roleMode: 'normal'
         };
         this.settings = { ...this.defaults };
         this.load();

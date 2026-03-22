@@ -51,6 +51,14 @@
                     </label>
                 </div>
 
+                <div class="settings-row hidden" id="role-mode-row">
+                    <span class="settings-row-label">Role Mode</span>
+                    <select class="form-select" id="role-mode" style="width: 140px;">
+                        <option value="normal">Normal</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
                 <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
                     <span class="settings-row-label">Keyboard Layout</span>
                     <select class="form-select" id="keyboard-layout" style="width: 100%;">
@@ -201,6 +209,17 @@
             fontsizeNumber.value = savedFontSize;
             
             touchscreenToggle.checked = Settings.get('touchscreenMode');
+
+            // Role mode (only for jimmyqrg)
+            if (user.username === 'jimmyqrg') {
+                var roleModeRow = document.getElementById('role-mode-row');
+                var roleModeSelect = document.getElementById('role-mode');
+                roleModeRow.classList.remove('hidden');
+                roleModeSelect.value = Settings.get('roleMode') || 'normal';
+                roleModeSelect.onchange = function(e) {
+                    Settings.set('roleMode', e.target.value);
+                };
+            }
 
             // Keyboard layout
             var keyboardLayout = document.getElementById('keyboard-layout');
