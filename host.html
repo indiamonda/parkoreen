@@ -1430,13 +1430,46 @@
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
-            
-            if (message) {
-                if (window.MultiplayerManager?.sendChatMessage) {
-                    window.MultiplayerManager.sendChatMessage(message);
-                }
-                input.value = '';
+            if (!message) return;
+            input.value = '';
+
+            if (message.startsWith('/') && adminState.active) {
+                handleAdminCommand(message);
+                return;
             }
+
+            if (window.MultiplayerManager?.sendChatMessage) {
+                window.MultiplayerManager.sendChatMessage(message);
+            }
+        }
+
+        function formatChatColors(text) {
+            let result = '';
+            let i = 0;
+            while (i < text.length) {
+                const braceStart = text.indexOf('{#', i);
+                if (braceStart === -1) {
+                    result += escapeHtml(text.slice(i));
+                    break;
+                }
+                result += escapeHtml(text.slice(i, braceStart));
+                const braceEnd = text.indexOf('}', braceStart);
+                if (braceEnd === -1) {
+                    result += escapeHtml(text.slice(braceStart));
+                    break;
+                }
+                const inner = text.slice(braceStart + 1, braceEnd);
+                const spaceIdx = inner.indexOf(' ');
+                if (spaceIdx !== -1 && /^#[0-9A-Fa-f]{3,8}$/.test(inner.slice(0, spaceIdx))) {
+                    const col = inner.slice(0, spaceIdx);
+                    const txt = inner.slice(spaceIdx + 1);
+                    result += `<span style="color:${col};">${escapeHtml(txt)}</span>`;
+                } else {
+                    result += escapeHtml(text.slice(braceStart, braceEnd + 1));
+                }
+                i = braceEnd + 1;
+            }
+            return result;
         }
 
         function addChatMessage(name, message, color, extra) {
@@ -1449,7 +1482,7 @@
             }
             messageEl.innerHTML = `
                 <span class="chat-message-name" style="color: ${color || '#fff'};">${escapeHtml(name)}:</span>
-                <span class="chat-message-text">${escapeHtml(message)}</span>
+                <span class="chat-message-text">${formatChatColors(message)}</span>
             `;
             container.appendChild(messageEl);
             container.scrollTop = container.scrollHeight;
@@ -1459,7 +1492,7 @@
             const container = document.getElementById('chat-messages');
             const el = document.createElement('div');
             el.className = 'chat-message chat-notice';
-            el.style.cssText = 'color: #FFD600; font-style: italic; font-size: 0.8rem;';
+            el.style.cssText = 'color: #FFFF00; font-style: italic; font-size: 0.8rem;';
             el.textContent = text;
             container.appendChild(el);
             container.scrollTop = container.scrollHeight;
@@ -1506,6 +1539,14 @@
             
             // Player joined
             mp.on('playerJoined', (data) => {
+                // Auto-kick banned players
+                if (adminState.active && isPlayerBanned(data.playerName)) {
+                    if (window.MultiplayerManager?.kickPlayer) {
+                        window.MultiplayerManager.kickPlayer(data.playerId);
+                    }
+                    addCommandFeedback(data.playerName + ' tried to join but is banned');
+                    return;
+                }
                 engine.addRemotePlayer(data.playerId, data.playerName, data.playerColor, 0, 0);
                 addSystemNotice(`${data.playerName} joined the room`);
                 updatePlayersList();
@@ -1527,6 +1568,10 @@
 
             // Chat message
             mp.on('chatMessage', (data) => {
+                if (_echoSuppressNext && data.message === _echoSuppressNext) {
+                    _echoSuppressNext = null;
+                    return;
+                }
                 addChatMessage(data.playerName, data.message, data.playerColor, {
                     displayName: data.playerName,
                     username: data.playerUsername || data.playerName
@@ -1724,6 +1769,211 @@
             document.body.appendChild(t);
             setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; }, 1200);
             setTimeout(() => { if (t.parentNode) t.remove(); }, 1600);
+        }
+
+        // ========================================
+        // ADMIN COMMANDS
+        // ========================================
+        const roomBans = new Map(); // playerId -> { name, expiresAt }
+
+        function loadGlobalBans() {
+            try {
+                const raw = localStorage.getItem('parkoreen_global_bans');
+                return raw ? JSON.parse(raw) : {};
+            } catch { return {}; }
+        }
+        function saveGlobalBans(bans) {
+            localStorage.setItem('parkoreen_global_bans', JSON.stringify(bans));
+        }
+
+        function isPlayerBanned(name) {
+            const now = Date.now();
+            for (const [, ban] of roomBans) {
+                if (ban.name === name && (ban.expiresAt === Infinity || ban.expiresAt > now)) return true;
+            }
+            const global = loadGlobalBans();
+            const entry = global[name];
+            if (entry && (entry.expiresAt === null || entry.expiresAt > now)) return true;
+            return false;
+        }
+
+        function parseBanDuration(args, startIdx) {
+            const numStr = args[startIdx];
+            const unitStr = args[startIdx + 1];
+            if (!numStr || numStr === 'infinity') return Infinity;
+            const num = parseFloat(numStr);
+            if (isNaN(num)) return Infinity;
+            const mult = { h: 3600000, d: 86400000, w: 604800000, m: 2592000000, y: 31536000000 };
+            return num * (mult[unitStr] || mult.h);
+        }
+
+        function formatDuration(ms) {
+            if (ms === Infinity) return 'forever';
+            const units = [
+                [31536000000, 'year'], [2592000000, 'month'], [604800000, 'week'],
+                [86400000, 'day'], [3600000, 'hour']
+            ];
+            for (const [div, label] of units) {
+                const val = ms / div;
+                if (val >= 1) {
+                    const rounded = Math.round(val * 10) / 10;
+                    return `${rounded} ${label}${rounded !== 1 ? 's' : ''}`;
+                }
+            }
+            return 'a short time';
+        }
+
+        function resolveSelector(selector) {
+            const mp = window.MultiplayerManager;
+            const players = mp?.getPlayers?.() || [];
+
+            if (selector === '@a') return [...players];
+            if (selector === '@s') {
+                const user = Auth.getUser();
+                return [{ id: '__self__', name: user.name, color: user.color }];
+            }
+            if (selector === '@r') {
+                if (players.length === 0) return [];
+                return [players[Math.floor(Math.random() * players.length)]];
+            }
+            if (selector === '@p') {
+                if (!engine.localPlayer || players.length === 0) return [];
+                let nearest = null, minDist = Infinity;
+                for (const p of players) {
+                    const rp = engine.remotePlayers.get(p.id);
+                    if (!rp) continue;
+                    const dx = rp.x - engine.localPlayer.x;
+                    const dy = rp.y - engine.localPlayer.y;
+                    const dist = dx * dx + dy * dy;
+                    if (dist < minDist) { minDist = dist; nearest = p; }
+                }
+                return nearest ? [nearest] : [];
+            }
+            const match = players.find(p => p.name.toLowerCase() === selector.toLowerCase());
+            return match ? [match] : [];
+        }
+
+        let _echoSuppressNext = null;
+
+        function addCommandFeedback(text) {
+            const container = document.getElementById('chat-messages');
+            const el = document.createElement('div');
+            el.className = 'chat-message chat-notice';
+            el.style.cssText = 'color: #aaa; font-size: 0.8rem; font-style: italic;';
+            el.textContent = text;
+            container.appendChild(el);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleAdminCommand(raw) {
+            const parts = raw.split(/\s+/);
+            const cmd = parts[0].toLowerCase();
+
+            switch (cmd) {
+                case '/kick': {
+                    const selector = parts[1];
+                    if (!selector) { addCommandFeedback('Usage: /kick {player}'); return; }
+                    const targets = resolveSelector(selector);
+                    if (targets.length === 0) { addCommandFeedback('No player found for: ' + selector); return; }
+                    for (const t of targets) {
+                        if (t.id === '__self__') continue;
+                        if (window.MultiplayerManager?.kickPlayer) {
+                            window.MultiplayerManager.kickPlayer(t.id);
+                        }
+                        addCommandFeedback('Kicked ' + t.name);
+                    }
+                    break;
+                }
+
+                case '/ban': {
+                    const selector = parts[1];
+                    if (!selector) { addCommandFeedback('Usage: /ban {player} [duration] [h/d/w/m/y]'); return; }
+                    const targets = resolveSelector(selector);
+                    if (targets.length === 0) { addCommandFeedback('No player found for: ' + selector); return; }
+                    const duration = parseBanDuration(parts, 2);
+                    const expiresAt = duration === Infinity ? Infinity : Date.now() + duration;
+                    for (const t of targets) {
+                        if (t.id === '__self__') continue;
+                        roomBans.set(t.id, { name: t.name, expiresAt });
+                        if (window.MultiplayerManager?.kickPlayer) {
+                            window.MultiplayerManager.kickPlayer(t.id);
+                        }
+                        addCommandFeedback('Banned ' + t.name + ' for ' + formatDuration(duration));
+                    }
+                    break;
+                }
+
+                case '/unban': {
+                    const selector = parts[1];
+                    if (!selector) { addCommandFeedback('Usage: /unban {player}'); return; }
+                    let found = false;
+                    for (const [id, ban] of roomBans) {
+                        if (ban.name.toLowerCase() === selector.toLowerCase() || selector === '@a') {
+                            roomBans.delete(id);
+                            addCommandFeedback('Unbanned ' + ban.name + ' from this room');
+                            found = true;
+                        }
+                    }
+                    if (!found) addCommandFeedback('No room ban found for: ' + selector);
+                    break;
+                }
+
+                case '/banall': {
+                    const user = Auth.getUser();
+                    if (user.username !== 'jimmyqrg') {
+                        addCommandFeedback('Only the owner can use /banall');
+                        return;
+                    }
+                    const selector = parts[1];
+                    if (!selector) { addCommandFeedback('Usage: /banall {player} [duration] [h/d/w/m/y]'); return; }
+                    const targets = resolveSelector(selector);
+                    if (targets.length === 0) { addCommandFeedback('No player found for: ' + selector); return; }
+                    const duration = parseBanDuration(parts, 2);
+                    const expiresAt = duration === Infinity ? null : Date.now() + duration;
+                    const global = loadGlobalBans();
+                    for (const t of targets) {
+                        if (t.id === '__self__') continue;
+                        global[t.name] = { expiresAt };
+                        roomBans.set(t.id, { name: t.name, expiresAt: expiresAt ?? Infinity });
+                        if (window.MultiplayerManager?.kickPlayer) {
+                            window.MultiplayerManager.kickPlayer(t.id);
+                        }
+                        addCommandFeedback('Globally banned ' + t.name + ' for ' + formatDuration(duration));
+                    }
+                    saveGlobalBans(global);
+                    break;
+                }
+
+                case '/echo': {
+                    const text = raw.slice(parts[0].length).trim();
+                    if (!text) { addCommandFeedback('Usage: /echo {message}'); return; }
+                    const user = Auth.getUser();
+                    _echoSuppressNext = text;
+                    if (window.MultiplayerManager?.sendChatMessage) {
+                        window.MultiplayerManager.sendChatMessage(text);
+                    }
+                    addBoldChatMessage(user.name, text, user.color);
+                    if (user.username === 'jimmyqrg') {
+                        addBoldChatMessage('Parkoreen', text, '#4CAF50');
+                    }
+                    break;
+                }
+
+                default:
+                    addCommandFeedback('Unknown command: ' + cmd);
+            }
+        }
+
+        function addBoldChatMessage(name, message, color) {
+            const container = document.getElementById('chat-messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'chat-message';
+            messageEl.innerHTML = `
+                <span class="chat-message-name" style="color: ${color || '#fff'}; font-weight: 700;">${escapeHtml(name)}:</span>
+                <span class="chat-message-text" style="font-weight: 700;">${formatChatColors(message)}</span>
+            `;
+            container.appendChild(messageEl);
+            container.scrollTop = container.scrollHeight;
         }
 
         // ========================================
