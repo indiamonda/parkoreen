@@ -858,7 +858,7 @@ const SpikeImage = {
         if (this.image) return;
         this.image = new Image();
         this.image.onload = () => { this.loaded = true; };
-        this.image.src = '/parkoreen/assets/svg/spike-64x.svg';
+        this.image.src = '/parkoreen/assets/svg/spike-512x.svg';
     }
 };
 
@@ -869,7 +869,7 @@ const PortalImage = {
         if (this.image) return;
         this.image = new Image();
         this.image.onload = () => { this.loaded = true; };
-        this.image.src = '/parkoreen/assets/svg/portal-64x.svg';
+        this.image.src = '/parkoreen/assets/svg/portal-512x.svg';
     }
 };
 
@@ -1095,13 +1095,14 @@ class WorldObject {
 
     renderSpike(ctx, x, y, w, h) {
         if (SpikeImage.loaded && SpikeImage.image) {
-            // Cache tinted spike image per color+size combo
-            const cacheKey = `${this.color}_${w}_${h}`;
+            const dpr = window.devicePixelRatio || 1;
+            const cacheKey = `${this.color}_${w}_${h}_${dpr}`;
             if (this._spikeCacheKey !== cacheKey) {
                 const offscreen = document.createElement('canvas');
-                offscreen.width = w;
-                offscreen.height = h;
+                offscreen.width = w * dpr;
+                offscreen.height = h * dpr;
                 const offCtx = offscreen.getContext('2d');
+                offCtx.scale(dpr, dpr);
                 offCtx.drawImage(SpikeImage.image, 0, 0, w, h);
                 offCtx.globalCompositeOperation = 'source-in';
                 offCtx.fillStyle = this.color;
@@ -1109,7 +1110,7 @@ class WorldObject {
                 this._spikeCache = offscreen;
                 this._spikeCacheKey = cacheKey;
             }
-            ctx.drawImage(this._spikeCache, x, y);
+            ctx.drawImage(this._spikeCache, 0, 0, this._spikeCache.width, this._spikeCache.height, x, y, w, h);
         } else {
             // Fallback: simple triangle spikes if image not loaded
             const color = this.color;
@@ -1332,12 +1333,14 @@ class WorldObject {
         const centerY = y + h / 2;
         
         if (PortalImage.loaded && PortalImage.image) {
-            const cacheKey = `${this.color}_${w}_${h}`;
+            const dpr = window.devicePixelRatio || 1;
+            const cacheKey = `${this.color}_${w}_${h}_${dpr}`;
             if (this._portalCacheKey !== cacheKey) {
                 const offscreen = document.createElement('canvas');
-                offscreen.width = w;
-                offscreen.height = h;
+                offscreen.width = w * dpr;
+                offscreen.height = h * dpr;
                 const offCtx = offscreen.getContext('2d');
+                offCtx.scale(dpr, dpr);
                 offCtx.drawImage(PortalImage.image, 0, 0, w, h);
                 offCtx.globalCompositeOperation = 'source-in';
                 offCtx.fillStyle = this.color;
@@ -1345,7 +1348,7 @@ class WorldObject {
                 this._portalCache = offscreen;
                 this._portalCacheKey = cacheKey;
             }
-            ctx.drawImage(this._portalCache, x, y);
+            ctx.drawImage(this._portalCache, 0, 0, this._portalCache.width, this._portalCache.height, x, y, w, h);
         } else {
             // Fallback: circular portal appearance if image not loaded
             const radius = Math.min(w, h) * 0.4;
@@ -1414,12 +1417,14 @@ class WorldObject {
         if (rotationAngle !== 0) ctx.rotate(rotationAngle);
         
         if (SpinnerImage.loaded && SpinnerImage.image) {
-            const cacheKey = `${this.color}_${w}_${h}`;
+            const dpr = window.devicePixelRatio || 1;
+            const cacheKey = `${this.color}_${w}_${h}_${dpr}`;
             if (this._spinnerCacheKey !== cacheKey) {
                 const offscreen = document.createElement('canvas');
-                offscreen.width = w;
-                offscreen.height = h;
+                offscreen.width = w * dpr;
+                offscreen.height = h * dpr;
                 const offCtx = offscreen.getContext('2d');
+                offCtx.scale(dpr, dpr);
                 offCtx.drawImage(SpinnerImage.image, 0, 0, w, h);
                 offCtx.globalCompositeOperation = 'source-in';
                 offCtx.fillStyle = this.color;
@@ -1427,7 +1432,7 @@ class WorldObject {
                 this._spinnerCache = offscreen;
                 this._spinnerCacheKey = cacheKey;
             }
-            ctx.drawImage(this._spinnerCache, -w / 2, -h / 2);
+            ctx.drawImage(this._spinnerCache, 0, 0, this._spinnerCache.width, this._spinnerCache.height, -w / 2, -h / 2, w, h);
         } else {
             // Fallback: draw a simple saw blade shape
             const radiusX = w / 2;
@@ -3038,19 +3043,21 @@ class GameEngine {
             if (screenX + cloudWidth < -50 || screenX > viewWidth + 50) continue;
 
             if (cloud.opacity !== lastAlpha) { this.ctx.globalAlpha = cloud.opacity; lastAlpha = cloud.opacity; }
-            this.ctx.drawImage(cloud._cachedImage, screenX, screenY);
+            this.ctx.drawImage(cloud._cachedImage, 0, 0, cloud._cachedImage.width, cloud._cachedImage.height, screenX, screenY, cloud._cachedWidth, cloud._cachedHeight);
         }
         this.ctx.globalAlpha = 1;
     }
 
     _preRenderCloudImages(color) {
+        const dpr = window.devicePixelRatio || 1;
         for (const cloud of this.clouds) {
             const w = Math.ceil(cloud.sourceWidth * cloud.scale) + 2;
             const h = Math.ceil(cloud.sourceHeight * cloud.scale) + 2;
             const offscreen = document.createElement('canvas');
-            offscreen.width = w;
-            offscreen.height = h;
+            offscreen.width = w * dpr;
+            offscreen.height = h * dpr;
             const offCtx = offscreen.getContext('2d');
+            offCtx.scale(dpr, dpr);
             const img = CloudImages.images[cloud.imgIndex];
             offCtx.drawImage(img, 0, 0, w, h);
             offCtx.globalCompositeOperation = 'source-in';
