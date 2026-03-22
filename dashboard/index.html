@@ -39,10 +39,26 @@
             </div>
             <h1 class="page-title">Parkoreen</h1>
             <div class="page-header-right">
-                <button class="btn btn-secondary" id="btn-settings">
-                    <span class="material-symbols-outlined">settings</span>
-                    Settings
-                </button>
+                <div style="position:relative;" id="dash-menu-wrapper">
+                    <button class="btn btn-secondary" id="btn-menu">
+                        <span class="hud-menu-btn-inner">
+                            <span class="material-symbols-outlined">more_vert</span>
+                            <span class="hud-menu-badge hidden" id="dash-mail-badge">0</span>
+                        </span>
+                    </button>
+                    <div class="hud-menu-dropdown" id="dash-menu-dropdown">
+                        <button class="hud-menu-item" id="dash-menu-settings">
+                            <span class="material-symbols-outlined">settings</span> Settings
+                        </button>
+                        <button class="hud-menu-item" id="dash-menu-mails">
+                            <span class="material-symbols-outlined">mail</span> Mails
+                            <span class="hud-menu-item-badge hidden" id="dash-menu-mail-badge">0</span>
+                        </button>
+                        <button class="hud-menu-item hidden" id="dash-menu-admin">
+                            <span class="material-symbols-outlined">admin_panel_settings</span> Admin
+                        </button>
+                    </div>
+                </div>
                 <button class="btn btn-primary" id="btn-new-map">
                     <span class="material-symbols-outlined">add_box</span>
                     New Map
@@ -203,7 +219,55 @@
             await loadMaps();
 
             document.getElementById('btn-join').onclick = function() { window.open('../join.html', '_blank'); };
-            document.getElementById('btn-settings').onclick = function() { Navigation.toSettings(); };
+            // Three-dots menu
+            var dashDropdown = document.getElementById('dash-menu-dropdown');
+            document.getElementById('btn-menu').onclick = function(e) {
+                e.stopPropagation();
+                dashDropdown.classList.toggle('active');
+                var user = window.Auth?.getUser?.();
+                var isAdmin = user && user.username === 'jimmyqrg' && window.Settings?.get('roleMode') === 'admin';
+                document.getElementById('dash-menu-admin').classList.toggle('hidden', !isAdmin);
+            };
+            document.addEventListener('click', function() { dashDropdown.classList.remove('active'); });
+            dashDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+            document.getElementById('dash-menu-settings').onclick = function() {
+                dashDropdown.classList.remove('active');
+                Navigation.toSettings();
+            };
+            document.getElementById('dash-menu-mails').onclick = function() {
+                dashDropdown.classList.remove('active');
+                window.open('../mails/', '_blank');
+            };
+            document.getElementById('dash-menu-admin').onclick = function() {
+                dashDropdown.classList.remove('active');
+                window.open('../admin/', '_blank');
+            };
+
+            async function pollDashMail() {
+                try {
+                    var token = window.Auth?.getToken();
+                    if (!token) return;
+                    var resp = await fetch(window.API_URL + '/mail/unread', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (!resp.ok) return;
+                    var data = await resp.json();
+                    var count = data.count || 0;
+                    var badge = document.getElementById('dash-mail-badge');
+                    var itemBadge = document.getElementById('dash-menu-mail-badge');
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.classList.remove('hidden');
+                        itemBadge.textContent = count;
+                        itemBadge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                        itemBadge.classList.add('hidden');
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            pollDashMail();
+            setInterval(pollDashMail, 30000);
             document.getElementById('btn-new-map').onclick = createNewMap;
             document.getElementById('btn-create-first').onclick = createNewMap;
         });

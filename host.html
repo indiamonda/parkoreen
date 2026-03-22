@@ -38,27 +38,10 @@
             <span class="material-symbols-outlined">logout</span>
         </button>
         
-        <!-- Three-dots menu -->
-        <div class="hud-menu-wrapper" id="hud-menu-wrapper" style="position: fixed; top: 16px; right: 16px;">
-            <button class="hud-btn" id="hud-menu-btn">
-                <span class="hud-menu-btn-inner">
-                    <span class="material-symbols-outlined">more_vert</span>
-                    <span class="hud-menu-badge hidden" id="hud-mail-badge">0</span>
-                </span>
-            </button>
-            <div class="hud-menu-dropdown" id="hud-menu-dropdown">
-                <button class="hud-menu-item" id="hud-menu-settings">
-                    <span class="material-symbols-outlined">settings</span> Settings
-                </button>
-                <button class="hud-menu-item" id="hud-menu-mails">
-                    <span class="material-symbols-outlined">mail</span> Mails
-                    <span class="hud-menu-item-badge hidden" id="hud-menu-mail-badge">0</span>
-                </button>
-                <button class="hud-menu-item hidden" id="hud-menu-admin">
-                    <span class="material-symbols-outlined">admin_panel_settings</span> Admin
-                </button>
-            </div>
-        </div>
+        <!-- Settings (in-room; mails/admin are on dashboard three-dots menu) -->
+        <button class="hud-btn" id="hud-settings" style="position: fixed; top: 16px; right: 16px;">
+            <span class="material-symbols-outlined">settings</span>
+        </button>
         
         <!-- Chat button -->
         <button class="hud-btn" id="hud-chat" style="position: fixed; bottom: 16px; left: 16px;">
@@ -1379,64 +1362,10 @@
                 }
             });
 
-            // Three-dots menu
-            const hudMenuBtn = document.getElementById('hud-menu-btn');
-            const hudMenuDropdown = document.getElementById('hud-menu-dropdown');
-            hudMenuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                hudMenuDropdown.classList.toggle('active');
-                // Show/hide admin button based on admin status
-                const adminItem = document.getElementById('hud-menu-admin');
-                if (typeof isAdminUser === 'function' && isAdminUser()) {
-                    adminItem.classList.remove('hidden');
-                } else {
-                    adminItem.classList.add('hidden');
-                }
-            });
-            document.addEventListener('click', () => {
-                hudMenuDropdown.classList.remove('active');
-            });
-            hudMenuDropdown.addEventListener('click', (e) => e.stopPropagation());
-
-            document.getElementById('hud-menu-settings').addEventListener('click', () => {
-                hudMenuDropdown.classList.remove('active');
+            // Settings (in-room panel only — dashboard has three-dots for Mails/Admin)
+            document.getElementById('hud-settings').addEventListener('click', () => {
                 document.getElementById('settings-panel')?.classList.toggle('active');
             });
-            document.getElementById('hud-menu-mails').addEventListener('click', () => {
-                hudMenuDropdown.classList.remove('active');
-                window.open('../mails/', '_blank');
-            });
-            document.getElementById('hud-menu-admin').addEventListener('click', () => {
-                hudMenuDropdown.classList.remove('active');
-                window.open('../admin/', '_blank');
-            });
-
-            // Poll unread mail count
-            async function pollUnreadMail() {
-                try {
-                    const token = Auth.getToken();
-                    if (!token) return;
-                    const resp = await fetch(API_URL + '/mail/unread', {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    });
-                    if (!resp.ok) return;
-                    const data = await resp.json();
-                    const count = data.count || 0;
-                    const badge = document.getElementById('hud-mail-badge');
-                    const itemBadge = document.getElementById('hud-menu-mail-badge');
-                    if (count > 0) {
-                        badge.textContent = count;
-                        badge.classList.remove('hidden');
-                        itemBadge.textContent = count;
-                        itemBadge.classList.remove('hidden');
-                    } else {
-                        badge.classList.add('hidden');
-                        itemBadge.classList.add('hidden');
-                    }
-                } catch (e) { /* ignore */ }
-            }
-            pollUnreadMail();
-            setInterval(pollUnreadMail, 30000);
 
             // Chat button
             document.getElementById('hud-chat').addEventListener('click', () => {
