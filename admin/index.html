@@ -301,16 +301,25 @@
             window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(window.location.pathname);
         }
 
-        // Block non-admin users
-        (function() {
-            const user = Auth.getUser();
-            if (!user || user.username !== 'jimmyqrg' || Settings.get('roleMode') !== 'admin') {
-                document.querySelector('.admin-container').innerHTML =
-                    '<div class="empty-state"><span class="material-symbols-outlined">block</span>Access denied.</div>';
-                return;
-            }
-            init();
-        })();
+        /** Avoid //admin/... URLs (404 on worker path match) if API_URL has a trailing slash */
+        function adminApi(path) {
+            var base = (typeof API_URL !== 'undefined' ? API_URL : (window.API_URL || '')).replace(/\/+$/, '');
+            return base + (path.charAt(0) === '/' ? path : '/' + path);
+        }
+
+        let rooms = [];
+        let users = [];
+        let roomsTimer = null;
+
+        function authHeaders() {
+            return { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' };
+        }
+
+        function init() {
+            loadRooms();
+            loadUsers();
+            roomsTimer = setInterval(loadRooms, 15000);
+        }
 
         // ============================================
         // TABS
@@ -331,23 +340,6 @@
                 Navigation.toDashboard();
             }
         };
-
-        // ============================================
-        // DATA
-        // ============================================
-        let rooms = [];
-        let users = [];
-        let roomsTimer = null;
-
-        function authHeaders() {
-            return { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' };
-        }
-
-        function init() {
-            loadRooms();
-            loadUsers();
-            roomsTimer = setInterval(loadRooms, 15000);
-        }
 
         // ============================================
         // ROOMS
@@ -397,7 +389,7 @@
         // ============================================
         async function loadUsers() {
             try {
-                const resp = await fetch(API_URL + '/admin/users', { headers: authHeaders() });
+                const resp = await fetch(adminApi('/admin/users'), { headers: authHeaders() });
                 if (!resp.ok) throw new Error();
                 users = await resp.json();
                 renderUsers();
@@ -509,7 +501,7 @@
                 btn.disabled = true;
                 btn.textContent = 'Sending...';
                 try {
-                    const resp = await fetch(API_URL + '/admin/users/' + userId + '/mail', {
+                    const resp = await fetch(adminApi('/admin/users/' + userId + '/mail'), {
                         method: 'POST',
                         headers: authHeaders(),
                         body: JSON.stringify({ subject, body })
@@ -548,7 +540,7 @@
                 btn.disabled = true;
                 btn.textContent = 'Deleting...';
                 try {
-                    const resp = await fetch(API_URL + '/admin/users/' + userId, {
+                    const resp = await fetch(adminApi('/admin/users/' + userId), {
                         method: 'DELETE',
                         headers: authHeaders()
                     });
@@ -583,6 +575,17 @@
             d.textContent = s || '';
             return d.innerHTML;
         }
+
+        // Block non-admin users and start data loads (must run after init / helpers exist)
+        (function() {
+            const user = Auth.getUser();
+            if (!user || user.username !== 'jimmyqrg' || Settings.get('roleMode') !== 'admin') {
+                document.querySelector('.admin-container').innerHTML =
+                    '<div class="empty-state"><span class="material-symbols-outlined">block</span>Access denied.</div>';
+                return;
+            }
+            init();
+        })();
     </script>
 </body>
 </html>

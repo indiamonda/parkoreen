@@ -656,12 +656,13 @@ class GameRoom {
 
     async fetch(request) {
         const url = new URL(request.url);
-        
-        if (url.pathname === '/admin/rooms') {
+        const pathname = (url.pathname.replace(/\/+$/, '') || '/').replace(/^\/+/, '/');
+
+        if (pathname === '/admin/rooms') {
             return this.handleAdminListRooms();
         }
 
-        if (url.pathname === '/ws') {
+        if (pathname === '/ws') {
             if (request.headers.get('Upgrade') !== 'websocket') {
                 return new Response('Expected websocket', { status: 400 });
             }
@@ -1189,7 +1190,7 @@ async function handleAdminListUsers(env) {
         for (const key of list.keys) {
             const name = key.name;
             // Only match user:{id} pattern, not username:{x} or user:{id}:sessions etc.
-            if (/^user:[A-Za-z0-9]{10,}$/.test(name)) {
+            if (/^user:[A-Za-z0-9_-]{8,}$/.test(name)) {
                 allKeys.push(name);
             }
         }
@@ -1328,7 +1329,16 @@ export default {
         // ALWAYS wrap in try-catch to ensure CORS headers are returned
         try {
             const url = new URL(request.url);
-            const path = url.pathname;
+            // Normalize trailing slashes so /admin/users/ matches /admin/users
+            let path = url.pathname.replace(/\/+$/, '') || '/';
+            // Collapse duplicate slashes (e.g. https://host//admin/users from API_URL + '/admin/...')
+            path = path.replace(/^\/+/, '/');
+            // Same-origin / GitHub Pages often proxies API under /parkoreen
+            if (path === '/parkoreen' || path.startsWith('/parkoreen/')) {
+                path = path.slice('/parkoreen'.length) || '/';
+                path = path.replace(/\/+$/, '') || '/';
+                path = path.replace(/^\/+/, '/');
+            }
             const method = request.method;
 
             // Handle CORS preflight
@@ -1470,6 +1480,7 @@ export default {
                         return handleAdminSendMail(targetUserId, request, env, userId);
                     }
                 }
+                return errorResponse('Unknown admin route', 404);
             }
 
             return errorResponse('Not found', 404);
