@@ -1548,12 +1548,22 @@ class Editor {
                     </div>
                     
                     <div class="form-group" id="object-edit-spinner-group" style="display: none;">
-                        <label class="form-label">Size (px)</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <label class="form-label">Size</label>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                             <label style="font-size: 12px; color: #aaa;">W</label>
-                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-width" min="16" step="16" style="width: 72px;">
+                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-width" min="1" step="1" style="width: 68px;">
+                            <select class="form-select" id="object-edit-spinner-width-unit" style="width: auto; padding: 4px 6px; font-size: 12px; min-width: 0;">
+                                <option value="blocks">Blocks</option>
+                                <option value="units">Units</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px;">
                             <label style="font-size: 12px; color: #aaa;">H</label>
-                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-height" min="16" step="16" style="width: 72px;">
+                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-height" min="1" step="1" style="width: 68px;">
+                            <select class="form-select" id="object-edit-spinner-height-unit" style="width: auto; padding: 4px 6px; font-size: 12px; min-width: 0;">
+                                <option value="blocks">Blocks</option>
+                                <option value="units">Units</option>
+                            </select>
                         </div>
                         <div style="margin-top: 8px;">
                             <label class="form-label">Spin Speed</label>
@@ -1770,24 +1780,70 @@ class Editor {
             }
         });
         
+        // Update singular/plural labels on input
+        document.getElementById('object-edit-spinner-width').addEventListener('input', () => this._updateSpinnerUnitLabels());
+        document.getElementById('object-edit-spinner-height').addEventListener('input', () => this._updateSpinnerUnitLabels());
+
         // Spinner width
         document.getElementById('object-edit-spinner-width').addEventListener('change', (e) => {
             if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
-                const val = Math.max(16, parseInt(e.target.value) || 32);
-                this.editingObject.width = val;
-                e.target.value = val;
+                const unit = document.getElementById('object-edit-spinner-width-unit').value;
+                let val = parseFloat(e.target.value) || 1;
+                const px = unit === 'blocks' ? Math.round(val * GRID_SIZE) : Math.round(val);
+                const clamped = Math.max(GRID_SIZE, px);
+                this.editingObject.width = clamped;
+                e.target.value = unit === 'blocks' ? clamped / GRID_SIZE : clamped;
+                this._updateSpinnerUnitLabels();
                 this.triggerMapChange();
             }
         });
-        
+
+        // Spinner width unit change
+        document.getElementById('object-edit-spinner-width-unit').addEventListener('change', (e) => {
+            if (!this.editingObject) return;
+            const widthInput = document.getElementById('object-edit-spinner-width');
+            const px = this.editingObject.width;
+            if (e.target.value === 'blocks') {
+                widthInput.value = px / GRID_SIZE;
+                widthInput.step = '1';
+                widthInput.min = '1';
+            } else {
+                widthInput.value = px;
+                widthInput.step = '1';
+                widthInput.min = '1';
+            }
+            this._updateSpinnerUnitLabels();
+        });
+
         // Spinner height
         document.getElementById('object-edit-spinner-height').addEventListener('change', (e) => {
             if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
-                const val = Math.max(16, parseInt(e.target.value) || 32);
-                this.editingObject.height = val;
-                e.target.value = val;
+                const unit = document.getElementById('object-edit-spinner-height-unit').value;
+                let val = parseFloat(e.target.value) || 1;
+                const px = unit === 'blocks' ? Math.round(val * GRID_SIZE) : Math.round(val);
+                const clamped = Math.max(GRID_SIZE, px);
+                this.editingObject.height = clamped;
+                e.target.value = unit === 'blocks' ? clamped / GRID_SIZE : clamped;
+                this._updateSpinnerUnitLabels();
                 this.triggerMapChange();
             }
+        });
+
+        // Spinner height unit change
+        document.getElementById('object-edit-spinner-height-unit').addEventListener('change', (e) => {
+            if (!this.editingObject) return;
+            const heightInput = document.getElementById('object-edit-spinner-height');
+            const px = this.editingObject.height;
+            if (e.target.value === 'blocks') {
+                heightInput.value = px / GRID_SIZE;
+                heightInput.step = '1';
+                heightInput.min = '1';
+            } else {
+                heightInput.value = px;
+                heightInput.step = '1';
+                heightInput.min = '1';
+            }
+            this._updateSpinnerUnitLabels();
         });
         
         // Spinner spin speed
@@ -2531,8 +2587,16 @@ class Editor {
         const isSpinner = obj.type === 'spinner' || obj.appearanceType === 'spinner';
         if (isSpinner) {
             spinnerGroup.style.display = 'block';
-            document.getElementById('object-edit-spinner-width').value = obj.width;
-            document.getElementById('object-edit-spinner-height').value = obj.height;
+            // Default to Blocks if size is a clean multiple of GRID_SIZE, else Units
+            const wIsBlocks = obj.width % GRID_SIZE === 0;
+            const hIsBlocks = obj.height % GRID_SIZE === 0;
+            const wUnitSel = document.getElementById('object-edit-spinner-width-unit');
+            const hUnitSel = document.getElementById('object-edit-spinner-height-unit');
+            wUnitSel.value = wIsBlocks ? 'blocks' : 'units';
+            hUnitSel.value = hIsBlocks ? 'blocks' : 'units';
+            document.getElementById('object-edit-spinner-width').value = wIsBlocks ? obj.width / GRID_SIZE : obj.width;
+            document.getElementById('object-edit-spinner-height').value = hIsBlocks ? obj.height / GRID_SIZE : obj.height;
+            this._updateSpinnerUnitLabels();
             const speed = obj.spinSpeed || 1;
             document.getElementById('object-edit-spin-speed-range').value = Math.round(speed * 10);
             document.getElementById('object-edit-spin-speed-label').textContent = speed.toFixed(1) + '/s';
@@ -5533,6 +5597,25 @@ class Editor {
             const el = document.getElementById('settings-kb-' + id);
             if (el) el.style.display = id === layout ? 'block' : 'none';
         });
+    }
+
+    _updateSpinnerUnitLabels() {
+        const wUnit = document.getElementById('object-edit-spinner-width-unit');
+        const hUnit = document.getElementById('object-edit-spinner-height-unit');
+        const wInput = document.getElementById('object-edit-spinner-width');
+        const hInput = document.getElementById('object-edit-spinner-height');
+        if (wUnit) {
+            const wVal = parseFloat(wInput.value) || 0;
+            const wOpts = wUnit.options;
+            wOpts[0].text = wVal === 1 ? 'Block' : 'Blocks';
+            wOpts[1].text = wVal === 1 ? 'Unit' : 'Units';
+        }
+        if (hUnit) {
+            const hVal = parseFloat(hInput.value) || 0;
+            const hOpts = hUnit.options;
+            hOpts[0].text = hVal === 1 ? 'Block' : 'Blocks';
+            hOpts[1].text = hVal === 1 ? 'Unit' : 'Units';
+        }
     }
 
     toggleAddMenu() {

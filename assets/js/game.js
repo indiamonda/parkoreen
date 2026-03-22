@@ -10,7 +10,7 @@ const GRID_SIZE = 32;
 // Physics: Lower gravity for floatier feel, jump force adjusted to maintain same jump HEIGHT
 // Formula: h = v²/(2g), so to keep h constant: v₂ = v₁ * sqrt(g₂/g₁)
 // Old: g=0.8, v=-14, h=122.5 | New: g=0.5, v=-13.2
-const DEFAULT_GRAVITY = 0.5;
+const DEFAULT_GRAVITY = 0.71;
 const DEFAULT_JUMP_FORCE = -13.2;
 const DEFAULT_MOVE_SPEED = 5;
 const FLY_SPEED = 8;
