@@ -1173,13 +1173,40 @@ async function handleDeleteMail(mailId, env, userId) {
 // ============================================
 // ADMIN HANDLERS
 // ============================================
-const ADMIN_USERNAMES = ['jimmyqrg', 'parkoreen'];
+const DEFAULT_ADMIN_USERNAMES = ['jimmyqrg', 'parkoreen'];
+
+/** Normalize username for admin checks (trim, NFKC, lowercase). */
+function normalizeUsernameForAdmin(raw) {
+    if (raw == null || typeof raw !== 'string') return '';
+    try {
+        return raw.normalize('NFKC').trim().toLowerCase();
+    } catch {
+        return String(raw).trim().toLowerCase();
+    }
+}
+
+/**
+ * Admin allowlist: defaults + optional env.ADMIN_USERNAMES (comma/space-separated).
+ * Set ADMIN_USERNAMES in the Worker dashboard or wrangler [vars] without redeploying code.
+ */
+function getAdminUsernameSet(env) {
+    const set = new Set(DEFAULT_ADMIN_USERNAMES.map((s) => s.toLowerCase()));
+    const extra = env?.ADMIN_USERNAMES;
+    if (extra && typeof extra === 'string') {
+        for (const part of extra.split(/[,;\s]+/)) {
+            const t = normalizeUsernameForAdmin(part);
+            if (t) set.add(t);
+        }
+    }
+    return set;
+}
 
 async function resolveAdminUser(env, userId) {
     const userData = await env.USERS.get(`user:${userId}`);
     if (!userData) return null;
     const user = JSON.parse(userData);
-    if (!ADMIN_USERNAMES.includes(user.username.toLowerCase())) return null;
+    const uname = normalizeUsernameForAdmin(user.username);
+    if (!uname || !getAdminUsernameSet(env).has(uname)) return null;
     return user;
 }
 

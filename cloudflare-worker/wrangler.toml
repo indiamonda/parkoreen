@@ -34,3 +34,5 @@ new_sqlite_classes = ["GameRoom"]
 # Environment variables (set in Cloudflare dashboard for production)
 [vars]
 ENVIRONMENT = "development"
+# Optional: extra admin usernames (comma-separated). Defaults already include jimmyqrg, parkoreen.
+# ADMIN_USERNAMES = "someuser"

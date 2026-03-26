@@ -3704,7 +3704,7 @@ class Editor {
             this.world.collideWithEachOther = e.target.checked;
             this.triggerMapChange();
         });
-        
+
         // Die line Y
         document.getElementById('config-die-line-y').addEventListener('change', (e) => {
             this.world.dieLineY = parseInt(e.target.value) || 2000;
@@ -6858,7 +6858,7 @@ class Editor {
                 const eW = this.eraseSettings.width * GRID_SIZE;
                 const eH = this.eraseSettings.height * GRID_SIZE;
                 if (this.eraseFromArea(objOrObjs, eX, eY, eW, eH, true)) {
-                    this.triggerMapChange();
+                this.triggerMapChange();
                 }
             }
         }
@@ -8975,9 +8975,9 @@ class Editor {
     renderDieLine(ctx, camera) {
         const dieLineY = this.world.dieLineY ?? 2000;
         const screenY = (dieLineY - camera.y) * camera.zoom;
-
+        
         if (screenY < -100 || screenY > camera.height + 100) return;
-
+        
         // Draw in screen pixel coordinates to guarantee viewport-relative positioning
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -8985,23 +8985,23 @@ class Editor {
         ctx.strokeStyle = '#ff3333';
         ctx.lineWidth = 3;
         ctx.setLineDash([15, 10]);
-
+        
         ctx.beginPath();
         ctx.moveTo(0, screenY);
         ctx.lineTo(camera.width, screenY);
         ctx.stroke();
-
+        
         ctx.font = 'bold 14px monospace';
         ctx.fillStyle = '#ff3333';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
         ctx.setLineDash([]);
-
+        
         const text = '☠ DEATH LINE - Players die below this point';
         const textWidth = ctx.measureText(text).width;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(10, screenY - 24, textWidth + 10, 22);
-
+        
         ctx.fillStyle = '#ff3333';
         ctx.fillText(text, 15, screenY - 6);
 
