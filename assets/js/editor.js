@@ -1373,7 +1373,7 @@ class Editor {
             </button>
             <button class="add-menu-btn" data-add="koreen">
                 <span class="material-symbols-outlined">device_hub</span>
-                Koreen
+                Game Item
             </button>
             <button class="add-menu-btn" data-add="text">
                 <span class="material-symbols-outlined">text_fields</span>

@@ -1398,7 +1398,7 @@
                             ${!hasZones ? '<option value="">No zones available</option>' : ''}
                             ${zones.map(z => `<option value="${escapeHtml(z.name)}" ${config.zoneName === z.name ? 'selected' : ''}>${escapeHtml(z.name)}</option>`).join('')}
                         </select>
-                        ${!hasZones ? '<p class="trigger-description error">Create zones in the editor first (use Koreen → Zone)</p>' : ''}
+                        ${!hasZones ? '<p class="trigger-description error">Create zones in the editor first (use Game Item → Zone)</p>' : ''}
                     </div>
                 `;
                 break;
