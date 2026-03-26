@@ -3,7 +3,7 @@
  * Handles offline caching and PWA functionality
  */
 
-const CACHE_NAME = 'parkoreen-v24';
+const CACHE_NAME = 'parkoreen-v25';
 const ASSETS_TO_CACHE = [
     '/parkoreen/',
     '/parkoreen/index.html',
@@ -96,6 +96,11 @@ self.addEventListener('fetch', (event) => {
 
     // Skip API requests (should always go to network)
     if (url.hostname.includes('workers.dev') || url.pathname.startsWith('/api')) {
+        return;
+    }
+
+    // Admin (and mail) panels: never cache — stale HTML caused hard-to-debug script errors
+    if (url.pathname.includes('/admin') || url.pathname.includes('/mails')) {
         return;
     }
 

@@ -301,15 +301,16 @@
             window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(window.location.pathname);
         }
 
+        /** Use `var` (not `let`) so there is no TDZ if `init()` ever runs before this line (stale cached HTML). */
+        var rooms = [];
+        var users = [];
+        var roomsTimer = null;
+
         /** Avoid //admin/... URLs (404 on worker path match) if API_URL has a trailing slash */
         function adminApi(path) {
             var base = (typeof API_URL !== 'undefined' ? API_URL : (window.API_URL || '')).replace(/\/+$/, '');
             return base + (path.charAt(0) === '/' ? path : '/' + path);
         }
-
-        let rooms = [];
-        let users = [];
-        let roomsTimer = null;
 
         function authHeaders() {
             return { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' };
@@ -318,6 +319,7 @@
         function init() {
             loadRooms();
             loadUsers();
+            if (roomsTimer) clearInterval(roomsTimer);
             roomsTimer = setInterval(loadRooms, 15000);
         }
 
@@ -346,7 +348,7 @@
         // ============================================
         async function loadRooms() {
             try {
-                const resp = await fetch(API_URL + '/admin/rooms', { headers: authHeaders() });
+                const resp = await fetch(adminApi('/admin/rooms'), { headers: authHeaders() });
                 if (!resp.ok) throw new Error();
                 rooms = await resp.json();
                 renderRooms();

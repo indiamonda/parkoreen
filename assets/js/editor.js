@@ -225,6 +225,18 @@ class Editor {
         
         // Callback for map changes (set by host.html for auto-save)
         this.onMapChange = null;
+
+        // Undo / redo (map state snapshots via world.toJSON / fromJSON)
+        this._undoStack = [];
+        this._redoStack = [];
+        this._maxUndo = 60;
+        this._undoRedoActive = false;
+        this._undoTxnDepth = 0;
+        this._brushUndoActive = false;
+        this._moveRotateUndoActive = false;
+        this._selectionMoveUndoActive = false;
+        this._zoneDragUndoActive = false;
+        this._quickEraseUndoActive = false;
         
         // Audio elements for music
         this.previewAudio = null;
@@ -251,6 +263,148 @@ class Editor {
         this.engine.onMouseDownCallback = (e) => this.handleMouseDown(e);
         this.engine.onMouseUpCallback = (e) => this.handleMouseUp(e);
         this.engine.renderEditorOverlay = (ctx, camera) => this.renderOverlay(ctx, camera);
+        this.wrapWorldForUndo();
+    }
+
+    wrapWorldForUndo() {
+        const world = this.world;
+        if (world._parkoreenUndoWrapped) return;
+        world._parkoreenUndoWrapped = true;
+        const editor = this;
+        const origAdd = world.addObject.bind(world);
+        const origRemove = world.removeObject.bind(world);
+        world.addObject = function (obj) {
+            if (!editor._undoRedoActive && editor._undoTxnDepth === 0) {
+                editor._pushUndoSnapshot();
+            }
+            return origAdd(obj);
+        };
+        world.removeObject = function (id) {
+            if (!editor._undoRedoActive && editor._undoTxnDepth === 0) {
+                editor._pushUndoSnapshot();
+            }
+            return origRemove(id);
+        };
+    }
+
+    clearUndoHistory() {
+        this._undoStack.length = 0;
+        this._redoStack.length = 0;
+        this._undoTxnDepth = 0;
+        this._brushUndoActive = false;
+        this._moveRotateUndoActive = false;
+        this._selectionMoveUndoActive = false;
+        this._zoneDragUndoActive = false;
+        this._quickEraseUndoActive = false;
+    }
+
+    _pushUndoSnapshot() {
+        if (this._undoRedoActive) return;
+        try {
+            this._undoStack.push(JSON.stringify(this.world.toJSON()));
+            if (this._undoStack.length > this._maxUndo) this._undoStack.shift();
+            this._redoStack.length = 0;
+        } catch (err) {
+            console.warn('[Editor] Undo snapshot failed:', err);
+        }
+    }
+
+    beginUndoTransaction() {
+        if (this._undoRedoActive) return;
+        this._undoTxnDepth++;
+        if (this._undoTxnDepth === 1) {
+            this._pushUndoSnapshot();
+        }
+    }
+
+    endUndoTransaction() {
+        if (this._undoTxnDepth > 0) this._undoTxnDepth--;
+    }
+
+    /** If the last pushed undo snapshot equals current world, drop it (no-op gesture). */
+    _discardMatchingTopUndoIfUnchanged() {
+        if (!this._undoStack.length || this._undoRedoActive) return;
+        try {
+            const cur = JSON.stringify(this.world.toJSON());
+            const top = this._undoStack[this._undoStack.length - 1];
+            if (top === cur) this._undoStack.pop();
+        } catch (_) { /* ignore */ }
+    }
+
+    _isTypingTarget(el) {
+        if (!el || !el.tagName) return false;
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+        if (el.isContentEditable === true || el.getAttribute?.('contenteditable') === 'true') return true;
+        return !!el.closest?.('[contenteditable="true"]');
+    }
+
+    _isUndoKeyCombo(e) {
+        return (e.ctrlKey || e.metaKey) && !e.shiftKey && e.code === 'KeyZ';
+    }
+
+    _isRedoKeyCombo(e) {
+        if (!e.ctrlKey && !e.metaKey) return false;
+        if (e.code === 'KeyY') return true;
+        if (e.code === 'KeyZ' && e.shiftKey) return true;
+        return false;
+    }
+
+    _handleUndoRedoKeys(e) {
+        if (this._isUndoKeyCombo(e)) {
+            this.undo();
+            return true;
+        }
+        if (this._isRedoKeyCombo(e)) {
+            this.redo();
+            return true;
+        }
+        return false;
+    }
+
+    undo() {
+        if (this.engine.state !== GameState.EDITOR || this._undoStack.length === 0) return;
+        this._undoRedoActive = true;
+        try {
+            const current = JSON.stringify(this.world.toJSON());
+            this._redoStack.push(current);
+            const prev = this._undoStack.pop();
+            this.world.fromJSON(JSON.parse(prev));
+            this.selectedObjects?.clear?.();
+            this.updateLayersList();
+            this.triggerMapChange();
+        } catch (err) {
+            console.warn('[Editor] Undo failed:', err);
+        } finally {
+            this._undoRedoActive = false;
+        }
+    }
+
+    redo() {
+        if (this.engine.state !== GameState.EDITOR || this._redoStack.length === 0) return;
+        this._undoRedoActive = true;
+        try {
+            const current = JSON.stringify(this.world.toJSON());
+            this._undoStack.push(current);
+            const next = this._redoStack.pop();
+            this.world.fromJSON(JSON.parse(next));
+            this.selectedObjects?.clear?.();
+            this.updateLayersList();
+            this.triggerMapChange();
+        } catch (err) {
+            console.warn('[Editor] Redo failed:', err);
+        } finally {
+            this._undoRedoActive = false;
+        }
+    }
+
+    _placementUsesBrushStroke() {
+        if (this.placementMode === PlacementMode.NONE) return false;
+        if (this.placementMode === PlacementMode.TELEPORTAL) return false;
+        if (this.placementMode === PlacementMode.BUTTON) return false;
+        if (this.placementMode === PlacementMode.KOREEN && this.koreenSettings.appearanceType === 'zone') return false;
+        if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spinner') return false;
+        return true;
     }
 
     // ========================================
@@ -5092,6 +5246,8 @@ class Editor {
         
         if (obj && this.selectedObjects.has(obj)) {
             // Start moving all selected objects
+            this.beginUndoTransaction();
+            this._selectionMoveUndoActive = true;
             const gridPos = this.engine.getGridAlignedPos(worldX, worldY);
             this.selectionMoveStart = { x: gridPos.x, y: gridPos.y };
             this.selectionMovingObjects = [];
@@ -5124,6 +5280,11 @@ class Editor {
                 (gridPos.x !== this.selectionMoveStart.x || gridPos.y !== this.selectionMoveStart.y);
             
             if (!didMove) {
+                if (this._selectionMoveUndoActive) {
+                    this._selectionMoveUndoActive = false;
+                    this._discardMatchingTopUndoIfUnchanged();
+                    this.endUndoTransaction();
+                }
                 // It was a click, not a drag — open config for selected objects
                 const obj = this.world.getObjectAt(worldX, worldY);
                 if (obj && this.selectedObjects.has(obj)) {
@@ -5133,6 +5294,10 @@ class Editor {
                 // Snap all moved objects to grid
                 for (const item of this.selectionMovingObjects) {
                     item.obj.snapToGrid();
+                }
+                if (this._selectionMoveUndoActive) {
+                    this._selectionMoveUndoActive = false;
+                    this.endUndoTransaction();
                 }
                 this.triggerMapChange();
             }
@@ -5211,8 +5376,13 @@ class Editor {
         });
         
         document.getElementById('multi-edit-delete').addEventListener('click', () => {
-            for (const obj of objects) {
-                this.world.removeObject(obj.id);
+            this.beginUndoTransaction();
+            try {
+                for (const obj of objects) {
+                    this.world.removeObject(obj.id);
+                }
+            } finally {
+                this.endUndoTransaction();
             }
             this.selectedObjects.clear();
             this.updateSelectionCount();
@@ -6458,13 +6628,9 @@ class Editor {
         
         if (!isEditorMode && !isTestMode) return;
         
-        // Don't handle shortcuts if user is typing in an input field
+        // Don't handle shortcuts if user is typing (inputs, textareas, selects, contenteditable)
         const activeEl = document.activeElement;
-        const isTyping = activeEl && (
-            activeEl.tagName === 'INPUT' || 
-            activeEl.tagName === 'TEXTAREA' || 
-            activeEl.contentEditable === 'true'
-        );
+        const isTyping = this._isTypingTarget(activeEl);
         
         // Allow Escape even while typing
         if (e.code === 'Escape') {
@@ -6485,7 +6651,12 @@ class Editor {
         // Other shortcuts only work in editor mode
         if (!isEditorMode) return;
 
-        // Don't intercept browser shortcuts with Ctrl/Cmd
+        if ((e.ctrlKey || e.metaKey) && this._handleUndoRedoKeys(e)) {
+            e.preventDefault();
+            return;
+        }
+
+        // Don't intercept other browser shortcuts with Ctrl/Cmd
         if (e.ctrlKey || e.metaKey) return;
         
         switch (e.code) {
@@ -6671,8 +6842,12 @@ class Editor {
             }
         }
 
-        // Quick eraser
+        // Quick eraser (one undo step per mouse-down stroke)
         if (this.isErasing && this.engine.mouse.down && !this.isOverUI(e)) {
+            if (!this._quickEraseUndoActive) {
+                this.beginUndoTransaction();
+                this._quickEraseUndoActive = true;
+            }
             const objOrObjs = this.getObjectToErase(worldPos.x, worldPos.y);
             if (objOrObjs) {
                 const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
@@ -6682,7 +6857,7 @@ class Editor {
                 const eY = gridPos.y - halfH;
                 const eW = this.eraseSettings.width * GRID_SIZE;
                 const eH = this.eraseSettings.height * GRID_SIZE;
-                if (this.eraseFromArea(objOrObjs, eX, eY, eW, eH)) {
+                if (this.eraseFromArea(objOrObjs, eX, eY, eW, eH, true)) {
                     this.triggerMapChange();
                 }
             }
@@ -6719,6 +6894,8 @@ class Editor {
             const dragger = this.getZoneDraggerAtPoint(worldPos.x, worldPos.y);
             if (dragger) {
                 this.zoneAdjustment.draggerHeld = dragger;
+                this.beginUndoTransaction();
+                this._zoneDragUndoActive = true;
                 return;
             }
             // If clicking outside draggers, allow camera panning
@@ -6759,6 +6936,10 @@ class Editor {
 
         // Placement mode - start brush placement
         if (this.placementMode !== PlacementMode.NONE) {
+            if (this._placementUsesBrushStroke()) {
+                this.beginUndoTransaction();
+                this._brushUndoActive = true;
+            }
             this.isPlacing = true;
             this.placeObject(gridPos.x, gridPos.y);
             return;
@@ -6769,6 +6950,8 @@ class Editor {
             case EditorTool.MOVE:
                 const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (obj) {
+                    this.beginUndoTransaction();
+                    this._moveRotateUndoActive = true;
                     this.movingObject = obj;
                 }
                 break;
@@ -6786,6 +6969,8 @@ class Editor {
             case EditorTool.ROTATE:
                 const objToRotate = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (objToRotate) {
+                    this.beginUndoTransaction();
+                    this._moveRotateUndoActive = true;
                     this.rotatingObject = objToRotate;
                     this.rotationStartPos = { x: worldPos.x, y: worldPos.y };
                 }
@@ -6794,6 +6979,7 @@ class Editor {
             case EditorTool.ROTATE_LEFT: {
                 const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (obj) {
+                    this._pushUndoSnapshot();
                     obj.rotation = (obj.rotation - 90 + 360) % 360;
                     this.triggerMapChange();
                 }
@@ -6803,6 +6989,7 @@ class Editor {
             case EditorTool.ROTATE_RIGHT: {
                 const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (obj) {
+                    this._pushUndoSnapshot();
                     obj.rotation = (obj.rotation + 90) % 360;
                     this.triggerMapChange();
                 }
@@ -6894,17 +7081,38 @@ class Editor {
         // Release zone adjustment dragger
         if (this.zoneAdjustment.draggerHeld) {
             this.zoneAdjustment.draggerHeld = null;
+            if (this._zoneDragUndoActive) {
+                this._zoneDragUndoActive = false;
+                this._discardMatchingTopUndoIfUnchanged();
+                this.endUndoTransaction();
+            }
             this.triggerMapChange();
             return;
         }
         
         // Stop brush placement
         this.isPlacing = false;
+        if (this._brushUndoActive) {
+            this._brushUndoActive = false;
+            this._discardMatchingTopUndoIfUnchanged();
+            this.endUndoTransaction();
+        }
+
+        if (this._quickEraseUndoActive) {
+            this._quickEraseUndoActive = false;
+            this._discardMatchingTopUndoIfUnchanged();
+            this.endUndoTransaction();
+        }
         
         if (this.movingObject) {
             this.movingObject.snapToGrid();
             this.movingObject = null;
             this.setTool(EditorTool.NONE);
+            if (this._moveRotateUndoActive) {
+                this._moveRotateUndoActive = false;
+                this._discardMatchingTopUndoIfUnchanged();
+                this.endUndoTransaction();
+            }
             this.triggerMapChange();
         }
         
@@ -6912,6 +7120,11 @@ class Editor {
         if (this.rotatingObject) {
             this.rotatingObject = null;
             this.rotationStartPos = null;
+            if (this._moveRotateUndoActive) {
+                this._moveRotateUndoActive = false;
+                this._discardMatchingTopUndoIfUnchanged();
+                this.endUndoTransaction();
+            }
             this.triggerMapChange();
         }
     }
@@ -7080,59 +7293,67 @@ class Editor {
         this.triggerMapChange();
     }
 
-    eraseFromArea(objects, eraserX, eraserY, eraserW, eraserH) {
+    /**
+     * @param {boolean} [skipOuterTransaction] when true, caller manages beginUndoTransaction/endUndoTransaction (quick-erase drag)
+     */
+    eraseFromArea(objects, eraserX, eraserY, eraserW, eraserH, skipOuterTransaction = false) {
+        if (!skipOuterTransaction) this.beginUndoTransaction();
         let didErase = false;
-        const toProcess = Array.isArray(objects) ? objects : [objects];
+        try {
+            const toProcess = Array.isArray(objects) ? objects : [objects];
 
-        for (const obj of toProcess) {
-            const isMerged = obj.type === 'block' && obj.appearanceType === 'ground' &&
-                obj.rotation === 0 && !obj.flipHorizontal &&
-                (obj.width > GRID_SIZE || obj.height > GRID_SIZE);
+            for (const obj of toProcess) {
+                const isMerged = obj.type === 'block' && obj.appearanceType === 'ground' &&
+                    obj.rotation === 0 && !obj.flipHorizontal &&
+                    (obj.width > GRID_SIZE || obj.height > GRID_SIZE);
 
-            if (!isMerged) {
-                this.world.removeObject(obj.id);
-                didErase = true;
-                continue;
-            }
+                if (!isMerged) {
+                    this.world.removeObject(obj.id);
+                    didErase = true;
+                    continue;
+                }
 
-            const gs = GRID_SIZE;
-            const cols = Math.round(obj.width / gs);
-            const rows = Math.round(obj.height / gs);
-            const kept = [];
+                const gs = GRID_SIZE;
+                const cols = Math.round(obj.width / gs);
+                const rows = Math.round(obj.height / gs);
+                const kept = [];
 
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    const cx = obj.x + c * gs;
-                    const cy = obj.y + r * gs;
-                    const inside = cx < eraserX + eraserW && cx + gs > eraserX &&
-                                   cy < eraserY + eraserH && cy + gs > eraserY;
-                    if (!inside) {
-                        kept.push({ x: cx, y: cy });
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const cx = obj.x + c * gs;
+                        const cy = obj.y + r * gs;
+                        const inside = cx < eraserX + eraserW && cx + gs > eraserX &&
+                                       cy < eraserY + eraserH && cy + gs > eraserY;
+                        if (!inside) {
+                            kept.push({ x: cx, y: cy });
+                        }
                     }
                 }
+
+                if (kept.length === cols * rows) continue;
+                didErase = true;
+
+                this.world.removeObject(obj.id);
+
+                for (const cell of kept) {
+                    this.world.addObject(new WorldObject({
+                        type: obj.type,
+                        x: cell.x,
+                        y: cell.y,
+                        width: gs,
+                        height: gs,
+                        color: obj.color,
+                        texture: obj.texture,
+                        opacity: obj.opacity,
+                        layer: obj.layer,
+                        collision: obj.collision,
+                        appearanceType: obj.appearanceType,
+                        actingType: obj.actingType
+                    }));
+                }
             }
-
-            if (kept.length === cols * rows) continue;
-            didErase = true;
-
-            this.world.removeObject(obj.id);
-
-            for (const cell of kept) {
-                this.world.addObject(new WorldObject({
-                    type: obj.type,
-                    x: cell.x,
-                    y: cell.y,
-                    width: gs,
-                    height: gs,
-                    color: obj.color,
-                    texture: obj.texture,
-                    opacity: obj.opacity,
-                    layer: obj.layer,
-                    collision: obj.collision,
-                    appearanceType: obj.appearanceType,
-                    actingType: obj.actingType
-                }));
-            }
+        } finally {
+            if (!skipOuterTransaction) this.endUndoTransaction();
         }
         return didErase;
     }
@@ -7460,6 +7681,7 @@ class Editor {
             const importManager = new ImportManager();
             const data = await importManager.importFromFile(file);
                 this.world.fromJSON(data);
+                this.clearUndoHistory();
                 
                 // Initialize plugins from imported world data
                 if (window.PluginManager) {
