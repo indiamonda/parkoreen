@@ -193,6 +193,29 @@
         .user-action-btn.danger:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
         .user-action-btn .material-symbols-outlined { font-size: 18px; }
         .user-stat { white-space: nowrap; }
+        .map-active-rooms {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.35;
+            max-width: 200px;
+        }
+        .map-active-rooms code {
+            font-family: 'Parkoreen Game', monospace;
+            font-size: 0.72rem;
+            color: var(--primary);
+        }
+        a.map-link-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            border-radius: var(--border-radius);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        a.map-link-btn:hover { background: rgba(255,255,255,0.08); color: var(--primary); }
+        a.map-link-btn .material-symbols-outlined { font-size: 18px; }
 
         /* Modal */
         .admin-modal-overlay {
@@ -422,6 +445,7 @@
                     <div class="room-info">
                         <span><span class="material-symbols-outlined">person</span> ${esc(r.hostName)} (${esc(r.hostUsername)})</span>
                         <span><span class="material-symbols-outlined">group</span> ${r.playerCount}/${r.maxPlayers}</span>
+                        ${r.mapName || r.mapId ? `<span><span class="material-symbols-outlined">map</span> ${r.mapName ? esc(r.mapName) : '—'}${r.mapId ? ' <span style="opacity:0.75;font-family:monospace;font-size:0.72rem;">' + esc(r.mapId) + '</span>' : ''}</span>` : ''}
                         ${r.usePassword ? '<span><span class="material-symbols-outlined">lock</span> Password</span>' : ''}
                     </div>
                     <div class="room-players">
@@ -557,12 +581,22 @@
                 <thead><tr>
                     <th>Map</th>
                     <th>Owner</th>
+                    <th>Active rooms</th>
                     <th>Updated</th>
                     <th>Data</th>
+                    <th>Actions</th>
                 </tr></thead>
                 <tbody>${list.map(m => {
                     const updated = m.updatedAt ? new Date(m.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-                    return `<tr>
+                    const rooms = m.activeRooms || [];
+                    const roomsHtml = rooms.length === 0
+                        ? '—'
+                        : rooms.map(function(ar) {
+                            return '<code>' + esc(ar.code) + '</code>' + (ar.playerCount != null ? ' (' + ar.playerCount + ')' : '');
+                        }).join(', ');
+                    const editHref = '../host.html?map=' + encodeURIComponent(m.id) + '&admin=1';
+                    const hostHref = '../host.html?map=' + encodeURIComponent(m.id) + '&mode=host&admin=1';
+                    return `<tr data-map-id="${esc(m.id)}">
                         <td><div class="user-name-cell">
                             <span class="user-display-name">${esc(m.name)}</span>
                             <span class="user-username" style="font-family:monospace;font-size:0.72rem;">${esc(m.id)}</span>
@@ -571,11 +605,29 @@
                             <span class="user-display-name">${esc(m.ownerDisplayName)}</span>
                             <span class="user-username">@${esc(m.ownerUsername)}</span>
                         </div></td>
+                        <td class="map-active-rooms">${roomsHtml}</td>
                         <td class="user-stat">${updated}</td>
                         <td class="user-stat">${m.hasData ? 'Yes' : 'No'}</td>
+                        <td><div class="user-actions">
+                            <a class="map-link-btn" href="${editHref}" title="Edit in editor"><span class="material-symbols-outlined">edit</span></a>
+                            <a class="map-link-btn" href="${hostHref}" title="Open host flow"><span class="material-symbols-outlined">sports_esports</span></a>
+                            <button type="button" class="user-action-btn btn-map-rename" data-id="${esc(m.id)}" data-name="${esc(m.name)}" title="Rename"><span class="material-symbols-outlined">drive_file_rename_outline</span></button>
+                            <button type="button" class="user-action-btn danger btn-map-del" data-id="${esc(m.id)}" data-name="${esc(m.name)}" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                        </div></td>
                     </tr>`;
                 }).join('')}</tbody>
             </table></div>`;
+
+            container.querySelectorAll('.btn-map-rename').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    openRenameMapModal(btn.dataset.id, btn.dataset.name);
+                });
+            });
+            container.querySelectorAll('.btn-map-del').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    confirmDeleteMap(btn.dataset.id, btn.dataset.name);
+                });
+            });
         }
 
         document.getElementById('maps-search').addEventListener('input', (e) => {
@@ -663,6 +715,93 @@
                     renderUsers(document.getElementById('users-search').value);
                     loadMaps();
                     showToast('User deleted');
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = 'Delete';
+                    showToast('Failed to delete');
+                }
+            });
+        }
+
+        function openRenameMapModal(mapId, currentName) {
+            closeModal();
+            const overlay = document.createElement('div');
+            overlay.className = 'admin-modal-overlay';
+            overlay.id = 'admin-modal';
+            overlay.innerHTML = `<div class="admin-modal">
+                <div class="admin-modal-header">Rename map</div>
+                <div class="admin-modal-body">
+                    <label for="map-rename-input">Map name</label>
+                    <input type="text" id="map-rename-input" maxlength="200" value="${esc(currentName)}">
+                </div>
+                <div class="admin-modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="map-rename-save">Save</button>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+            const input = document.getElementById('map-rename-input');
+            input.focus();
+            input.select();
+
+            document.getElementById('map-rename-save').addEventListener('click', async function() {
+                const name = input.value.trim();
+                if (!name) return;
+                const btn = document.getElementById('map-rename-save');
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+                try {
+                    const resp = await fetch(adminApi('/admin/maps/' + encodeURIComponent(mapId)), {
+                        method: 'PUT',
+                        headers: authHeaders(),
+                        body: JSON.stringify({ name: name })
+                    });
+                    if (!resp.ok) throw new Error();
+                    closeModal();
+                    showToast('Map renamed');
+                    loadMaps();
+                    loadRooms();
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save';
+                    showToast('Failed to rename');
+                }
+            });
+        }
+
+        function confirmDeleteMap(mapId, mapDisplayName) {
+            closeModal();
+            const overlay = document.createElement('div');
+            overlay.className = 'admin-modal-overlay';
+            overlay.id = 'admin-modal';
+            overlay.innerHTML = `<div class="admin-modal">
+                <div class="admin-modal-header">Delete map</div>
+                <div class="admin-modal-body">
+                    <p style="color:var(--text-secondary);margin:0">Permanently delete <strong style="color:var(--text-primary)">${esc(mapDisplayName)}</strong>? Active rooms using this map may break.</p>
+                </div>
+                <div class="admin-modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn" id="map-delete-confirm-btn" style="background:#ef4444;color:white;border:none;padding:10px 20px;border-radius:var(--border-radius);cursor:pointer;font-family:inherit;font-weight:600">Delete</button>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+
+            document.getElementById('map-delete-confirm-btn').addEventListener('click', async function() {
+                const btn = document.getElementById('map-delete-confirm-btn');
+                btn.disabled = true;
+                btn.textContent = 'Deleting...';
+                try {
+                    const resp = await fetch(adminApi('/admin/maps/' + encodeURIComponent(mapId)), {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    if (!resp.ok) throw new Error();
+                    closeModal();
+                    showToast('Map deleted');
+                    loadMaps();
+                    loadRooms();
                 } catch (e) {
                     btn.disabled = false;
                     btn.textContent = 'Delete';

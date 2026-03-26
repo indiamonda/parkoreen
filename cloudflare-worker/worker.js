@@ -696,6 +696,10 @@ class GameRoom {
                 const roomData = await this.state.storage.get(`room:${session.roomCode}`);
                 const room = roomData ? JSON.parse(roomData) : {};
                 const players = this.getPlayersInRoom(session.roomCode);
+                const mapNameResolved =
+                    room.mapName ||
+                    (room.mapData && typeof room.mapData === 'object' && room.mapData.mapName) ||
+                    null;
                 rooms.push({
                     code: session.roomCode,
                     hostUsername: players.find(p => p.isHost)?.user?.username || 'unknown',
@@ -704,6 +708,8 @@ class GameRoom {
                     maxPlayers: room.maxPlayers || 10,
                     usePassword: room.usePassword || false,
                     createdAt: room.createdAt,
+                    mapId: room.mapId || null,
+                    mapName: mapNameResolved,
                     players: players.map(p => ({
                         id: p.id,
                         username: p.user?.username,
@@ -838,12 +844,19 @@ class GameRoom {
             return;
         }
         
+        const mapNameHint =
+            (data.mapName && String(data.mapName)) ||
+            (data.mapData && typeof data.mapData === 'object' && data.mapData.mapName) ||
+            null;
+
         // Store room data
         const room = {
             code: roomCode,
             hostId: session.id,
             hostUserId: session.userId,
             mapData: data.mapData,
+            mapId: data.mapId || null,
+            mapName: mapNameHint,
             maxPlayers: data.maxPlayers || 10,
             usePassword: data.usePassword || false,
             password: data.password || null,
@@ -1210,6 +1223,64 @@ async function resolveAdminUser(env, userId) {
     return user;
 }
 
+async function handleAdminGetMap(mapId, env) {
+    const mapData = await env.MAPS.get(`map:${mapId}`);
+    if (!mapData) return errorResponse('Map not found', 404);
+    return jsonResponse(JSON.parse(mapData));
+}
+
+async function handleAdminUpdateMap(mapId, request, env) {
+    const mapData = await env.MAPS.get(`map:${mapId}`);
+    if (!mapData) return errorResponse('Map not found', 404);
+    const map = JSON.parse(mapData);
+    const updates = await request.json();
+
+    if (updates.name !== undefined) {
+        const n = String(updates.name).trim();
+        if (n) map.name = n;
+        if (map.pristineSample === true && n && n.toLowerCase() !== 'sample map') {
+            map.pristineSample = false;
+        }
+    }
+    if (updates.data !== undefined) {
+        map.data = updates.data;
+        map.pristineSample = false;
+    }
+    map.updatedAt = new Date().toISOString();
+    await env.MAPS.put(`map:${mapId}`, JSON.stringify(map));
+    return jsonResponse({ success: true });
+}
+
+async function handleAdminDeleteMap(mapId, env) {
+    const mapData = await env.MAPS.get(`map:${mapId}`);
+    if (!mapData) return errorResponse('Map not found', 404);
+    const map = JSON.parse(mapData);
+    const ownerId = map.userId;
+
+    await env.MAPS.delete(`map:${mapId}`);
+
+    if (ownerId) {
+        const mapListData = await env.MAPS.get(`user:${ownerId}:maps`);
+        if (mapListData) {
+            const mapList = JSON.parse(mapListData);
+            const idx = mapList.indexOf(mapId);
+            if (idx !== -1) {
+                mapList.splice(idx, 1);
+                await env.MAPS.put(`user:${ownerId}:maps`, JSON.stringify(mapList));
+            }
+        }
+    }
+    return jsonResponse({ success: true });
+}
+
+function roomMapNameHint(room) {
+    return (
+        room.mapName ||
+        (room.mapData && typeof room.mapData === 'object' && room.mapData.mapName) ||
+        null
+    );
+}
+
 /** All maps in KV (admin), excluding untouched auto-seeded Sample Map (pristineSample). */
 async function handleAdminListMaps(env) {
     const out = [];
@@ -1244,6 +1315,33 @@ async function handleAdminListMaps(env) {
         if (list.list_complete) break;
         cursor = list.cursor;
     } while (cursor);
+
+    let roomsList = [];
+    try {
+        const rr = await handleAdminListRooms(env);
+        if (rr.ok) roomsList = await rr.json();
+    } catch {
+        /* ignore */
+    }
+
+    const nameLower = (s) => (s || '').toLowerCase();
+    for (const m of out) {
+        m.activeRooms = roomsList
+            .filter((r) => {
+                if (r.mapId && r.mapId === m.id) return true;
+                if (!r.mapId) {
+                    const rn = roomMapNameHint(r);
+                    if (rn && nameLower(rn) === nameLower(m.name)) return true;
+                }
+                return false;
+            })
+            .map((r) => ({
+                code: r.code,
+                playerCount: r.playerCount,
+                hostUsername: r.hostUsername,
+                mapName: roomMapNameHint(r)
+            }));
+    }
 
     out.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
     return jsonResponse(out);
@@ -1543,6 +1641,13 @@ export default {
                 }
                 if (path === '/admin/maps' && method === 'GET') {
                     return handleAdminListMaps(env);
+                }
+                const adminMapDetail = path.match(/^\/admin\/maps\/([^/]+)$/);
+                if (adminMapDetail) {
+                    const mid = adminMapDetail[1];
+                    if (method === 'GET') return handleAdminGetMap(mid, env);
+                    if (method === 'PUT') return handleAdminUpdateMap(mid, request, env);
+                    if (method === 'DELETE') return handleAdminDeleteMap(mid, env);
                 }
                 const adminUserMatch = path.match(/^\/admin\/users\/([a-zA-Z0-9]+)$/);
                 if (adminUserMatch) {

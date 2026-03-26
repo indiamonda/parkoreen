@@ -504,6 +504,58 @@ class MapManager {
         return response.json();
     }
 
+    async adminGetMap(mapId) {
+        if (USE_LOCAL_MODE) {
+            throw new Error('Admin map API is not available in local mode');
+        }
+        const response = await fetchWithTimeout(`${API_URL}/admin/maps/${encodeURIComponent(mapId)}`, {
+            headers: {
+                'Authorization': `Bearer ${this.auth.getToken()}`
+            }
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Failed to load map' }));
+            throw new Error(error.message);
+        }
+        return response.json();
+    }
+
+    async adminUpdateMap(mapId, data) {
+        if (USE_LOCAL_MODE) {
+            throw new Error('Admin map API is not available in local mode');
+        }
+        const response = await fetchWithTimeout(`${API_URL}/admin/maps/${encodeURIComponent(mapId)}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.auth.getToken()}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Failed to save map' }));
+            throw new Error(error.message);
+        }
+        return response.json();
+    }
+
+    async adminDeleteMap(mapId) {
+        if (USE_LOCAL_MODE) {
+            throw new Error('Admin map API is not available in local mode');
+        }
+        const response = await fetchWithTimeout(`${API_URL}/admin/maps/${encodeURIComponent(mapId)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${this.auth.getToken()}`
+            }
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Failed to delete map' }));
+            throw new Error(error.message);
+        }
+        return response.json();
+    }
+
     async deleteMap(mapId) {
         if (USE_LOCAL_MODE) {
             const maps = this._getLocalMaps();
@@ -730,6 +782,8 @@ class MultiplayerManager {
         this.send({
             type: 'create_room',
             mapData: options.mapData,
+            mapId: options.mapId != null ? options.mapId : null,
+            mapName: options.mapName != null ? options.mapName : null,
             maxPlayers: options.maxPlayers,
             usePassword: options.usePassword,
             password: options.password

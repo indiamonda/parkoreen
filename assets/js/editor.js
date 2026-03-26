@@ -7730,8 +7730,14 @@ class Editor {
 
         // Host game logic will be handled by multiplayer module
         if (window.MultiplayerManager) {
+            const editorMapId =
+                typeof window.parkoreenEditorMapId === 'string' && window.parkoreenEditorMapId
+                    ? window.parkoreenEditorMapId
+                    : null;
             window.MultiplayerManager.hostGame({
                 mapData: this.world.toJSON(),
+                mapId: editorMapId,
+                mapName: this.world.mapName || null,
                 maxPlayers: parseInt(document.getElementById('config-max-players').value) || 10,
                 usePassword: usePassword,
                 password: password

@@ -338,7 +338,7 @@
     
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="runtime.js?v=19"></script>
+    <script src="runtime.js?v=20"></script>
     <script src="assets/js/style.js?v=11"></script>
     <script src="assets/js/plugins.js?v=1"></script>
     <script src="assets/js/game.js?v=13"></script>
@@ -353,7 +353,31 @@
         let currentMode = 'edit'; // 'edit', 'host', 'play'
         let isHost = false;
         let mapLoadedSuccessfully = false; // Track if map loaded properly to prevent saving corrupted/blank data
-        
+        let adminEditMapSession = false; // Admin UI: load/save any map via /admin/maps (requires ?admin=1 + admin role)
+
+        function resolveAdminEditMapSession(params) {
+            if (params.get('admin') !== '1') return false;
+            try {
+                if (typeof window.Settings === 'undefined' || window.Settings.get('roleMode') !== 'admin') {
+                    return false;
+                }
+                const u = JSON.parse(localStorage.getItem('parkoreen_user') || '{}');
+                if (typeof window.isParkoreenAdminUsername === 'function' && !window.isParkoreenAdminUsername(u.username)) {
+                    return false;
+                }
+            } catch (e) {
+                return false;
+            }
+            return true;
+        }
+
+        async function fetchMapForEditor(mapId) {
+            if (adminEditMapSession && typeof window.MapManager.adminGetMap === 'function') {
+                return window.MapManager.adminGetMap(mapId);
+            }
+            return window.MapManager.getMap(mapId);
+        }
+
         // Show save corrupted popup
         function showSaveCorruptedPopup() {
             // Create overlay
@@ -860,7 +884,7 @@
             }
             await new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = 'assets/js/editor.js?v=15';
+                s.src = 'assets/js/editor.js?v=16';
                 s.onload = () => resolve();
                 s.onerror = () => reject(new Error('Failed to load editor.js'));
                 document.head.appendChild(s);
@@ -869,6 +893,8 @@
             // Parse URL params
             const params = new URLSearchParams(window.location.search);
             currentMapId = params.get('map');
+            adminEditMapSession = resolveAdminEditMapSession(params);
+            window.parkoreenEditorMapId = currentMapId || null;
             currentMode = params.get('mode') || 'edit';
             const roomCode = params.get('room');
 
@@ -879,8 +905,7 @@
             if (currentMapId) {
                 resourceLoader.updateProgress('Fetching map info...');
                 try {
-                    const getMapFn = window.MapManager.getMap;
-                    mapData = await getMapFn.call(window.MapManager, currentMapId);
+                    mapData = await fetchMapForEditor(currentMapId);
                     // Extract enabled plugins from map data
                     if (mapData?.data?.plugins?.enabled) {
                         enabledPlugins = mapData.data.plugins.enabled;
@@ -1100,8 +1125,11 @@
             }
             try {
                 const data = engine.world.toJSON();
-                var saveFn = window.MapManager.saveMap;
-                await saveFn.call(window.MapManager, currentMapId, { data });
+                if (adminEditMapSession && typeof window.MapManager.adminUpdateMap === 'function') {
+                    await window.MapManager.adminUpdateMap(currentMapId, { data });
+                } else {
+                    await window.MapManager.saveMap.call(window.MapManager, currentMapId, { data });
+                }
                 console.log('[AutoSave] Saved silently');
             } catch (error) {
                 console.error('[AutoSave] Silent save failed:', error);
@@ -1158,8 +1186,7 @@
             // Step 1: Try to fetch the map from storage
             try {
                 loadingShow('Loading map...');
-                var getMapFn = window.MapManager.getMap;
-                mapData = await getMapFn.call(window.MapManager, mapId);
+                mapData = await fetchMapForEditor(mapId);
             } catch (networkError) {
                 // Network error - don't allow saving to prevent data loss
                 loadingHide();
@@ -1215,8 +1242,11 @@
 
             try {
                 const data = engine.world.toJSON();
-                var saveFn = window.MapManager.saveMap;
-                await saveFn.call(window.MapManager, currentMapId, { data });
+                if (adminEditMapSession && typeof window.MapManager.adminUpdateMap === 'function') {
+                    await window.MapManager.adminUpdateMap(currentMapId, { data });
+                } else {
+                    await window.MapManager.saveMap.call(window.MapManager, currentMapId, { data });
+                }
                 toastSuccess('Map saved!');
             } catch (error) {
                 toastError('Failed to save map: ' + error.message);
