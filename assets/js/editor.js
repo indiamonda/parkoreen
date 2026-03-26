@@ -34,6 +34,7 @@ const PlacementMode = {
     BLOCK: 'block',
     OBSTACLE: 'obstacle',
     KOREEN: 'koreen',
+    SPAWN_END: 'spawn_end',
     TEXT: 'text',
     TELEPORTAL: 'teleportal',
     BUTTON: 'button'
@@ -118,6 +119,14 @@ class Editor {
             collision: false, // Koreens don't have collision by default
             fillMode: 'add',
             opacity: 1
+        };
+
+        // Spawn / end markers (dedicated tool — places koreen-type markers, same as former Koreen spawn/end)
+        this.spawnEndSettings = {
+            pointType: 'spawnpoint',
+            fillMode: 'add',
+            opacity: 1,
+            color: '#4CAF50'
         };
         
         // Obstacle settings (spike or saw blade)
@@ -1358,6 +1367,10 @@ class Editor {
                 <span class="material-symbols-outlined">warning</span>
                 Obstacle
             </button>
+            <button class="add-menu-btn" data-add="spawn_end">
+                <span class="material-symbols-outlined">person_pin_circle</span>
+                Spawn &amp; end
+            </button>
             <button class="add-menu-btn" data-add="koreen">
                 <span class="material-symbols-outlined">device_hub</span>
                 Koreen
@@ -1422,6 +1435,14 @@ class Editor {
                     <button class="placement-opt-btn" data-acting="checkpoint">Check</button>
                     <button class="placement-opt-btn" data-acting="spawnpoint">Spawn</button>
                     <button class="placement-opt-btn" data-acting="endpoint">End</button>
+                </div>
+            </div>
+
+            <div class="placement-option hidden" id="placement-spawn-end-marker">
+                <span class="placement-option-label">Marker type</span>
+                <div class="placement-option-btns">
+                    <button class="placement-opt-btn active" data-spawn-end-marker="spawnpoint">Spawn</button>
+                    <button class="placement-opt-btn" data-spawn-end-marker="endpoint">End</button>
                 </div>
             </div>
             
@@ -3469,6 +3490,8 @@ class Editor {
                     this.obstacleSettings.fillMode = fillMode;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.fillMode = fillMode;
+                } else if (this.placementMode === PlacementMode.SPAWN_END) {
+                    this.spawnEndSettings.fillMode = fillMode;
                 }
             });
         });
@@ -3490,6 +3513,8 @@ class Editor {
                     this.obstacleSettings.color = color;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.color = color;
+                } else if (this.placementMode === PlacementMode.SPAWN_END) {
+                    this.spawnEndSettings.color = color;
                 } else {
                 this.placementSettings.color = color;
                     // Update texture preview with new background color
@@ -3509,6 +3534,8 @@ class Editor {
                 this.obstacleSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.opacity = opacity / 100;
+            } else if (this.placementMode === PlacementMode.SPAWN_END) {
+                this.spawnEndSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.TEXT) {
                 this.textSettings.opacity = opacity / 100;
             } else if (this.placementMode === PlacementMode.TELEPORTAL) {
@@ -5873,6 +5900,9 @@ class Editor {
         // Hide all first
         Object.values(options).forEach(el => el && el.classList.add('hidden'));
 
+        const spawnEndMarkerEl = document.getElementById('placement-spawn-end-marker');
+        if (spawnEndMarkerEl) spawnEndMarkerEl.classList.add('hidden');
+
         if (this.placementMode === PlacementMode.BLOCK) {
             options.texture.classList.remove('hidden'); // Show texture dropdown
             options.acting.classList.remove('hidden');
@@ -5958,7 +5988,41 @@ class Editor {
             // Sync opacity
             const obstacleOpacity = Math.round((this.obstacleSettings.opacity || 1) * 100);
             document.getElementById('placement-opacity-input').value = obstacleOpacity;
+        } else if (this.placementMode === PlacementMode.SPAWN_END) {
+            if (spawnEndMarkerEl) spawnEndMarkerEl.classList.remove('hidden');
+            options.fill.classList.remove('hidden');
+            options.color.classList.remove('hidden');
+            options.opacity.classList.remove('hidden');
+
+            const markerBtns = spawnEndMarkerEl && spawnEndMarkerEl.querySelector('.placement-option-btns');
+            if (markerBtns) {
+                const pt = this.spawnEndSettings.pointType;
+                markerBtns.innerHTML = `
+                    <button class="placement-opt-btn ${pt === 'spawnpoint' ? 'active' : ''}" data-spawn-end-marker="spawnpoint">Spawn</button>
+                    <button class="placement-opt-btn ${pt === 'endpoint' ? 'active' : ''}" data-spawn-end-marker="endpoint">End</button>
+                `;
+            }
+            this.reattachSpawnEndMarkerListeners();
+
+            document.querySelectorAll('[data-fill]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.fill === (this.spawnEndSettings.fillMode || 'add'));
+            });
+
+            const seColor = this.spawnEndSettings.color || '#4CAF50';
+            document.getElementById('placement-color-preview').style.background = seColor;
+            document.getElementById('placement-color-input').value = seColor;
+
+            const seOpacity = Math.round((this.spawnEndSettings.opacity != null ? this.spawnEndSettings.opacity : 1) * 100);
+            document.getElementById('placement-opacity-input').value = seOpacity;
         } else if (this.placementMode === PlacementMode.KOREEN) {
+            if (this.koreenSettings.appearanceType === 'spawnpoint' || this.koreenSettings.appearanceType === 'endpoint') {
+                this.koreenSettings.appearanceType = 'checkpoint';
+                this.koreenSettings.actingType = 'checkpoint';
+            }
+            if (this.koreenSettings.actingType === 'spawnpoint' || this.koreenSettings.actingType === 'endpoint') {
+                this.koreenSettings.actingType = 'checkpoint';
+            }
+
             options.appearance.classList.remove('hidden');
             options.acting.classList.remove('hidden');
             options.fill.classList.remove('hidden');
@@ -5967,12 +6031,10 @@ class Editor {
             // Check if HK plugin is enabled for Soul Statue option
             const hkEnabled = this.world.plugins.enabled.includes('hk');
 
-            // Update appearance for koreen
+            // Update appearance for koreen (spawn/end use the dedicated "Spawn & end" add tool)
             const appearanceBtns = options.appearance.querySelector('.placement-option-btns');
             let koreenAppearanceHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'checkpoint' ? 'active' : ''}" data-appearance="checkpoint">Checkpoint</button>
-                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'spawnpoint' ? 'active' : ''}" data-appearance="spawnpoint">Spawnpoint</button>
-                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'endpoint' ? 'active' : ''}" data-appearance="endpoint">Endpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'zone' ? 'active' : ''}" data-appearance="zone">Zone</button>
             `;
             if (hkEnabled) {
@@ -5998,8 +6060,6 @@ class Editor {
             } else {
                 let koreenActingHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
-                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
-                <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
             `;
                 if (hkEnabled) {
@@ -6160,8 +6220,6 @@ class Editor {
                     this.koreenSettings.actingType = btn.dataset.appearance;
                         let koreenActingHtml = `
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
-                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'spawnpoint' ? 'active' : ''}" data-acting="spawnpoint">Spawn</button>
-                            <button class="placement-opt-btn ${this.koreenSettings.actingType === 'endpoint' ? 'active' : ''}" data-acting="endpoint">End</button>
                             <button class="placement-opt-btn ${this.koreenSettings.actingType === 'text' ? 'active' : ''}" data-acting="text">Text</button>
                         `;
                         if (hkEnabled) {
@@ -6199,6 +6257,32 @@ class Editor {
                 } else if (this.placementMode === PlacementMode.TEXT) {
                     this.textSettings.actingType = btn.dataset.acting;
                 }
+            });
+        });
+    }
+
+    reattachSpawnEndMarkerListeners() {
+        const wrap = document.getElementById('placement-spawn-end-marker');
+        if (!wrap) return;
+        const container = wrap.querySelector('.placement-option-btns');
+        if (!container) return;
+
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+
+        newContainer.querySelectorAll('[data-spawn-end-marker]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                newContainer.querySelectorAll('.placement-opt-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const t = btn.dataset.spawnEndMarker;
+                this.spawnEndSettings.pointType = t;
+                if (t === 'spawnpoint') {
+                    this.spawnEndSettings.color = '#4CAF50';
+                } else if (t === 'endpoint') {
+                    this.spawnEndSettings.color = '#FFD700';
+                }
+                document.getElementById('placement-color-preview').style.background = this.spawnEndSettings.color;
+                document.getElementById('placement-color-input').value = this.spawnEndSettings.color;
             });
         });
     }
@@ -6457,9 +6541,19 @@ class Editor {
         // Get current color
         let currentColor;
         if (target === 'placement') {
-            currentColor = this.placementMode === PlacementMode.TEXT 
-                ? this.textSettings.color 
-                : this.placementSettings.color;
+            if (this.placementMode === PlacementMode.TEXT) {
+                currentColor = this.textSettings.color;
+            } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+                currentColor = this.teleportalSettings.color;
+            } else if (this.placementMode === PlacementMode.OBSTACLE) {
+                currentColor = this.obstacleSettings.color;
+            } else if (this.placementMode === PlacementMode.KOREEN) {
+                currentColor = this.koreenSettings.color || this.placementSettings.color;
+            } else if (this.placementMode === PlacementMode.SPAWN_END) {
+                currentColor = this.spawnEndSettings.color || '#4CAF50';
+            } else {
+                currentColor = this.placementSettings.color;
+            }
         } else if (target === 'object-edit') {
             currentColor = this.editingObject ? this.editingObject.color : '#787878';
         } else if (target.startsWith('config-')) {
@@ -6549,6 +6643,8 @@ class Editor {
                 this.obstacleSettings.color = hex;
             } else if (this.placementMode === PlacementMode.KOREEN) {
                 this.koreenSettings.color = hex;
+            } else if (this.placementMode === PlacementMode.SPAWN_END) {
+                this.spawnEndSettings.color = hex;
             } else {
                 this.placementSettings.color = hex;
                 // Update texture preview with new background color
@@ -7214,6 +7310,17 @@ class Editor {
         } else if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spike') {
             settings = this.obstacleSettings;
             type = 'block';
+        } else if (this.placementMode === PlacementMode.SPAWN_END) {
+            const pt = this.spawnEndSettings.pointType;
+            settings = {
+                appearanceType: pt,
+                actingType: pt,
+                fillMode: this.spawnEndSettings.fillMode || 'add',
+                collision: false,
+                opacity: this.spawnEndSettings.opacity != null ? this.spawnEndSettings.opacity : 1,
+                color: this.spawnEndSettings.color || (pt === 'endpoint' ? '#FFD700' : '#4CAF50')
+            };
+            type = 'koreen';
         } else if (this.placementMode === PlacementMode.KOREEN) {
             settings = this.koreenSettings;
             type = 'koreen';
