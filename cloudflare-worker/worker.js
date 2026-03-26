@@ -584,9 +584,18 @@ async function handleUpdateMap(mapId, request, env, userId) {
 
     if (updates.name) {
         map.name = updates.name;
+        if (map.pristineSample === true && String(map.name).trim() !== 'Sample Map') {
+            map.pristineSample = false;
+        }
     }
     if (updates.data !== undefined) {
         map.data = updates.data;
+        // Dashboard seed marks default sample; any later save without the flag clears it
+        if (updates.markPristineSample === true) {
+            map.pristineSample = true;
+        } else {
+            map.pristineSample = false;
+        }
     }
     map.updatedAt = new Date().toISOString();
 
@@ -1174,6 +1183,45 @@ async function resolveAdminUser(env, userId) {
     return user;
 }
 
+/** All maps in KV (admin), excluding untouched auto-seeded Sample Map (pristineSample). */
+async function handleAdminListMaps(env) {
+    const out = [];
+    let cursor;
+    do {
+        const list = await env.MAPS.list({ prefix: 'map:', cursor });
+        for (const key of list.keys) {
+            const raw = await env.MAPS.get(key.name);
+            if (!raw) continue;
+            let map;
+            try {
+                map = JSON.parse(raw);
+            } catch {
+                continue;
+            }
+            if (!map || !map.id) continue;
+            if (map.pristineSample === true) continue;
+
+            const userData = map.userId ? await env.USERS.get(`user:${map.userId}`) : null;
+            const user = userData ? JSON.parse(userData) : null;
+            out.push({
+                id: map.id,
+                name: map.name || 'Untitled',
+                userId: map.userId,
+                ownerUsername: user ? user.username : 'unknown',
+                ownerDisplayName: user ? user.name : '—',
+                createdAt: map.createdAt,
+                updatedAt: map.updatedAt,
+                hasData: map.data != null
+            });
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    } while (cursor);
+
+    out.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    return jsonResponse(out);
+}
+
 async function handleAdminListUsers(env) {
     const userKeys = await env.USERS.list({ prefix: 'user:' });
     const users = [];
@@ -1465,6 +1513,9 @@ export default {
                 }
                 if (path === '/admin/rooms' && method === 'GET') {
                     return handleAdminListRooms(env);
+                }
+                if (path === '/admin/maps' && method === 'GET') {
+                    return handleAdminListMaps(env);
                 }
                 const adminUserMatch = path.match(/^\/admin\/users\/([a-zA-Z0-9]+)$/);
                 if (adminUserMatch) {

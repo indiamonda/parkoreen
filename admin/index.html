@@ -275,6 +275,12 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
+        .maps-tab-hint {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin: 0 0 14px;
+            line-height: 1.45;
+        }
     </style>
 </head>
 <body class="admin-page">
@@ -293,6 +299,9 @@
             <button class="admin-tab" data-tab="users">
                 <span class="material-symbols-outlined">group</span> Users
             </button>
+            <button class="admin-tab" data-tab="maps">
+                <span class="material-symbols-outlined">map</span> Maps
+            </button>
         </div>
 
         <div class="tab-panel active" id="tab-rooms">
@@ -306,6 +315,15 @@
             </div>
             <div class="loading-state" id="users-loading">Loading users...</div>
             <div id="users-content"></div>
+        </div>
+
+        <div class="tab-panel" id="tab-maps">
+            <p class="maps-tab-hint">Untouched auto-seeded “Sample Map” entries are hidden. After any edit or save, a map appears here.</p>
+            <div class="users-toolbar">
+                <input class="users-search" id="maps-search" type="text" placeholder="Search by map name or owner...">
+            </div>
+            <div class="loading-state" id="maps-loading">Loading maps...</div>
+            <div id="maps-content"></div>
         </div>
     </div>
 
@@ -323,6 +341,7 @@
         /** Use `var` (not `let`) so there is no TDZ if `init()` ever runs before this line (stale cached HTML). */
         var rooms = [];
         var users = [];
+        var maps = [];
         var roomsTimer = null;
 
         /** Avoid //admin/... URLs (404 on worker path match) if API_URL has a trailing slash */
@@ -338,6 +357,7 @@
         function init() {
             loadRooms();
             loadUsers();
+            loadMaps();
             if (roomsTimer) clearInterval(roomsTimer);
             roomsTimer = setInterval(loadRooms, 15000);
         }
@@ -351,6 +371,7 @@
                 document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+                if (tab.dataset.tab === 'maps') loadMaps();
             });
         });
 
@@ -491,6 +512,70 @@
         });
 
         // ============================================
+        // MAPS
+        // ============================================
+        async function loadMaps() {
+            const loadingEl = document.getElementById('maps-loading');
+            loadingEl.style.display = 'block';
+            try {
+                const resp = await fetch(adminApi('/admin/maps'), { headers: authHeaders() });
+                if (!resp.ok) throw new Error();
+                maps = await resp.json();
+                renderMapsList();
+            } catch (e) {
+                document.getElementById('maps-content').innerHTML =
+                    '<div class="empty-state"><span class="material-symbols-outlined">error</span>Failed to load maps.</div>';
+            }
+            loadingEl.style.display = 'none';
+        }
+
+        function renderMapsList(filter) {
+            const container = document.getElementById('maps-content');
+            let list = maps;
+            if (filter) {
+                const q = filter.toLowerCase();
+                list = maps.filter(m =>
+                    (m.name || '').toLowerCase().includes(q) ||
+                    (m.ownerUsername || '').toLowerCase().includes(q) ||
+                    (m.ownerDisplayName || '').toLowerCase().includes(q)
+                );
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">map</span>No maps match.</div>';
+                return;
+            }
+
+            container.innerHTML = `<div class="table-wrap"><table class="user-table">
+                <thead><tr>
+                    <th>Map</th>
+                    <th>Owner</th>
+                    <th>Updated</th>
+                    <th>Data</th>
+                </tr></thead>
+                <tbody>${list.map(m => {
+                    const updated = m.updatedAt ? new Date(m.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+                    return `<tr>
+                        <td><div class="user-name-cell">
+                            <span class="user-display-name">${esc(m.name)}</span>
+                            <span class="user-username" style="font-family:monospace;font-size:0.72rem;">${esc(m.id)}</span>
+                        </div></td>
+                        <td><div class="user-name-cell">
+                            <span class="user-display-name">${esc(m.ownerDisplayName)}</span>
+                            <span class="user-username">@${esc(m.ownerUsername)}</span>
+                        </div></td>
+                        <td class="user-stat">${updated}</td>
+                        <td class="user-stat">${m.hasData ? 'Yes' : 'No'}</td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table></div>`;
+        }
+
+        document.getElementById('maps-search').addEventListener('input', (e) => {
+            renderMapsList(e.target.value);
+        });
+
+        // ============================================
         // ACTIONS
         // ============================================
         function openMessageModal(userId, displayName) {
@@ -569,6 +654,7 @@
                     closeModal();
                     users = users.filter(u => u.id !== userId);
                     renderUsers(document.getElementById('users-search').value);
+                    loadMaps();
                     showToast('User deleted');
                 } catch (e) {
                     btn.disabled = false;

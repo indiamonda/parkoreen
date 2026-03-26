@@ -456,7 +456,7 @@
                 var result = await createFn.call(window.MapManager, name);
 
                 var saveFn = window.MapManager.saveMap;
-                await saveFn.call(window.MapManager, result.id, { data: data });
+                await saveFn.call(window.MapManager, result.id, { data: data, markPristineSample: true });
                 return true;
             } catch (e) {
                 console.warn('[Dashboard] Could not seed sample map:', e);
