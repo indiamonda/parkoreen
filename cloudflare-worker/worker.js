@@ -46,7 +46,7 @@ function generateRoomCode() {
 // Allowed characters for username: letters, numbers, and specific symbols
 const ALLOWED_USERNAME_CHARS = /^[a-zA-Z0-9,""''\.?/:;\-_=+{}\[\]\\|~`【】<> ]+$/;
 
-// Reserved display names (case-insensitive) - only specific usernames can use these
+// Reserved display names (case-insensitive) - only these usernames may use each name (keep in sync with runtime.js RESERVED_DISPLAY_NAME_ALLOWLIST)
 const RESERVED_NAMES = {
     'jimmyqrg': ['jimmyqrg', 'jimmyqrg160', 'jimmyqrgschool', 'parkoreen'],
     'parkoreen': ['jimmyqrg', 'jimmyqrg160', 'jimmyqrgschool', 'parkoreen']
@@ -1173,7 +1173,7 @@ async function handleDeleteMail(mailId, env, userId) {
 // ============================================
 // ADMIN HANDLERS
 // ============================================
-const ADMIN_USERNAMES = ['jimmyqrg'];
+const ADMIN_USERNAMES = ['jimmyqrg', 'parkoreen'];
 
 async function resolveAdminUser(env, userId) {
     const userData = await env.USERS.get(`user:${userId}`);

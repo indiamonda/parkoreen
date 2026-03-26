@@ -210,8 +210,8 @@
             
             touchscreenToggle.checked = Settings.get('touchscreenMode');
 
-            // Role mode (only for jimmyqrg)
-            if (user.username === 'jimmyqrg') {
+            // Role mode (only for designated admin accounts)
+            if (typeof isParkoreenAdminUsername === 'function' && isParkoreenAdminUsername(user.username)) {
                 var roleModeRow = document.getElementById('role-mode-row');
                 var roleModeSelect = document.getElementById('role-mode');
                 roleModeRow.classList.remove('hidden');

@@ -338,7 +338,7 @@
 
             function openDashMenu() {
                 var user = window.Auth?.getUser?.();
-                var isAdmin = user && user.username === 'jimmyqrg' && window.Settings?.get('roleMode') === 'admin';
+                var isAdmin = user && typeof isParkoreenAdminUsername === 'function' && isParkoreenAdminUsername(user.username) && window.Settings?.get('roleMode') === 'admin';
                 document.getElementById('dash-menu-admin').classList.toggle('hidden', !isAdmin);
                 dashBackdrop.classList.add('active');
                 dashPanel.classList.add('active');

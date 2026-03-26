@@ -1939,8 +1939,8 @@
 
                 case '/banall': {
                     const user = Auth.getUser();
-                    if (user.username !== 'jimmyqrg') {
-                        addCommandFeedback('Only the owner can use /banall');
+                    if (!user || typeof isParkoreenAdminUsername !== 'function' || !isParkoreenAdminUsername(user.username)) {
+                        addCommandFeedback('Only designated admins can use /banall');
                         return;
                     }
                     const selector = parts[1];
@@ -2035,7 +2035,7 @@
 
         function isAdminUser() {
             const user = Auth.getUser();
-            if (!user || user.username !== 'jimmyqrg') return false;
+            if (!user || typeof isParkoreenAdminUsername !== 'function' || !isParkoreenAdminUsername(user.username)) return false;
             return Settings.get('roleMode') === 'admin';
         }
 

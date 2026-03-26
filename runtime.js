@@ -112,8 +112,7 @@ class AuthManager {
     }
 
     async signup(name, username, password) {
-        // Check for reserved name easter egg
-        if (window.JimmyQrgManager?.isReservedName(name)) {
+        if (window.JimmyQrgManager?.isUnauthorizedReservedDisplayAttempt(name, username)) {
             window.JimmyQrgManager.triggerForReservedName();
             throw new Error('Nice try! ;)');
         }
@@ -178,8 +177,7 @@ class AuthManager {
     }
 
     localSignup(name, username, password) {
-        // Check for reserved name easter egg
-        if (window.JimmyQrgManager?.isReservedName(name)) {
+        if (window.JimmyQrgManager?.isUnauthorizedReservedDisplayAttempt(name, username)) {
             window.JimmyQrgManager.triggerForReservedName();
             throw new Error('Nice try! ;)');
         }
@@ -221,8 +219,7 @@ class AuthManager {
     }
 
     async updateProfile(updates) {
-        // Check for reserved name easter egg
-        if (updates.name && window.JimmyQrgManager?.isReservedName(updates.name)) {
+        if (updates.name && window.JimmyQrgManager?.isUnauthorizedReservedDisplayAttempt(updates.name, this.user?.username)) {
             window.JimmyQrgManager.triggerForReservedName();
             throw new Error('Nice try! ;)');
         }
@@ -275,8 +272,7 @@ class AuthManager {
     }
 
     localUpdateProfile(updates) {
-        // Check for reserved name easter egg
-        if (updates.name && window.JimmyQrgManager?.isReservedName(updates.name)) {
+        if (updates.name && window.JimmyQrgManager?.isUnauthorizedReservedDisplayAttempt(updates.name, this.user?.username)) {
             window.JimmyQrgManager.triggerForReservedName();
             throw new Error('Nice try! ;)');
         }
@@ -826,6 +822,12 @@ class MultiplayerManager {
 // ============================================
 const RESERVED_DISPLAY_NAMES = ['jimmyqrg', 'parkoreen'];
 
+/** Must match cloudflare-worker RESERVED_NAMES — who may use each reserved display name */
+const RESERVED_DISPLAY_NAME_ALLOWLIST = {
+    jimmyqrg: ['jimmyqrg', 'jimmyqrg160', 'jimmyqrgschool', 'parkoreen'],
+    parkoreen: ['jimmyqrg', 'jimmyqrg160', 'jimmyqrgschool', 'parkoreen']
+};
+
 class JimmyQrgManager {
     constructor() {
         this.DB_NAME = 'ParkoreenEasterEgg';
@@ -839,6 +841,15 @@ class JimmyQrgManager {
     isReservedName(name) {
         if (!name) return false;
         return RESERVED_DISPLAY_NAMES.includes(name.toLowerCase().trim());
+    }
+
+    /** True → block signup/profile and show easter egg (reserved display, username not allowlisted) */
+    isUnauthorizedReservedDisplayAttempt(displayName, username) {
+        if (!this.isReservedName(displayName)) return false;
+        const key = displayName.toLowerCase().trim();
+        const allowed = RESERVED_DISPLAY_NAME_ALLOWLIST[key];
+        if (!allowed || !allowed.length) return true;
+        return !allowed.includes((username || '').toLowerCase());
     }
 
     // ========== LOCAL STORAGE ==========
@@ -1207,6 +1218,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 // SETTINGS MANAGER
 // ============================================
+/** Usernames that may use admin role / admin API (must match worker ADMIN_USERNAMES) */
+const PARKOREEN_ADMIN_USERNAMES = ['jimmyqrg', 'parkoreen'];
+function isParkoreenAdminUsername(username) {
+    return !!username && PARKOREEN_ADMIN_USERNAMES.includes(String(username).toLowerCase());
+}
+
 class SettingsManager {
     constructor() {
         this.defaults = {
@@ -1235,10 +1252,9 @@ class SettingsManager {
                 this.settings = { ...this.defaults };
             }
         }
-        // Only jimmyqrg is allowed admin mode
         if (this.settings.roleMode === 'admin') {
             const user = JSON.parse(localStorage.getItem('parkoreen_user') || '{}');
-            if (user.username !== 'jimmyqrg') {
+            if (!isParkoreenAdminUsername(user.username)) {
                 this.settings.roleMode = 'normal';
                 this.save();
             }
