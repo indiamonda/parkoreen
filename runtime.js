@@ -1358,6 +1358,8 @@ window.Auth = new AuthManager();
 window.MapManager = new MapManager(window.Auth);
 window.MultiplayerManager = new MultiplayerManager(window.Auth);
 window.Settings = new SettingsManager();
+window.isParkoreenAdminUsername = isParkoreenAdminUsername;
+window.PARKOREEN_ADMIN_USERNAMES = PARKOREEN_ADMIN_USERNAMES;
 window.Navigation = Navigation;
 window.createFooter = createFooter;
 console.log('[Runtime] Global instances initialized:', {

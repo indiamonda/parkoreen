@@ -334,6 +334,13 @@
         // API_URL is already declared in runtime.js — do not redeclare
         const Settings = window.Settings;
 
+        function isAdminGateUsername(username) {
+            if (typeof window.isParkoreenAdminUsername === 'function') {
+                return window.isParkoreenAdminUsername(username);
+            }
+            return !!username && ['jimmyqrg', 'parkoreen'].includes(String(username).toLowerCase());
+        }
+
         if (!Auth.getToken()) {
             window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(window.location.pathname);
         }
@@ -686,7 +693,7 @@
         // Block non-admin users and start data loads (must run after init / helpers exist)
         (function() {
             const user = Auth.getUser();
-            if (!user || !isParkoreenAdminUsername(user.username) || Settings.get('roleMode') !== 'admin') {
+            if (!user || !isAdminGateUsername(user.username) || Settings.get('roleMode') !== 'admin') {
                 document.querySelector('.admin-container').innerHTML =
                     '<div class="empty-state"><span class="material-symbols-outlined">block</span>Access denied.</div>';
                 return;
