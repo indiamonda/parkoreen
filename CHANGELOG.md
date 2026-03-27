@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to **Parkoreen** are summarized here. Version boundaries follow **remote branch tips** on `origin` (`V0.0`, `V0.1`, `v0.2`, `v0.3`, and ongoing work on `next` / `v0.4-Indev`). Entries are grouped from `git log` between those tips (newest development first).
+All notable changes to **Parkoreen** are summarized here. The **[Current]** section is the moving tip of development on `next` / `v0.4-Indev`. Older sections follow **remote branch tips** on `origin` (`V0.0`, `V0.1`, `v0.2`, `v0.3`). Entries are grouped from `git log` between those tips (newest first).
 
 ---
 
-## [Unreleased / 0.4 development] — `next`, `v0.4-Indev`
+## [Current] — Unreleased / 0.4 development (`next`, `v0.4-Indev`)
 
-_Current tip (example): `origin/next` — continues after the v0.3 merge._
+Active development line; not yet tagged as a numbered release. **Current** tip: `origin/next` (continues after the v0.3 merge).
 
 ### Admin & moderation
 - Admin panel: users, rooms, **maps** tab; scrolling; fixes for access and layout.
@@ -121,7 +121,7 @@ _Range: initial commit → `origin/V0.0`._
 | `V0.1` | Zones, teleporters, checkpoints, font/flip |
 | `v0.2` | Plugins (HK, HP, code beta), load bar, mobile |
 | `v0.3` | Textures, saw blade, buttons, inspector, clouds |
-| `next`, `v0.4-Indev` | Active development (admin, undo, saw/spawn tweaks, etc.) |
+| `next`, `v0.4-Indev` | **Current** — active development (admin, undo, saw/spawn tweaks, etc.) |
 | `main` | May differ; compare with `git log main..next` if needed |
 
 There are **no git tags** in this repo at the time this file was generated; versions above are **branch-based**.

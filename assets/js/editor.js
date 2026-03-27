@@ -204,7 +204,11 @@ class Editor {
         
         // Debug tools
         this.invincibilityEnabled = false;
-        this.showTouchboxes = false;
+        try {
+            this.showTouchboxes = localStorage.getItem('parkoreen_tester_show_touchboxes') === '1';
+        } catch (e) {
+            this.showTouchboxes = false;
+        }
         
         // Erase settings
         this.eraseSettings = {
@@ -431,6 +435,10 @@ class Editor {
         const flyBtn = this.ui.toolbar.querySelector('[data-tool="fly"]');
         if (flyBtn) {
             flyBtn.classList.add('active');
+        }
+        const touchboxBtn = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
+        if (touchboxBtn) {
+            touchboxBtn.classList.toggle('active', this.showTouchboxes);
         }
     }
 
@@ -5020,6 +5028,9 @@ class Editor {
 
     toggleTouchboxes() {
         this.showTouchboxes = !this.showTouchboxes;
+        try {
+            localStorage.setItem('parkoreen_tester_show_touchboxes', this.showTouchboxes ? '1' : '0');
+        } catch (e) { /* ignore quota / private mode */ }
         const btn = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
         if (btn) btn.classList.toggle('active', this.showTouchboxes);
     }
@@ -7710,6 +7721,9 @@ class Editor {
         const extraEl = document.getElementById('toolbar-extra');
         if (extraEl) extraEl.classList.add('hidden');
         
+        const touchboxBtnTest = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
+        if (touchboxBtnTest) touchboxBtnTest.classList.toggle('active', this.showTouchboxes);
+        
         this.closePanel('config');
         this.closePanel('layers');
         this.closeAddMenu();
@@ -7725,8 +7739,7 @@ class Editor {
         this.stopMusicPlayback();
         this.hideInspectBox();
         
-        // Reset debug overlays
-        this.showTouchboxes = false;
+        // Reset debug overlays (keep touchbox visibility — persisted for next tester session)
         this.invincibilityEnabled = false;
         
         // Reset tool state
