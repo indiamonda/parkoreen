@@ -143,6 +143,11 @@
         }
         .users-search:focus { border-color: var(--primary); }
         .users-search::placeholder { color: var(--text-secondary); }
+        .users-search:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
 
         .user-table {
             width: 100%;
@@ -334,7 +339,7 @@
 
         <div class="tab-panel" id="tab-users">
             <div class="users-toolbar">
-                <input class="users-search" id="users-search" type="text" placeholder="Search by name or username...">
+                <input class="users-search" id="users-search" type="text" placeholder="Search by name or username..." disabled title="Loading admin data…">
             </div>
             <div class="loading-state" id="users-loading">Loading users...</div>
             <div id="users-content"></div>
@@ -343,7 +348,7 @@
         <div class="tab-panel" id="tab-maps">
             <p class="maps-tab-hint">Untouched auto-seeded “Sample Map” entries are hidden. After any edit or save, a map appears here.</p>
             <div class="users-toolbar">
-                <input class="users-search" id="maps-search" type="text" placeholder="Search by map name or owner...">
+                <input class="users-search" id="maps-search" type="text" placeholder="Search by map name or owner..." disabled title="Loading admin data…">
             </div>
             <div class="loading-state" id="maps-loading">Loading maps...</div>
             <div id="maps-content"></div>
@@ -373,6 +378,23 @@
         var users = [];
         var maps = [];
         var roomsTimer = null;
+        /** First-load gate: searches stay off until rooms, users, and maps have each finished their initial fetch */
+        var adminInitialRoomsLoaded = false;
+        var adminInitialUsersLoaded = false;
+        var adminInitialMapsLoaded = false;
+        var adminListsReady = false;
+
+        function tryEnableAdminSearches() {
+            if (adminListsReady) return;
+            if (!adminInitialRoomsLoaded || !adminInitialUsersLoaded || !adminInitialMapsLoaded) return;
+            adminListsReady = true;
+            var u = document.getElementById('users-search');
+            var m = document.getElementById('maps-search');
+            u.disabled = false;
+            u.removeAttribute('title');
+            m.disabled = false;
+            m.removeAttribute('title');
+        }
 
         /** Avoid //admin/... URLs (404 on worker path match) if API_URL has a trailing slash */
         function adminApi(path) {
@@ -427,6 +449,8 @@
                     '<div class="empty-state"><span class="material-symbols-outlined">error</span>Failed to load rooms.</div>';
             }
             document.getElementById('rooms-loading').style.display = 'none';
+            adminInitialRoomsLoaded = true;
+            tryEnableAdminSearches();
         }
 
         function renderRooms() {
@@ -471,6 +495,8 @@
                     '<div class="empty-state"><span class="material-symbols-outlined">error</span>Failed to load users.</div>';
             }
             document.getElementById('users-loading').style.display = 'none';
+            adminInitialUsersLoaded = true;
+            tryEnableAdminSearches();
         }
 
         function formatPlayTime(ms) {
@@ -547,6 +573,11 @@
         // ============================================
         async function loadMaps() {
             const loadingEl = document.getElementById('maps-loading');
+            const mapsSearch = document.getElementById('maps-search');
+            if (adminListsReady) {
+                mapsSearch.disabled = true;
+                mapsSearch.title = 'Loading maps…';
+            }
             loadingEl.style.display = 'block';
             try {
                 const resp = await fetch(adminApi('/admin/maps'), { headers: authHeaders() });
@@ -558,6 +589,12 @@
                     '<div class="empty-state"><span class="material-symbols-outlined">error</span>Failed to load maps.</div>';
             }
             loadingEl.style.display = 'none';
+            adminInitialMapsLoaded = true;
+            tryEnableAdminSearches();
+            if (adminListsReady) {
+                mapsSearch.disabled = false;
+                mapsSearch.removeAttribute('title');
+            }
         }
 
         function renderMapsList(filter) {

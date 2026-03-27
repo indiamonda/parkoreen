@@ -1021,6 +1021,23 @@ class WorldObject {
         const width = this.width;
         const height = this.height;
 
+        const at = this.appearanceType;
+        const isSpinner = at === 'spinner' || this.type === 'spinner';
+
+        // Saw blade: editor rotation + spin animation must share one pivot. The generic
+        // translate(center)-rotate-translate(-center) wrapper breaks inner translate(center)
+        // because nested translates use the already-rotated axes — blade "unpins" from hitbox.
+        if (isSpinner) {
+            ctx.save();
+            if (this.opacity !== 1) ctx.globalAlpha = this.opacity;
+            ctx.translate(screenX + width / 2, screenY + height / 2);
+            if (this.rotation !== 0) ctx.rotate(this.rotation * Math.PI / 180);
+            if (this.flipHorizontal) ctx.scale(-1, 1);
+            this.renderSpinner(ctx, width, height, camera);
+            ctx.restore();
+            return;
+        }
+
         const needsTransform = this.rotation !== 0 || this.flipHorizontal;
         const needsAlpha = this.opacity !== 1;
         
@@ -1036,7 +1053,6 @@ class WorldObject {
             }
         }
 
-        const at = this.appearanceType;
         if (this.type === 'text') {
             this.renderText(ctx, screenX, screenY, width, height);
         } else if (at === 'spike') {
@@ -1069,8 +1085,6 @@ class WorldObject {
             if (!hookData.handled) {
                 this.renderSoulStatueFallback(ctx, screenX, screenY, width, height);
             }
-        } else if (at === 'spinner' || this.type === 'spinner') {
-            this.renderSpinner(ctx, screenX, screenY, width, height, camera);
         } else {
             this.renderBlock(ctx, screenX, screenY, width, height);
         }
@@ -1401,15 +1415,18 @@ class WorldObject {
         }
     }
 
-    renderSpinner(ctx, x, y, w, h, camera) {
-        const centerX = x + w / 2;
-        const centerY = y + h / 2;
-        
+    /**
+     * Draw saw blade with origin at object center (caller must translate to screen center first).
+     */
+    renderSpinner(ctx, w, h, camera) {
         // Spin only when the object has 0° editor rotation. Non-zero rotation (e.g. 10°, 20°) is static
         // at that angle — matches design refs: horizontal blade animates at 0°, tilted placements do not spin.
         let rotNorm = Math.round(this.rotation) % 360;
         if (rotNorm < 0) rotNorm += 360;
         const spinAllowedByRotation = rotNorm === 0;
+
+        const screenLeft = this.x - (camera ? camera.x : 0);
+        const screenTop = this.y - (camera ? camera.y : 0);
 
         // Determine if spinning should be active:
         // 1. Not in editor mode
@@ -1419,7 +1436,7 @@ class WorldObject {
         if (shouldSpin && camera) {
             const vpW = camera.width / camera.zoom;
             const vpH = camera.height / camera.zoom;
-            if (x + w < 0 || x > vpW || y + h < 0 || y > vpH) {
+            if (screenLeft + w < 0 || screenLeft > vpW || screenTop + h < 0 || screenTop > vpH) {
                 shouldSpin = false;
             }
         }
@@ -1432,7 +1449,6 @@ class WorldObject {
         }
         
         ctx.save();
-        ctx.translate(centerX, centerY);
         if (rotationAngle !== 0) ctx.rotate(rotationAngle);
         
         if (SpinnerImage.loaded && SpinnerImage.image) {
