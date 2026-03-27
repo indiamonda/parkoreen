@@ -2993,6 +2993,7 @@ class GameEngine {
                 screenY,
                 scale,
                 imgIndex,
+                flipHorizontal: Math.random() < 0.5,
                 sourceWidth: img.naturalWidth || img.width,
                 sourceHeight: img.naturalHeight || img.height,
                 parallaxFactor,
@@ -3069,7 +3070,17 @@ class GameEngine {
             const offCtx = offscreen.getContext('2d');
             offCtx.scale(dpr, dpr);
             const img = CloudImages.images[cloud.imgIndex];
-            offCtx.drawImage(img, 0, 0, w, h);
+            const sw = img.naturalWidth || img.width;
+            const sh = img.naturalHeight || img.height;
+            if (cloud.flipHorizontal) {
+                offCtx.save();
+                offCtx.translate(w, 0);
+                offCtx.scale(-1, 1);
+                offCtx.drawImage(img, 0, 0, sw, sh, 0, 0, w, h);
+                offCtx.restore();
+            } else {
+                offCtx.drawImage(img, 0, 0, sw, sh, 0, 0, w, h);
+            }
             offCtx.globalCompositeOperation = 'source-in';
             offCtx.fillStyle = color;
             offCtx.fillRect(0, 0, w, h);
