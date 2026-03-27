@@ -2783,6 +2783,8 @@ class GameEngine {
         // Debug tools
         this.invincibilityEnabled = false;
         this._voidConfirmShowing = false;
+        /** `performance.now()` of last void teleport confirm while invincible; null = not in void / reset */
+        this._voidInvincibleLastPromptTime = null;
         
         // Editor state
         this.selectedObject = null;
@@ -3551,12 +3553,18 @@ class GameEngine {
                 
                 // Die line check
                 const dieLineY = this.world.dieLineY ?? 1000;
+                const voidInvinciblePromptIntervalMs = 30000;
                 if (this.localPlayer.y > dieLineY) {
                     if (this.invincibilityEnabled) {
-                        if (!this._voidConfirmShowing) {
+                        const now = performance.now();
+                        const due =
+                            this._voidInvincibleLastPromptTime == null ||
+                            now - this._voidInvincibleLastPromptTime >= voidInvinciblePromptIntervalMs;
+                        if (due && !this._voidConfirmShowing) {
                             this._voidConfirmShowing = true;
                             const doTP = confirm('You fell into the void. Teleport back?');
                             this._voidConfirmShowing = false;
+                            this._voidInvincibleLastPromptTime = performance.now();
                             if (doTP) {
                                 this.respawnPlayer();
                                 if (window.PluginManager) {
@@ -3581,6 +3589,8 @@ class GameEngine {
                     } else {
                         this.localPlayer.die();
                     }
+                } else {
+                    this._voidInvincibleLastPromptTime = null;
                 }
                 
                 // Respawn
