@@ -902,7 +902,8 @@ const CloudImages = {
     images: [],
     loaded: false,
     _loadCount: 0,
-    _total: 5,
+    /** Must match numbered files assets/svg/cloud1.svg … cloud{N}.svg */
+    _total: 9,
     load() {
         if (this.images.length) return;
         for (let i = 1; i <= this._total; i++) {
@@ -1404,10 +1405,17 @@ class WorldObject {
         const centerX = x + w / 2;
         const centerY = y + h / 2;
         
+        // Spin only when the object has 0° editor rotation. Non-zero rotation (e.g. 10°, 20°) is static
+        // at that angle — matches design refs: horizontal blade animates at 0°, tilted placements do not spin.
+        let rotNorm = Math.round(this.rotation) % 360;
+        if (rotNorm < 0) rotNorm += 360;
+        const spinAllowedByRotation = rotNorm === 0;
+
         // Determine if spinning should be active:
         // 1. Not in editor mode
-        // 2. Visible on screen (viewport check using camera dimensions and zoom)
-        let shouldSpin = !WorldObject._editorMode;
+        // 2. Editor rotation is 0° (otherwise show fixed orientation only)
+        // 3. Visible on screen (viewport check using camera dimensions and zoom)
+        let shouldSpin = !WorldObject._editorMode && spinAllowedByRotation;
         if (shouldSpin && camera) {
             const vpW = camera.width / camera.zoom;
             const vpH = camera.height / camera.zoom;
