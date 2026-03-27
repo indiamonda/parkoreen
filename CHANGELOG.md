@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to **Parkoreen** are summarized here. The **[Current]** section is the moving tip of development on `next` / `v0.4-Indev`. Older sections follow **remote branch tips** on `origin` (`V0.0`, `V0.1`, `v0.2`, `v0.3`). Entries are grouped from `git log` between those tips (newest first).
+All notable changes to **Parkoreen** are summarized here. **[Current] - Unreleased** is the moving tip on `next` / `v0.4-Indev`. Numbered **v1.x** sections align with historical git branch milestones (see reference table at the bottom). Entries are grouped from `git log` (newest first).
 
 ---
 
-## [Current] — Unreleased / 0.4 development (`next`, `v0.4-Indev`)
+## [Current] - Unreleased
 
-Active development line; not yet tagged as a numbered release. **Current** tip: `origin/next` (continues after the v0.3 merge).
+Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered v1.x release.
 
 ### Admin & moderation
 - Admin panel: users, rooms, **maps** tab; scrolling; fixes for access and layout.
@@ -40,9 +40,9 @@ Active development line; not yet tagged as a numbered release. **Current** tip: 
 
 ---
 
-## [0.3.0] — `v0.3`
+## v1.4
 
-_Range: `origin/v0.2` → `origin/v0.3`._
+_Git range: `origin/v0.2` → `origin/v0.3`._
 
 ### Added
 - **Saw blade** obstacle (in spike workflow); **Variable** mechanic block type.
@@ -60,9 +60,9 @@ _Range: `origin/v0.2` → `origin/v0.3`._
 
 ---
 
-## [0.2.0] — `v0.2`
+## v1.3
 
-_Range: `origin/V0.1` → `origin/v0.2`._
+_Git range: `origin/V0.1` → `origin/v0.2`._
 
 ### Added
 - **Plugin system**: Hollow Knight–style plugin, **HP** plugin assets, **Code** plugin (BETA) with loader/inject tooling.
@@ -79,9 +79,9 @@ _Range: `origin/V0.1` → `origin/v0.2`._
 
 ---
 
-## [0.1.0] — `V0.1`
+## v1.2
 
-_Range: `origin/V0.0` → `origin/V0.1`. (Tip commit message: “finish V1.1.0”.)_
+_Git range: `origin/V0.0` → `origin/V0.1`. (Historical tip commit: “finish V1.1.0”.)_
 
 ### Added
 - **Zones**, **teleportals**, **checkpoint** animation.
@@ -94,9 +94,9 @@ _Range: `origin/V0.0` → `origin/V0.1`. (Tip commit message: “finish V1.1.0�
 
 ---
 
-## [0.0.0] — `V0.0`
+## v1.1
 
-_Range: initial commit → `origin/V0.0`._
+_Git range: initial commit → `origin/V0.0`._
 
 ### Added
 - **Core game**: blocks, physics, fly mode, editor, hosting, **multiplayer** rooms.
@@ -113,27 +113,26 @@ _Range: initial commit → `origin/V0.0`._
 
 ---
 
-## Repository versions (reference)
+## Changelog version ↔ git branches
 
-| Branch (on `origin`) | Role |
-|----------------------|------|
-| `V0.0` | Early public baseline |
-| `V0.1` | Zones, teleporters, checkpoints, font/flip |
-| `v0.2` | Plugins (HK, HP, code beta), load bar, mobile |
-| `v0.3` | Textures, saw blade, buttons, inspector, clouds |
-| `next`, `v0.4-Indev` | **Current** — active development (admin, undo, saw/spawn tweaks, etc.) |
-| `main` | May differ; compare with `git log main..next` if needed |
+| Changelog | Git branch tip (on `origin`) |
+|-----------|------------------------------|
+| **[Current] - Unreleased** | `next`, `v0.4-Indev` |
+| **v1.4** | `v0.3` |
+| **v1.3** | `v0.2` |
+| **v1.2** | `V0.1` |
+| **v1.1** | `V0.0` |
 
-There are **no git tags** in this repo at the time this file was generated; versions above are **branch-based**.
+`main` may differ; use `git log main..next` to compare. There are **no git tags** tied to v1.x in-repo; these labels are **documentation mapping** only.
 
 ### Regenerating detail
 
 ```bash
-# Commits only in 0.3
-git log --oneline origin/v0.2..origin/v0.3
-
-# Everything after 0.3 branch tip (development)
-git log --oneline origin/v0.3..origin/next
+git log --oneline origin/v0.2..origin/v0.3    # v1.4
+git log --oneline origin/V0.1..origin/v0.2    # v1.3
+git log --oneline origin/V0.0..origin/V0.1    # v1.2
+git log --oneline <initial>..origin/V0.0      # v1.1
+git log --oneline origin/v0.3..origin/next  # Current
 ```
 
 ---
