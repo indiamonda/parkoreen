@@ -1709,9 +1709,16 @@
                         toastError('Failed to create room: ' + data.message);
                     });
 
+                    const editorMapId =
+                        (typeof window.parkoreenEditorMapId === 'string' && window.parkoreenEditorMapId)
+                            ? window.parkoreenEditorMapId
+                            : (currentMapId || null);
+
                     // Create room on server
                     await mp.hostGame({
                         mapData: mapData,
+                        mapId: editorMapId,
+                        mapName: this.world.mapName || null,
                         maxPlayers: maxPlayers,
                         usePassword: usePassword,
                         password: usePassword ? password : null

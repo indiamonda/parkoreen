@@ -4838,6 +4838,10 @@ class Editor {
             this.toggleFlyMode();
             return;
         }
+
+        if (this.engine.state === GameState.TESTING) {
+            return;
+        }
         
         // Select tool enters selection mode
         if (tool === EditorTool.SELECT) {
@@ -5878,8 +5882,10 @@ class Editor {
         // Reset UI - restore add icon (click handler checks placementMode)
         this.ui.btnAdd.innerHTML = '<span class="material-symbols-outlined">add</span>';
         
-        // Make sure button is visible and enabled
-        this.ui.btnAdd.classList.remove('hidden');
+        // Make sure button is visible and enabled (test mode hides editor chrome — do not reveal)
+        if (this.engine.state !== GameState.TESTING) {
+            this.ui.btnAdd.classList.remove('hidden');
+        }
         this.ui.btnAdd.disabled = false;
         this.ui.btnAdd.style.pointerEvents = '';
         
@@ -7691,6 +7697,11 @@ class Editor {
         if (flyBtn) {
             flyBtn.classList.remove('active');
         }
+
+        this.closePanel('config');
+        this.closePanel('layers');
+        this.closeAddMenu();
+        this.stopPlacement();
         
         // Update UI
         this.ui.btnConfig.classList.add('hidden');
@@ -7723,11 +7734,6 @@ class Editor {
         
         const touchboxBtnTest = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
         if (touchboxBtnTest) touchboxBtnTest.classList.toggle('active', this.showTouchboxes);
-        
-        this.closePanel('config');
-        this.closePanel('layers');
-        this.closeAddMenu();
-        this.stopPlacement();
         
         // Show inspect box
         this.showInspectBox();
