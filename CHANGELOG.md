@@ -15,6 +15,8 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 - **Reserved official names** handling; role-based admin powers.
 
 ### Editor & maps
+- **Test mode**: fixed editor chrome (Add / config / layers, full toolbar) reappearing after starting a test — `stopPlacement()` no longer unhides controls during test, placement is cleared before hiding UI, and non-fly tools are ignored while `GameState.TESTING`.
+- **Host game** (`host.html`): `create_room` now sends **mapId** and **mapName** with map data (same as the default editor `hostGame` flow).
 - **Undo / redo** for editor actions.
 - **Spawn & end** markers: dedicated add-menu tool; “Koreen” add-menu label → **Game Item**.
 - **Saw blades**: size unit controls, **spin direction**, damage amount; spinning behavior tied to rotation; updated blade artwork.
