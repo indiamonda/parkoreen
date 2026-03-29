@@ -898,6 +898,28 @@ const BlockTextures = {
     }
 };
 
+/**
+ * Repeating block texture fill in rectangle (x,y,w,h) in screen space.
+ * Must translate + clip then fill: patterns repeat from the canvas origin unless
+ * the coordinate system is moved so the tile phase follows the block.
+ */
+function fillBlockSurfaceTexture(ctx, textureKey, x, y, w, h) {
+    const tex = BlockTextures[textureKey];
+    if (!tex?.loaded || !tex.image) return;
+    if (!tex._pattern) {
+        tex._pattern = ctx.createPattern(tex.image, 'repeat');
+    }
+    const pattern = tex._pattern;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.clip();
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+}
+
 const CloudImages = {
     images: [],
     loaded: false,
@@ -1101,17 +1123,7 @@ class WorldObject {
         ctx.fillRect(x, y, w, h);
         
         if (texture !== 'solid' && BlockTextures[texture]?.loaded && BlockTextures[texture]?.image) {
-            // Use cached CanvasPattern for efficient tiling
-            if (!BlockTextures[texture]._pattern) {
-                BlockTextures[texture]._pattern = ctx.createPattern(BlockTextures[texture].image, 'repeat');
-            }
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(x, y, w, h);
-            ctx.clip();
-            ctx.fillStyle = BlockTextures[texture]._pattern;
-            ctx.fillRect(x, y, w, h);
-            ctx.restore();
+            fillBlockSurfaceTexture(ctx, texture, x, y, w, h);
         } else if (texture === 'solid' && w >= 16 && h >= 16) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
             ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
@@ -2116,16 +2128,7 @@ class World {
         ctx.fillRect(x, y, w, h);
 
         if (texture !== 'solid' && BlockTextures[texture]?.loaded && BlockTextures[texture]?.image) {
-            if (!BlockTextures[texture]._pattern) {
-                BlockTextures[texture]._pattern = ctx.createPattern(BlockTextures[texture].image, 'repeat');
-            }
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(x, y, w, h);
-            ctx.clip();
-            ctx.fillStyle = BlockTextures[texture]._pattern;
-            ctx.fillRect(x, y, w, h);
-            ctx.restore();
+            fillBlockSurfaceTexture(ctx, texture, x, y, w, h);
         } else if (texture === 'solid' && w >= 16 && h >= 16) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
             ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
