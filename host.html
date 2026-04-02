@@ -1446,6 +1446,16 @@
         }
 
         function setupGameHUD() {
+            // Respawn on R key in test mode
+            document.addEventListener('keydown', (e) => {
+                if (e.code !== 'KeyR') return;
+                if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+                if (engine && engine.state === GameState.TESTING) {
+                    e.preventDefault();
+                    engine.respawnPlayer();
+                }
+            });
+
             // Leave button
             document.getElementById('hud-leave').addEventListener('click', async () => {
                 if (isHost) {
