@@ -118,7 +118,8 @@ class Editor {
             actingType: 'checkpoint',
             collision: false, // Koreens don't have collision by default
             fillMode: 'add',
-            opacity: 1
+            opacity: 1,
+            bouncerStrength: 20
         };
 
         // Spawn / end markers (dedicated tool — places koreen-type markers, same as former Koreen spawn/end)
@@ -1857,6 +1858,18 @@ class Editor {
                         </div>
                     </div>
                     
+                    <div class="form-group" id="object-edit-bouncer-group" style="display: none;">
+                        <hr style="border-color: var(--surface-light); margin: 8px 0;">
+                        <label class="form-label" style="font-weight: 600;">Bounce Strength</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="object-edit-bouncer-strength" min="5" max="50" step="1" value="20" style="flex: 1;">
+                            <span id="object-edit-bouncer-strength-label" style="font-size: 13px; min-width: 32px; text-align: right; color: #fff;">20</span>
+                        </div>
+                        <div style="margin-top: 6px; padding: 6px 8px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 11px; color: #aaa; line-height: 1.4;">
+                            Higher values launch the player higher. Normal jump is ~13.
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
                         <button class="btn btn-danger" id="object-edit-delete" style="width: 100%;">
                             <span class="material-symbols-outlined">delete</span>
@@ -2177,6 +2190,16 @@ class Editor {
             if (this.editingObject && this.editingObject.type === 'teleportal') {
                 this.editingObject.receiveFrom.push({ name: '', enabled: true });
                 this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            }
+        });
+
+        // Bouncer strength slider
+        document.getElementById('object-edit-bouncer-strength').addEventListener('input', (e) => {
+            if (this.editingObject && this.editingObject.actingType === 'bouncer') {
+                const val = parseInt(e.target.value) || 20;
+                this.editingObject.bouncerStrength = val;
+                document.getElementById('object-edit-bouncer-strength-label').textContent = val;
                 this.triggerMapChange();
             }
         });
@@ -2844,7 +2867,18 @@ class Editor {
         } else {
             teleportalGroup.style.display = 'none';
         }
-        
+
+        // Show/hide bouncer options
+        const bouncerGroup = document.getElementById('object-edit-bouncer-group');
+        if (obj.actingType === 'bouncer') {
+            bouncerGroup.style.display = 'block';
+            const strength = typeof obj.bouncerStrength === 'number' ? obj.bouncerStrength : 20;
+            document.getElementById('object-edit-bouncer-strength').value = strength;
+            document.getElementById('object-edit-bouncer-strength-label').textContent = strength;
+        } else {
+            bouncerGroup.style.display = 'none';
+        }
+
         // Show popup
         popup.classList.add('active');
     }
@@ -6053,6 +6087,7 @@ class Editor {
             let koreenAppearanceHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'checkpoint' ? 'active' : ''}" data-appearance="checkpoint">Checkpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'zone' ? 'active' : ''}" data-appearance="zone">Zone</button>
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'bouncer' ? 'active' : ''}" data-appearance="bouncer">Bouncer</button>
             `;
             if (hkEnabled) {
                 koreenAppearanceHtml += `
@@ -6074,6 +6109,11 @@ class Editor {
                     <button class="placement-opt-btn active" data-acting="soulStatus">Soul Statue</button>
                 `;
                 this.koreenSettings.actingType = 'soulStatus';
+            } else if (this.koreenSettings.appearanceType === 'bouncer') {
+                actingBtns.innerHTML = `
+                    <button class="placement-opt-btn active" data-acting="bouncer">Bouncer</button>
+                `;
+                this.koreenSettings.actingType = 'bouncer';
             } else {
                 let koreenActingHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
@@ -6232,6 +6272,11 @@ class Editor {
                             <button class="placement-opt-btn active" data-acting="soulStatus">Soul Statue</button>
                         `;
                         this.koreenSettings.actingType = 'soulStatus';
+                    } else if (btn.dataset.appearance === 'bouncer') {
+                        actingBtns.innerHTML = `
+                            <button class="placement-opt-btn active" data-acting="bouncer">Bouncer</button>
+                        `;
+                        this.koreenSettings.actingType = 'bouncer';
                     } else {
                     // Sync acting type with appearance type for koreens
                     this.koreenSettings.actingType = btn.dataset.appearance;
@@ -7400,7 +7445,8 @@ class Editor {
             hAlign: settings.hAlign || 'center',
             vAlign: settings.vAlign || 'center',
             hSpacing: settings.hSpacing || 0,
-            vSpacing: settings.vSpacing || 0
+            vSpacing: settings.vSpacing || 0,
+            bouncerStrength: settings.bouncerStrength !== undefined ? settings.bouncerStrength : 20
         });
 
         // Set default layer based on type
@@ -7486,7 +7532,7 @@ class Editor {
         if (obj.type !== 'block') return;
         const at = obj.appearanceType;
         if (at === 'spike' || at === 'spinner' || at === 'checkpoint' ||
-            at === 'soulStatue' || at === 'button') return;
+            at === 'soulStatue' || at === 'button' || at === 'bouncer') return;
         if (obj.rotation !== 0 || obj.flipHorizontal) return;
 
         const propKey = (o) =>

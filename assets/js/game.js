@@ -989,6 +989,9 @@ class WorldObject {
         // Zone-specific property
         this.zoneName = config.zoneName || null;
 
+        // Bouncer-specific property
+        this.bouncerStrength = config.bouncerStrength !== undefined ? config.bouncerStrength : 20;
+
         // Damage amount (for spikes and spinners)
         this.damageAmount = config.damageAmount !== undefined ? config.damageAmount : 1;
 
@@ -1032,7 +1035,8 @@ class WorldObject {
             endpoint: 'End Point',
             teleportal: 'Teleportal',
             soulStatue: 'Soul Statue',
-            button: 'Button'
+            button: 'Button',
+            bouncer: 'Bouncer'
         };
         return typeNames[this.appearanceType] || 'Object';
     }
@@ -1089,6 +1093,8 @@ class WorldObject {
             this.renderZone(ctx, screenX, screenY, width, height);
         } else if (at === 'button') {
             this.renderButton(ctx, screenX, screenY, width, height);
+        } else if (at === 'bouncer') {
+            this.renderBouncer(ctx, screenX, screenY, width, height);
         } else if (at === 'teleportal' || this.type === 'teleportal') {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
         } else if (at === 'soulStatue') {
@@ -1364,6 +1370,59 @@ class WorldObject {
             ctx.fillStyle = '#fff';
             ctx.fillText(this.displayName, bx + bw / 2, by + bh / 2);
         }
+    }
+
+    renderBouncer(ctx, x, y, w, h) {
+        const color = this.color || '#f59e0b';
+
+        // Main pad surface (top 30%)
+        const padH = Math.max(6, h * 0.3);
+        const padY = y;
+
+        // Body / base (bottom 70%)
+        const baseY = padY + padH;
+        const baseH = h - padH;
+
+        // Draw base (slightly darkened via save/restore)
+        ctx.save();
+        ctx.globalAlpha *= 0.7;
+        ctx.fillStyle = color;
+        ctx.fillRect(x + w * 0.1, baseY, w * 0.8, baseH);
+        ctx.restore();
+
+        // Draw spring coils in the base
+        const coils = Math.max(2, Math.floor(h / 16));
+        const coilH = baseH / coils;
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < coils; i++) {
+            const cy = baseY + i * coilH + coilH / 2;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.15, cy);
+            ctx.lineTo(x + w * 0.85, cy);
+            ctx.stroke();
+        }
+
+        // Draw bright bouncy pad on top
+        ctx.fillStyle = color;
+        ctx.fillRect(x, padY, w, padH);
+
+        // Shine strip on pad
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillRect(x + w * 0.05, padY + padH * 0.15, w * 0.9, padH * 0.3);
+
+        // Up-arrow indicator above the pad
+        const arrowCx = x + w / 2;
+        const arrowTipY = padY - Math.min(h * 0.25, 10);
+        const arrowBaseY = padY;
+        const arrowHalfW = w * 0.18;
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath();
+        ctx.moveTo(arrowCx, arrowTipY);
+        ctx.lineTo(arrowCx - arrowHalfW, arrowBaseY);
+        ctx.lineTo(arrowCx + arrowHalfW, arrowBaseY);
+        ctx.closePath();
+        ctx.fill();
     }
 
     renderTeleportal(ctx, x, y, w, h) {
@@ -1644,6 +1703,7 @@ class WorldObject {
             spikeTouchbox: this.spikeTouchbox,
             dropHurtOnly: this.dropHurtOnly,
             zoneName: this.zoneName,
+            bouncerStrength: this.bouncerStrength,
             spinSpeed: this.spinSpeed,
             displayName: this.displayName,
             displayDescription: this.displayDescription,
@@ -3724,6 +3784,9 @@ class GameEngine {
 
         // Check for teleportal collisions
         this.checkTeleportalCollisions();
+
+        // Check for bouncer collisions
+        this.checkBouncerCollisions();
     }
     
     checkButtonCollisions() {
@@ -3887,7 +3950,53 @@ class GameEngine {
             }
         }
     }
-    
+
+    checkBouncerCollisions() {
+        if (!this.localPlayer || this.localPlayer.isDead) return;
+
+        const now = Date.now();
+        // Per-object cooldown of 200ms to prevent immediate re-trigger
+        const BOUNCER_COOLDOWN = 200;
+
+        const playerBox = this.localPlayer.getGroundTouchbox();
+        const nearby = this.world.queryNear(playerBox.x, playerBox.y, playerBox.width, playerBox.height);
+
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
+            if (obj.actingType !== 'bouncer') continue;
+            if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
+
+            // Cooldown check
+            if (obj._lastBounceTime && now - obj._lastBounceTime < BOUNCER_COOLDOWN) continue;
+
+            const strength = typeof obj.bouncerStrength === 'number' ? obj.bouncerStrength : 20;
+            this.localPlayer.vy = -strength;
+            this.localPlayer.isOnGround = false;
+            obj._lastBounceTime = now;
+
+            // Spawn a small burst of particles at the bounce point
+            const cx = obj.x + obj.width / 2;
+            const cy = obj.y;
+            const color = obj.color || '#f59e0b';
+            for (let i = 0; i < 8; i++) {
+                const angle = -Math.PI + (i / 8) * Math.PI; // upward arc
+                const speed = 60 + Math.random() * 40;
+                this.particles.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 0.4 + Math.random() * 0.2,
+                    maxLife: 0.4 + Math.random() * 0.2,
+                    size: 3 + Math.random() * 3,
+                    color: color
+                });
+            }
+
+            break; // Only one bouncer per frame
+        }
+    }
+
     spawnTeleportParticles(x, y, color) {
         // Create a burst of particles at teleport destination
         const particleCount = 12;

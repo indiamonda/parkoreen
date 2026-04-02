@@ -1,4 +1,4 @@
-7# Changelog
+# Changelog
 
 All notable changes to **Parkoreen** are summarized here. **[Current] - Unreleased** is the moving tip on `next` / `v0.4-Indev`. Numbered **v1.x** sections align with historical git branch milestones (see reference table at the bottom). Entries are grouped from `git log` (newest first).
 
