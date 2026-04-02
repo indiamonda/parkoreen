@@ -1033,7 +1033,81 @@
             editor = new Editor(engine);
             editor.initUI();
             editor.updateBackground();
-            
+
+            // Override editor's host game function (must be done after editor.js is loaded)
+            Editor.prototype.hostGame = async function() {
+                // Validate
+                if (!this.world.spawnPoint) {
+                    this.showToast('Please add a spawn point first!', 'error');
+                    return;
+                }
+
+                const usePassword = document.getElementById('config-use-password').checked;
+                const password = document.getElementById('config-password').value;
+                const maxPlayers = parseInt(document.getElementById('config-max-players')?.value) || 10;
+
+                if (usePassword && !password) {
+                    this.showToast('Please enter a password or disable password protection.', 'error');
+                    return;
+                }
+
+                try {
+                    loadingShow('Creating room...');
+
+                    // Save map first
+                    if (currentMapId) {
+                        await saveMap();
+                    }
+
+                    const mapData = this.world.toJSON();
+                    const mp = window.MultiplayerManager;
+
+                    if (!mp) {
+                        throw new Error('Multiplayer not available');
+                    }
+
+                    // Setup event handlers before hosting
+                    mp.on('roomCreated', (data) => {
+                        loadingHide();
+                        console.log('[Host] Room created:', data.roomCode);
+
+                        // Store game data in session storage
+                        sessionStorage.setItem('parkoreen_game', JSON.stringify({
+                            roomCode: data.roomCode,
+                            mapData: mapData,
+                            isHost: true
+                        }));
+
+                        // Enter play mode
+                        startHostedGame(data.roomCode, mapData);
+                    });
+
+                    mp.on('error', (data) => {
+                        loadingHide();
+                        toastError('Failed to create room: ' + data.message);
+                    });
+
+                    const editorMapId =
+                        (typeof window.parkoreenEditorMapId === 'string' && window.parkoreenEditorMapId)
+                            ? window.parkoreenEditorMapId
+                            : (currentMapId || null);
+
+                    // Create room on server
+                    await mp.hostGame({
+                        mapData: mapData,
+                        mapId: editorMapId,
+                        mapName: this.world.mapName || null,
+                        maxPlayers: maxPlayers,
+                        usePassword: usePassword,
+                        password: usePassword ? password : null
+                    });
+
+                } catch (error) {
+                    loadingHide();
+                    toastError('Failed to host game: ' + error.message);
+                }
+            };
+
             // Create editor player (fly mode, camera follows, no death)
             engine.createEditorPlayer();
             
@@ -1655,82 +1729,6 @@
             });
         }
 
-        // Override editor's host game function
-        if (typeof Editor !== 'undefined') {
-            Editor.prototype.hostGame = async function() {
-                // Validate
-                if (!this.world.spawnPoint) {
-                    this.showToast('Please add a spawn point first!', 'error');
-                    return;
-                }
-
-                const usePassword = document.getElementById('config-use-password').checked;
-                const password = document.getElementById('config-password').value;
-                const maxPlayers = parseInt(document.getElementById('config-max-players')?.value) || 10;
-
-                if (usePassword && !password) {
-                    this.showToast('Please enter a password or disable password protection.', 'error');
-                    return;
-                }
-
-                try {
-                    loadingShow('Creating room...');
-
-                    // Save map first
-                    if (currentMapId) {
-                        await saveMap();
-                    }
-
-                    const mapData = this.world.toJSON();
-                    const mp = window.MultiplayerManager;
-                    
-                    if (!mp) {
-                        throw new Error('Multiplayer not available');
-                    }
-
-                    // Setup event handlers before hosting
-                    mp.on('roomCreated', (data) => {
-                        loadingHide();
-                        console.log('[Host] Room created:', data.roomCode);
-                        
-                        // Store game data in session storage
-                        sessionStorage.setItem('parkoreen_game', JSON.stringify({
-                            roomCode: data.roomCode,
-                            mapData: mapData,
-                            isHost: true
-                        }));
-                        
-                        // Enter play mode
-                        startHostedGame(data.roomCode, mapData);
-                    });
-
-                    mp.on('error', (data) => {
-                        loadingHide();
-                        toastError('Failed to create room: ' + data.message);
-                    });
-
-                    const editorMapId =
-                        (typeof window.parkoreenEditorMapId === 'string' && window.parkoreenEditorMapId)
-                            ? window.parkoreenEditorMapId
-                            : (currentMapId || null);
-
-                    // Create room on server
-                    await mp.hostGame({
-                        mapData: mapData,
-                        mapId: editorMapId,
-                        mapName: this.world.mapName || null,
-                        maxPlayers: maxPlayers,
-                        usePassword: usePassword,
-                        password: usePassword ? password : null
-                    });
-                    
-                } catch (error) {
-                    loadingHide();
-                    toastError('Failed to host game: ' + error.message);
-                }
-            };
-        }
-        
         // Start a hosted game session
         async function startHostedGame(roomCode, mapData) {
             currentMode = 'play';
@@ -1783,19 +1781,36 @@
             }
         });
 
-        // Save on page unload (user closes tab or navigates away)
+        // Save on page unload (user closes tab, navigates away, or reloads)
         window.addEventListener('beforeunload', (e) => {
             if (currentMapId && engine && engine.state === GameState.EDITOR && mapLoadedSuccessfully) {
-                // Use synchronous save for local mode
                 try {
                     const data = engine.world.toJSON();
-                    // Try to save synchronously to local storage
+                    const token = Auth.getToken();
+
+                    // Server save using keepalive fetch (works even as page unloads)
+                    if (token) {
+                        const url = adminEditMapSession
+                            ? `${API_URL}/admin/maps/${encodeURIComponent(currentMapId)}`
+                            : `${API_URL}/maps/${currentMapId}`;
+                        fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ data }),
+                            keepalive: true
+                        });
+                        console.log('[AutoSave] Sent keepalive save on unload');
+                    }
+
+                    // Also save to local storage as fallback
                     const maps = JSON.parse(localStorage.getItem('parkoreen_local_maps_' + (Auth.getUser()?.id || 'guest')) || '{}');
                     if (maps[currentMapId]) {
                         maps[currentMapId].data = data;
                         maps[currentMapId].updatedAt = new Date().toISOString();
                         localStorage.setItem('parkoreen_local_maps_' + (Auth.getUser()?.id || 'guest'), JSON.stringify(maps));
-                        console.log('[AutoSave] Saved on unload');
                     }
                 } catch (err) {
                     console.error('[AutoSave] Failed to save on unload:', err);
