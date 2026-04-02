@@ -14,8 +14,11 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 - **Maps**: list/detail, rename/delete, room↔map linkage; admin edit/host flows.
 - **Reserved official names** handling; role-based admin powers.
 
-### Editor & maps
-- **Test mode**: fixed editor chrome (Add / config / layers, full toolbar) reappearing after starting a test — `stopPlacement()` no longer unhides controls during test, placement is cleared before hiding UI, and non-fly tools are ignored while `GameState.TESTING`.
+### Editor & maps- **Bouncer** game item: new koreen-type object that launches the player upward on contact; configurable bounce strength (5–50) per object; spring-pad visual with coils and upward arrow; uses world gravity for natural arc; 200ms cooldown to prevent re-triggering.
+- **Tester mode**: press **R** to respawn at spawn point / last checkpoint while testing.
+- **Host game** bug fix: `Editor.prototype.hostGame` override was placed outside the `DOMContentLoaded` callback (before `editor.js` loaded), so `typeof Editor === 'undefined'` silenced the override — clicking Host Game in editor did nothing, and `?mode=host` links from the dashboard opened in editor mode. Override moved inside the callback, after `new Editor(engine)`.
+- **Auto-save on unload**: `beforeunload` handler now fires a `fetch` with `keepalive: true` to the server API (`PUT /maps/:id` or `/admin/maps/:id`) so the map is saved even when the user reloads or closes the tab mid-edit.
+- **Bouncer** (`host.html`): `checkBouncerCollisions()` called every frame; `player.vy` set to `-bouncerStrength`; particle burst on bounce.- **Test mode**: fixed editor chrome (Add / config / layers, full toolbar) reappearing after starting a test — `stopPlacement()` no longer unhides controls during test, placement is cleared before hiding UI, and non-fly tools are ignored while `GameState.TESTING`.
 - **Host game** (`host.html`): `create_room` now sends **mapId** and **mapName** with map data (same as the default editor `hostGame` flow).
 - **Undo / redo** for editor actions.
 - **Spawn & end** markers: dedicated add-menu tool; “Koreen” add-menu label → **Game Item**.
