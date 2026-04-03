@@ -39,7 +39,7 @@ class AudioManager {
     }
 
     loadSounds() {
-        this.sounds.jump = new Audio('/parkoreen/assets/mp3/jump.mp3');
+        this.sounds.jump = new Audio('/parkoreen/assets/ogg/jump.ogg');
         this.sounds.jump.volume = this.volume;
     }
 
@@ -1005,6 +1005,7 @@ class WorldObject {
         this.buttonVisible = config.buttonVisible !== undefined ? config.buttonVisible : true;
         this.buttonWidth = config.buttonWidth || null;
         this.buttonHeight = config.buttonHeight || null;
+        this.buttonInteraction = config.buttonInteraction || 'click'; // 'click' | 'collide'
 
         // Teleportal-specific properties
         this.teleportalName = config.teleportalName || null;
@@ -1335,7 +1336,64 @@ class WorldObject {
     
     renderButton(ctx, x, y, w, h) {
         if (!this.buttonVisible) return;
-        
+
+        if (this.buttonInteraction === 'collide') {
+            // Pressure-plate appearance — sits at bottom of zone
+            const bw = this.buttonWidth || w;
+            const plateH = Math.max(10, Math.min(20, h));
+            const bx = x + (w - bw) / 2;
+            const by = y + h - plateH;
+
+            // Shadow / depth
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(bx + 3, by + 5, bw, plateH);
+
+            // Main surface (rounded top)
+            const r = Math.min(4, bw / 6, plateH / 2);
+            ctx.beginPath();
+            ctx.moveTo(bx + r, by);
+            ctx.lineTo(bx + bw - r, by);
+            ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+            ctx.lineTo(bx + bw, by + plateH);
+            ctx.lineTo(bx, by + plateH);
+            ctx.lineTo(bx, by + r);
+            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.closePath();
+            ctx.fillStyle = this.color || '#4ade80';
+            ctx.fill();
+
+            // Shine strip
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.fillRect(bx + bw * 0.08, by + 3, bw * 0.84, 3);
+
+            // Raised edge highlight
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(bx, by + plateH);
+            ctx.lineTo(bx, by + r);
+            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.lineTo(bx + bw - r, by);
+            ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+            ctx.lineTo(bx + bw, by + plateH);
+            ctx.stroke();
+
+            // Label above the plate
+            if (this.displayName) {
+                const fontSize = Math.min(13, h * 0.38);
+                ctx.font = `bold ${fontSize}px "Parkoreen Game", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 3;
+                ctx.fillStyle = '#fff';
+                ctx.fillText(this.displayName, x + w / 2, by - 2);
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+            }
+            return;
+        }
+
         const bw = this.buttonWidth || w;
         const bh = this.buttonHeight || h;
         const bx = x + (w - bw) / 2;
@@ -1710,6 +1768,7 @@ class WorldObject {
             buttonVisible: this.buttonVisible,
             buttonWidth: this.buttonWidth,
             buttonHeight: this.buttonHeight,
+            buttonInteraction: this.buttonInteraction,
             teleportalName: this.teleportalName,
             sendTo: this.sendTo,
             receiveFrom: this.receiveFrom,
@@ -1830,6 +1889,8 @@ class World {
         this.defaultBlockColor = '#787878';
         this.defaultSpikeColor = '#c45a3f';
         this.defaultTextColor = '#000000';
+        this.defaultPortalColor = '#9b59b6';
+        this.defaultBouncerColor = '#f59e0b';
         
         // Cloud color settings (null = auto based on background)
         this.cloudColorSky = '#ffffff';      // White for sky background
@@ -2649,6 +2710,8 @@ class World {
             defaultBlockColor: this.defaultBlockColor,
             defaultSpikeColor: this.defaultSpikeColor,
             defaultTextColor: this.defaultTextColor,
+            defaultPortalColor: this.defaultPortalColor,
+            defaultBouncerColor: this.defaultBouncerColor,
             cloudColorSky: this.cloudColorSky,
             cloudColorGalaxy: this.cloudColorGalaxy,
             checkpointDefaultColor: this.checkpointDefaultColor,
@@ -2688,6 +2751,8 @@ class World {
         this.defaultBlockColor = data.defaultBlockColor || '#787878';
         this.defaultSpikeColor = data.defaultSpikeColor || '#c45a3f';
         this.defaultTextColor = data.defaultTextColor || '#000000';
+        this.defaultPortalColor = data.defaultPortalColor || '#9b59b6';
+        this.defaultBouncerColor = data.defaultBouncerColor || '#f59e0b';
         this.cloudColorSky = data.cloudColorSky || '#ffffff';
         this.cloudColorGalaxy = data.cloudColorGalaxy || '#9382a8';
         this.checkpointDefaultColor = data.checkpointDefaultColor || '#808080';
@@ -3809,7 +3874,18 @@ class GameEngine {
             // Player is inside this button zone
             if (!obj._playerInside) {
                 obj._playerInside = true;
-                this.showButtonUI(obj);
+                if (obj.buttonInteraction === 'collide') {
+                    // Immediate trigger — no popup
+                    if (window.PluginManager) {
+                        window.PluginManager.executeHook('button.pressed', {
+                            button: obj,
+                            player: this.localPlayer,
+                            world: this.world
+                        });
+                    }
+                } else {
+                    this.showButtonUI(obj);
+                }
             }
         }
     }

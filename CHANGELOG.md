@@ -14,7 +14,13 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 - **Maps**: list/detail, rename/delete, room↔map linkage; admin edit/host flows.
 - **Reserved official names** handling; role-based admin powers.
 
-### Editor & maps- **Bouncer** game item: new koreen-type object that launches the player upward on contact; configurable bounce strength (5–50) per object; spring-pad visual with coils and upward arrow; uses world gravity for natural arc; 200ms cooldown to prevent re-triggering.
+### Audio
+- **Jump sound**: switched from `mp3/jump.mp3` to `ogg/jump.ogg`.
+
+### Editor & maps
+- **Button interaction types**: buttons now have two modes — **Click** (existing behavior: player enters zone, a popup appears, clicking it triggers `button.pressed`) and **Collide** (new: triggers immediately and silently when the player walks onto the button, no popup). Collide buttons render as a pressure-plate graphic. Selectable via a Click / Collide toggle in the button edit popup; serialized as `buttonInteraction`.
+- **Default portal / bouncer colors** in map config: `defaultPortalColor` (default `#9b59b6`) and `defaultBouncerColor` (default `#f59e0b`) added to the World class; editable in the config panel's Default Colors section; serialized with the map; new portals and bouncers placed in the editor seed their color from these world defaults.
+- **Bouncer** game item: new koreen-type object that launches the player upward on contact; configurable bounce strength (5–50) per object; spring-pad visual with coils and upward arrow; uses world gravity for natural arc; 200ms cooldown to prevent re-triggering.
 - **Tester mode**: press **R** to respawn at spawn point / last checkpoint while testing.
 - **Host game** bug fix: `Editor.prototype.hostGame` override was placed outside the `DOMContentLoaded` callback (before `editor.js` loaded), so `typeof Editor === 'undefined'` silenced the override — clicking Host Game in editor did nothing, and `?mode=host` links from the dashboard opened in editor mode. Override moved inside the callback, after `new Editor(engine)`.
 - **Auto-save on unload**: `beforeunload` handler now fires a `fetch` with `keepalive: true` to the server API (`PUT /maps/:id` or `/admin/maps/:id`) so the map is saved even when the user reloads or closes the tab mid-edit.

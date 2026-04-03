@@ -221,7 +221,7 @@ class Editor {
         // Teleportal settings
         this.teleportalSettings = {
             actingType: 'portal',
-            color: '#9C27B0', // Purple default for teleportals
+            color: '#9b59b6', // Purple default for teleportals
             opacity: 1
         };
         
@@ -858,6 +858,20 @@ class Editor {
                         <div class="color-picker-option">
                             <div class="color-preview" id="config-text-color-preview" style="background: #000000"></div>
                             <input type="text" class="form-input color-input" id="config-text-color" value="#000000">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                                <label class="form-label">Portal Color</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" id="config-portal-color-preview" style="background: #9b59b6"></div>
+                            <input type="text" class="form-input color-input" id="config-portal-color" value="#9b59b6">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                                <label class="form-label">Bouncer Color</label>
+                        <div class="color-picker-option">
+                            <div class="color-preview" id="config-bouncer-color-preview" style="background: #f59e0b"></div>
+                            <input type="text" class="form-input color-input" id="config-bouncer-color" value="#f59e0b">
                         </div>
                     </div>
                 </div>
@@ -2522,6 +2536,7 @@ class Editor {
             displayName: 'Button',
             displayDescription: '',
             buttonVisible: true,
+            buttonInteraction: 'click',
             buttonWidth: null,
             buttonHeight: null
         });
@@ -2639,7 +2654,7 @@ class Editor {
             appearanceType: 'teleportal',
             actingType: this.teleportalSettings.actingType || 'portal',
             collision: true,
-            color: this.teleportalSettings.color || '#9C27B0',
+            color: this.teleportalSettings.color || this.world.defaultPortalColor || '#9b59b6',
             opacity: this.teleportalSettings.opacity || 1,
             name: 'New Teleportal',
             teleportalName: '' // Will be set by naming popup
@@ -3006,6 +3021,18 @@ class Editor {
                         <input type="text" class="form-input" id="button-edit-name" value="${this.escapeAttr(button.name)}">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Interaction Type</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="placement-opt-btn ${button.buttonInteraction !== 'collide' ? 'active' : ''}" id="btn-interact-click" style="flex: 1; padding: 8px 6px; font-size: 13px;">
+                                Click
+                            </button>
+                            <button class="placement-opt-btn ${button.buttonInteraction === 'collide' ? 'active' : ''}" id="btn-interact-collide" style="flex: 1; padding: 8px 6px; font-size: 13px;">
+                                Collide
+                            </button>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;" id="button-interact-hint">${button.buttonInteraction === 'collide' ? 'Triggers when the player walks onto the button.' : 'Triggers when the player clicks the popup inside the zone.'}</div>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Display Name</label>
                         <input type="text" class="form-input" id="button-edit-display-name" value="${this.escapeAttr(button.displayName)}" placeholder="Title shown to player">
                     </div>
@@ -3056,7 +3083,7 @@ class Editor {
         popup.classList.add('active');
         
         this.editingButton = button;
-        
+
         // Close
         document.getElementById('close-button-edit').addEventListener('click', () => {
             this.closeButtonEditPopup();
@@ -3064,7 +3091,25 @@ class Editor {
         popup.addEventListener('click', (e) => {
             if (e.target === popup) this.closeButtonEditPopup();
         });
-        
+
+        // Interaction type
+        document.getElementById('btn-interact-click').addEventListener('click', () => {
+            button.buttonInteraction = 'click';
+            document.getElementById('btn-interact-click').classList.add('active');
+            document.getElementById('btn-interact-collide').classList.remove('active');
+            document.getElementById('button-interact-hint').textContent = 'Triggers when the player clicks the popup inside the zone.';
+            this.triggerMapChange();
+        });
+        document.getElementById('btn-interact-collide').addEventListener('click', () => {
+            button.buttonInteraction = 'collide';
+            document.getElementById('btn-interact-collide').classList.add('active');
+            document.getElementById('btn-interact-click').classList.remove('active');
+            document.getElementById('button-interact-hint').textContent = 'Triggers when the player walks onto the button.';
+            button.buttonVisible = true;
+            document.getElementById('button-edit-visible').checked = true;
+            this.triggerMapChange();
+        });
+
         // Name
         document.getElementById('button-edit-name').addEventListener('change', (e) => {
             button.name = e.target.value || 'Button';
@@ -3707,7 +3752,7 @@ class Editor {
         this.setupCustomBackgroundListeners();
 
         // Default colors
-        ['block', 'spike', 'text'].forEach(type => {
+        ['block', 'spike', 'text', 'portal', 'bouncer'].forEach(type => {
             const preview = document.getElementById(`config-${type}-color-preview`);
             const input = document.getElementById(`config-${type}-color`);
             
@@ -3722,6 +3767,8 @@ class Editor {
                     if (type === 'block') this.world.defaultBlockColor = color;
                     else if (type === 'spike') this.world.defaultSpikeColor = color;
                     else if (type === 'text') this.world.defaultTextColor = color;
+                    else if (type === 'portal') this.world.defaultPortalColor = color;
+                    else if (type === 'bouncer') this.world.defaultBouncerColor = color;
                     this.triggerMapChange();
                 }
             });
@@ -5533,6 +5580,7 @@ class Editor {
         if (allButtons) {
             fields.push({ key: 'displayName', label: 'Display Name', type: 'text' });
             fields.push({ key: 'displayDescription', label: 'Display Description', type: 'textarea' });
+            fields.push({ key: 'buttonInteraction', label: 'Interaction (click/collide)', type: 'text' });
             fields.push({ key: 'buttonVisible', label: 'Button Visible', type: 'boolean' });
         }
 
@@ -6114,6 +6162,7 @@ class Editor {
                     <button class="placement-opt-btn active" data-acting="bouncer">Bouncer</button>
                 `;
                 this.koreenSettings.actingType = 'bouncer';
+                this.koreenSettings.color = this.world.defaultBouncerColor || '#f59e0b';
             } else {
                 let koreenActingHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
@@ -6200,7 +6249,8 @@ class Editor {
             this.reattachActingListeners();
             
             // Sync color picker with teleportal settings
-            const teleportalColor = this.teleportalSettings.color || '#9C27B0';
+            const teleportalColor = this.teleportalSettings.color || this.world.defaultPortalColor || '#9b59b6';
+            this.teleportalSettings.color = teleportalColor;
             document.getElementById('placement-color-preview').style.background = teleportalColor;
             document.getElementById('placement-color-input').value = teleportalColor;
             
@@ -6738,6 +6788,8 @@ class Editor {
             if (type === 'block') this.world.defaultBlockColor = hex;
             else if (type === 'spike') this.world.defaultSpikeColor = hex;
             else if (type === 'text') this.world.defaultTextColor = hex;
+            else if (type === 'portal') this.world.defaultPortalColor = hex;
+            else if (type === 'bouncer') this.world.defaultBouncerColor = hex;
             }
         }
     }
@@ -7997,6 +8049,16 @@ class Editor {
         const textPreview = document.getElementById('config-text-color-preview');
         if (textColor) textColor.value = this.world.defaultTextColor;
         if (textPreview) textPreview.style.background = this.world.defaultTextColor;
+
+        const portalColor = document.getElementById('config-portal-color');
+        const portalPreview = document.getElementById('config-portal-color-preview');
+        if (portalColor) portalColor.value = this.world.defaultPortalColor || '#9b59b6';
+        if (portalPreview) portalPreview.style.background = this.world.defaultPortalColor || '#9b59b6';
+
+        const bouncerColor = document.getElementById('config-bouncer-color');
+        const bouncerPreview = document.getElementById('config-bouncer-color-preview');
+        if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#f59e0b';
+        if (bouncerPreview) bouncerPreview.style.background = this.world.defaultBouncerColor || '#f59e0b';
         
         // Cloud colors
         const cloudSkyColor = document.getElementById('config-cloud-sky');
