@@ -3085,6 +3085,7 @@ class GameEngine {
         this.particles = [];
         this._portalParticles = [];
         this._portalParticleTimer = 0;
+        this._walkParticleTimer = 0;
         
         // Cloud system
         this.clouds = [];
@@ -3096,6 +3097,38 @@ class GameEngine {
         this.audioManager.loadVolumeFromStorage();
     }
     
+    // Spawn small dust particles when the player walks on the ground
+    spawnWalkParticles(player, dt) {
+        if (!player || !player.isOnGround || player.isDead) return;
+        const moving = Math.abs(player.vx) > 0.5;
+        if (!moving) {
+            this._walkParticleTimer = 0;
+            return;
+        }
+        this._walkParticleTimer += dt;
+        const interval = 0.12;
+        if (this._walkParticleTimer < interval) return;
+        this._walkParticleTimer -= interval;
+
+        // Spawn 2 dust puffs from the player's feet
+        for (let i = 0; i < 2; i++) {
+            const side = i === 0 ? -1 : 1;
+            this.particles.push({
+                x: player.x + player.width / 2 + side * (player.width * 0.25 + Math.random() * 4),
+                y: player.y + player.height + Math.random() * 2,
+                vx: -player.vx * 0.25 + (Math.random() - 0.5) * 30,
+                vy: -(10 + Math.random() * 20),
+                size: 2 + Math.random() * 2.5,
+                color: player.color,
+                alpha: 0.45,
+                life: 0.45,
+                maxAlpha: 0.45,
+                decay: 0.04 + Math.random() * 0.03,
+                shape: 'circle'
+            });
+        }
+    }
+
     // Spawn circular particles (for checkpoint touch effect)
     spawnCheckpointParticles(x, y, color = '#4CAF50') {
         const particleCount = 14;
@@ -3932,6 +3965,7 @@ class GameEngine {
             // Particles only in play mode
             this.updateParticles(deltaTime);
             this.updatePortalParticles(deltaTime);
+            this.spawnWalkParticles(this.localPlayer, deltaTime);
         } else if (this.state === GameState.EDITOR) {
             if (this.localPlayer) {
                 if (this.localPlayer.isFlying) {
