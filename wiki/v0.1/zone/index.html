@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zone — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Zone</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/">← v0.1 Overview</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>🔲 Zone</h1>
+      <p class="subtitle">An invisible named region used to mark areas of the map.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>A <strong>zone</strong> is a rectangular region that is invisible during gameplay. In the editor it is shown as a colored semi-transparent rectangle with an optional name label. Zones are used to logically section areas of a map — for example, to indicate a region to script events around using plugins.</p>
+    <p>By default zones have <strong>no collision</strong>; the player passes through them freely.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td>(empty)</td><td>Label shown inside the zone rectangle in the editor. Also used as the identifier when scripting with plugins.</td></tr>
+        <tr><td>Color</td><td>#9b59b6</td><td>The editor border/fill tint color. Not visible during actual gameplay.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Opacity of the editor visualization. Does not affect gameplay.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order in the editor.</td></tr>
+        <tr><td>Collision</td><td>Off</td><td>If turned on, the zone rectangle acts as a solid surface.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note tip">
+      Zones do not need a name to function. You can use unnamed zones as invisible walls by enabling <strong>Collision</strong>.
+    </div>
+  </div>
+</body>
+</html>

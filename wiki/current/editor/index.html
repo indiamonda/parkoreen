@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — Current — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/current/">Current</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Editor</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/current/">← Current Overview</a>
+    <div class="page-header">
+      <span class="version-badge">Current</span>
+      <h1>🖊 Editor</h1>
+      <p class="subtitle">All editor tools, multi-select, keyboard shortcuts, and workflow in the current version.</p>
+    </div>
+
+    <h2>Grid &amp; snapping</h2>
+    <p>All objects snap to a <strong>32×32 px grid</strong>. Grid lines are visible on the canvas in edit mode.</p>
+
+    <h2>Toolbar buttons</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Button</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>⚙️ <strong>Config</strong></td><td>Opens the Map Config panel</td></tr>
+        <tr><td>➕ <strong>Add</strong></td><td>Opens the Add menu to select a placement mode</td></tr>
+        <tr><td>📋 <strong>Layers</strong></td><td>Opens the Layers panel</td></tr>
+        <tr><td>▶ <strong>Test Game</strong></td><td>Enters tester mode</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Editor tools</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Shortcut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Fly</strong></td><td><kbd>G</kbd></td><td>Free camera pan by click-drag or WASD.</td></tr>
+        <tr><td><strong>Move</strong></td><td><kbd>M</kbd></td><td>Drag a single object to reposition it on the grid.</td></tr>
+        <tr><td><strong>Erase</strong></td><td><kbd>E</kbd></td><td>Click or drag to delete objects.</td></tr>
+        <tr><td><strong>Rotate</strong></td><td><kbd>R</kbd></td><td>Click an object to rotate it 90° clockwise.</td></tr>
+        <tr><td><strong>Rotate Left</strong></td><td>—</td><td>Click an object to rotate it 90° counter-clockwise.</td></tr>
+        <tr><td><strong>Duplicate</strong></td><td><kbd>D</kbd></td><td>Click an object to place a copy next to it.</td></tr>
+        <tr><td><strong>Select</strong></td><td><kbd>S</kbd></td><td>Drag a selection rectangle to multi-select objects. See below.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Multi-select</h2>
+    <p>Use the <strong>Select</strong> tool to drag a box around multiple objects. When objects are selected:</p>
+    <ul>
+      <li>A combined <strong>Object Config</strong> panel shows shared properties (e.g. color if all selected objects share a color, opacity, spin direction for saw blades, etc.).</li>
+      <li>The <strong>Rotate</strong>, <strong>Duplicate</strong>, <strong>Erase</strong>, and <strong>Move</strong> actions apply to the whole selection.</li>
+      <li>Click an empty area to deselect.</li>
+    </ul>
+
+    <h2>Placement modes</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Mode</th><th>Objects available</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Block</strong></td><td>Solid ground blocks</td></tr>
+        <tr><td><strong>Obstacle</strong></td><td>Spikes, Saw blades</td></tr>
+        <tr><td><strong>Game Item / Koreen</strong></td><td>Checkpoints, Zones, Teleportals, Coins, Bouncers, Buttons</td></tr>
+        <tr><td><strong>Text</strong></td><td>In-world text labels</td></tr>
+        <tr><td><strong>Spawn / End</strong></td><td>Spawn point, End goal</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Object inspector</h2>
+    <p>Click any placed object to open its <strong>Object Inspector</strong> — shows all per-object config settings. For multi-selected objects, shared settings are shown and edited collectively.</p>
+
+    <h2>Keyboard shortcuts</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>G</kbd></td><td>Fly</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Move</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Erase</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Rotate clockwise</td></tr>
+        <tr><td><kbd>D</kbd></td><td>Duplicate</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Select (multi-select)</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Escape</kbd></td><td>Cancel placement / exit mode</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      See <a href="toolbar/">Placement Toolbar</a> for all placement option details.
+    </div>
+  </div>
+</body>
+</html>

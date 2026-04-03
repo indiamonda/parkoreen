@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkpoint — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Checkpoint</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/">← v0.1 Overview</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>🏁 Checkpoint</h1>
+      <p class="subtitle">Respawn markers that save the player's progress through a level.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Checkpoints are vertical flag-like objects the player walks through. When the player contacts a checkpoint it becomes their new <strong>active respawn point</strong>. On death, the player reappears at the active checkpoint instead of the map's spawn point.</p>
+
+    <h2>Visual states</h2>
+    <table class="wiki-table">
+      <thead><tr><th>State</th><th>Default color</th><th>When applied</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Inactive</strong></td><td>#808080 (gray)</td><td>The checkpoint has not been touched by the player.</td></tr>
+        <tr><td><strong>Touched</strong></td><td>#2196F3 (blue)</td><td>The player passed this checkpoint but it is no longer the active one.</td></tr>
+        <tr><td><strong>Active</strong></td><td>#4CAF50 (green)</td><td>This is the current respawn point. Stays green until the player reaches a later checkpoint.</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      All three state colors can be customized globally in <strong>Map Config → Checkpoint Colors</strong>.
+    </div>
+
+    <h2>Respawn behavior</h2>
+    <ul>
+      <li>Only one checkpoint is active at a time. Hitting a later checkpoint deactivates all earlier ones (turns them blue).</li>
+      <li>If the player re-touches a blue checkpoint it becomes active again.</li>
+      <li>When the player dies, they are respawned at the center of the active checkpoint.</li>
+    </ul>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 1–100. Setting to a low value creates a subtle checkpoint.</td></tr>
+        <tr><td>Rotation</td><td>0°</td><td>Visual rotation in 90° steps.</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the checkpoint sprite.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

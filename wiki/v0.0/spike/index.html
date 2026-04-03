@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spike — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Spike</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/">← v0.0 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>⚠️ Spike</h1>
+      <p class="subtitle">The core hazard object — a rotatable spike tile that damages the player on contact.</p>
+    </div>
+
+    <h2>What is a spike?</h2>
+    <p>A spike is a triangular hazard placed on the grid. Like blocks, spikes snap to the <strong>32×32 px grid</strong> and can be drag-painted. When the player's <em>hurt touchbox</em> intersects the spike's <em>damage zone</em> (based on the active touchbox mode), the player loses HP and eventually dies.</p>
+
+    <h2>Orientation</h2>
+    <p>A spike has a <strong>tip</strong> (pointy part) and a <strong>flat base</strong>. The orientation is controlled by rotation:</p>
+    <table class="wiki-table">
+      <thead><tr><th>Rotation</th><th>Tip faces</th><th>Typical use</th></tr></thead>
+      <tbody>
+        <tr><td><code>0°</code></td><td>Up</td><td>Floor spike — player steps on it from above</td></tr>
+        <tr><td><code>90°</code></td><td>Right</td><td>Left wall spike</td></tr>
+        <tr><td><code>180°</code></td><td>Down</td><td>Ceiling spike — player bumps head</td></tr>
+        <tr><td><code>270°</code></td><td>Left</td><td>Right wall spike</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Touchbox modes</h2>
+    <p>The <strong>touchbox mode</strong> controls which part of the spike is lethal. There is a world-wide default set in Map Config, and each spike can have its own individual override.</p>
+
+    <ul class="option-list">
+      <li>
+        <span class="opt-name">normal</span>
+        <span class="opt-default">World default</span>
+        <span class="opt-desc">The <em>danger zone</em> — roughly the upper 60% of the spike — is lethal. The flat base is safe to stand on. This is the recommended default for floor spikes.</span>
+      </li>
+      <li>
+        <span class="opt-name">full</span>
+        <span class="opt-desc">The entire bounding box is lethal. The player cannot touch any side of the spike safely. Useful for tightly-packed hazard walls.</span>
+      </li>
+      <li>
+        <span class="opt-name">tip</span>
+        <span class="opt-desc">Only the very tip of the spike (~top 25%) is lethal. The rest is safe. Great for spikes that are mostly decorative and only punish direct contact with the point.</span>
+      </li>
+      <li>
+        <span class="opt-name">ground</span>
+        <span class="opt-desc">Ground collision only — the flat base counts as a solid surface the player can stand on, but the spike never damages. Used to create spike-shaped platforms.</span>
+      </li>
+      <li>
+        <span class="opt-name">flag</span>
+        <span class="opt-desc">No hurt and no ground collision. The spike is purely visual — players and physics ignore it entirely.</span>
+      </li>
+      <li>
+        <span class="opt-name">air</span>
+        <span class="opt-desc">No collision with the ground, and no damage. The spike is a non-solid visual. Identical to <code>flag</code> from a gameplay perspective.</span>
+      </li>
+    </ul>
+
+    <div class="note tip">
+      <strong>Tip:</strong> Use <code>ground</code> mode to create spiked-looking platforms the player can safely land on for a visual-only danger effect.
+    </div>
+
+    <div class="note warn">
+      <strong>All Spike mode</strong> was added in the Current version (v0.4-Indev). It is not available in v0.0.
+    </div>
+
+    <h2>Drop Hurt Only</h2>
+    <p>When <strong>Drop Hurt Only</strong> is enabled (globally in Map Config, or per-spike), the spike only damages the player if they are moving <em>toward</em> the spike tip. For example, a floor spike (tip up) will only hurt a player who is falling downward into it — walking along the side or jumping up through it from below is safe.</p>
+    <p>This is useful for creating forgiving jump challenges where the player can retry without dying to wall contact.</p>
+
+    <h2>Object config settings</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Color</strong></td><td>World default spike color</td><td>Fill color of this spike.</td></tr>
+        <tr><td><strong>Opacity</strong></td><td><code>100%</code></td><td>Transparency. <code>100</code> = opaque; <code>0</code> = invisible but still lethal.</td></tr>
+        <tr><td><strong>Rotation</strong></td><td><code>0°</code></td><td>Orientation: 0° = tip up, 90° = tip right, 180° = tip down, 270° = tip left.</td></tr>
+        <tr><td><strong>Flip Horizontal</strong></td><td><code>off</code></td><td>Mirror the spike artwork horizontally.</td></tr>
+        <tr><td><strong>Collision</strong></td><td><code>on</code></td><td>Toggle physical collision (both ground and hurt). Disabling fully ghosts the spike.</td></tr>
+        <tr><td><strong>Spike Touchbox</strong></td><td><em>Use World Default</em></td><td>Per-spike override. Leave blank to use the world's default; or choose a specific mode from the list above.</td></tr>
+        <tr><td><strong>Drop Hurt Only</strong></td><td><em>Use World Default</em></td><td>Per-spike override for drop-hurt-only behavior.</td></tr>
+        <tr><td><strong>Damage Amount</strong></td><td><code>1</code></td><td>How much HP this spike removes per hit. Relevant when using an HP plugin.</td></tr>
+        <tr><td><strong>Layer</strong></td><td><code>0</code></td><td>Render depth layer (0–4).</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Saw Blade (spinner)</h2>
+    <div class="note">Saw blades are not available in v0.0. They were added in v0.3.</div>
+  </div>
+</body>
+</html>

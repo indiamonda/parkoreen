@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Editor</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/">← v0.0 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>🖊 Editor</h1>
+      <p class="subtitle">The Parkoreen map editor — tools, grid, keyboard shortcuts, and camera controls in v0.0.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>The Parkoreen editor is a canvas-based, grid-aligned map creator. Everything snaps to a <strong>32×32 pixel grid</strong>. Objects are placed, moved, and erased using the toolbar on the left side and additional tools on the bottom toolbar.</p>
+
+    <h2>Grid</h2>
+    <p>The game world uses a <strong>32 px grid</strong>. When you place a block, it snaps to the nearest grid cell. The grid is visible as faint lines in the editor. All objects (blocks, spikes, spawn/end markers) are aligned to this grid.</p>
+
+    <h2>Toolbar buttons</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Button</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>⚙️ <strong>Config</strong></td><td>Opens the Map Config panel (physics, background, defaults)</td></tr>
+        <tr><td>➕ <strong>Add</strong></td><td>Opens the Add menu to start placing blocks, obstacles, or game items</td></tr>
+        <tr><td>📋 <strong>Layers</strong></td><td>Opens the Layers panel to reorder / toggle visibility of object layers</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Editor tools</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Shortcut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Fly</strong></td><td><kbd>G</kbd></td><td>Move the editor camera freely by dragging the canvas or using WASD.</td></tr>
+        <tr><td><strong>Move</strong></td><td><kbd>M</kbd></td><td>Click and drag an object to reposition it on the grid.</td></tr>
+        <tr><td><strong>Erase</strong></td><td><kbd>E</kbd></td><td>Click or drag to erase objects. The eraser can target blocks, spikes, or all objects depending on eraser settings.</td></tr>
+        <tr><td><strong>Rotate</strong></td><td><kbd>R</kbd></td><td>Click an object to rotate it 90° clockwise.</td></tr>
+        <tr><td><strong>Duplicate</strong></td><td><kbd>D</kbd></td><td>Click an object to duplicate it in place, then drag the copy.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Camera navigation</h2>
+    <ul>
+      <li><strong>Fly tool active</strong>: click and drag the canvas to pan, or use <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>.</li>
+      <li><strong>Scroll wheel</strong>: zoom in / out.</li>
+      <li>Camera position does not affect the game — it is purely for the editor view.</li>
+    </ul>
+
+    <h2>Keyboard shortcuts (editor mode)</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>G</kbd></td><td>Activate Fly tool</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Activate Erase tool</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Activate Move tool (drag player in admin mode)</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Rotate selected / clicked object</td></tr>
+        <tr><td><kbd>D</kbd></td><td>Duplicate selected object</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo last action</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Escape</kbd></td><td>Cancel current placement / exit current mode</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Layers</h2>
+    <p>Every object has a <strong>layer</strong> from 0 to 4. Objects on higher layers render on top of lower-layer objects. The spawn and end markers are always visible and not assigned to a player-visible layer.</p>
+    <p>The Layers panel lists all objects grouped by layer. You can toggle layer visibility using the eye icon (editor view only — all layers are always active during play).</p>
+
+    <h2>Placement modes</h2>
+    <p>Click <strong>Add</strong> (➕) to open the add menu. In v0.0 the available placement types are:</p>
+    <ul>
+      <li><strong>Block</strong> — solid ground. Click and drag to paint a rectangle of blocks.</li>
+      <li><strong>Obstacle</strong> — spikes. Click and drag to paint spikes.</li>
+      <li><strong>Spawn / End</strong> — place the player spawn point or the level end goal.</li>
+    </ul>
+    <p>While in a placement mode the toolbar changes to show options relevant to the type being placed (color, opacity, spike touchbox mode, etc.).</p>
+
+    <h2>Hosting &amp; saving</h2>
+    <p>Click <strong>Host Game</strong> to start a multiplayer room with the current map. The map auto-saves periodically and also when you close or navigate away from the page.</p>
+
+    <div class="note">
+      See <a href="toolbar/">Placement Toolbar</a> for all the options on the placement bar.
+    </div>
+  </div>
+</body>
+</html>

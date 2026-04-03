@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">v0.0</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/">← All Versions</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0 — Legacy</span>
+      <h1>Parkoreen v0.0</h1>
+      <p class="subtitle">The original release. Core game engine, block placement, spikes, multiplayer rooms, and the editor.</p>
+    </div>
+
+    <div class="note">
+      This article documents the <strong>complete feature set of v0.0</strong>, not just what changed. For differences between versions, see the <a href="/parkoreen/CHANGELOG.md" target="_blank">CHANGELOG</a>.
+    </div>
+
+    <h2>Topics in this version</h2>
+    <div class="nav-grid">
+      <a href="player/" class="nav-card">
+        <span class="nav-icon">🧍</span>
+        <div>
+          <div class="nav-label">Player</div>
+          <div class="nav-sub">Movement, jump, physics</div>
+        </div>
+      </a>
+      <a href="editor/" class="nav-card">
+        <span class="nav-icon">🖊</span>
+        <div>
+          <div class="nav-label">Editor</div>
+          <div class="nav-sub">Tools, placement, shortcuts</div>
+        </div>
+      </a>
+      <a href="editor/toolbar/" class="nav-card">
+        <span class="nav-icon">🔧</span>
+        <div>
+          <div class="nav-label">Placement Toolbar</div>
+          <div class="nav-sub">Block &amp; obstacle options</div>
+        </div>
+      </a>
+      <a href="map-config/" class="nav-card">
+        <span class="nav-icon">⚙️</span>
+        <div>
+          <div class="nav-label">Map Config</div>
+          <div class="nav-sub">Physics, background, defaults</div>
+        </div>
+      </a>
+      <a href="block/" class="nav-card">
+        <span class="nav-icon">🟫</span>
+        <div>
+          <div class="nav-label">Block</div>
+          <div class="nav-sub">Ground tile, collision, opacity</div>
+        </div>
+      </a>
+      <a href="spike/" class="nav-card">
+        <span class="nav-icon">⚠️</span>
+        <div>
+          <div class="nav-label">Spike</div>
+          <div class="nav-sub">Obstacle, touchbox modes</div>
+        </div>
+      </a>
+      <a href="tester/" class="nav-card">
+        <span class="nav-icon">🎮</span>
+        <div>
+          <div class="nav-label">Tester Mode</div>
+          <div class="nav-sub">Testing the map in-editor</div>
+        </div>
+      </a>
+    </div>
+
+    <h2>What is v0.0?</h2>
+    <p>v0.0 is the foundation of Parkoreen. It established the core loop: place blocks and spikes, host a room, and let players race through the map. The game uses a grid-based editor with real-time multiplayer networking. Physics are by the game engine (gravity, jump, wall-slide).</p>
+
+    <h3>What exists in v0.0</h3>
+    <ul>
+      <li><strong>Blocks</strong> — solid ground tiles placed on a 32×32 grid</li>
+      <li><strong>Spikes</strong> — rotatable hazard tiles with configurable touchbox modes</li>
+      <li><strong>Spawn point and end point</strong> — mark where the player starts and where they must reach</li>
+      <li><strong>Physics</strong> — gravity, jump, max fall speed</li>
+      <li><strong>Fly mode</strong> — free camera movement in the editor</li>
+      <li><strong>Layers system</strong> — objects can be placed on different depth layers</li>
+      <li><strong>Multiplayer rooms</strong> — host a room and play together in real time</li>
+      <li><strong>Map persistence</strong> — auto-save and manual save</li>
+      <li><strong>Erase tool</strong> — remove objects</li>
+      <li><strong>Color picker</strong> — set block / spike colors</li>
+      <li><strong>Rotate</strong> — rotate blocks and spikes 90° at a time</li>
+      <li><strong>Opacity</strong> — set object transparency</li>
+    </ul>
+
+    <h3>What does NOT exist in v0.0</h3>
+    <ul>
+      <li>Zones, teleportals, checkpoints → added in v0.1</li>
+      <li>Plugin system (Hollow Knight, HP, Code) → added in v0.2</li>
+      <li>Saw blades, buttons, block textures → added in v0.3</li>
+      <li>Coins, bouncers, all-spike mode, multi-select → added in Current</li>
+    </ul>
+  </div>
+</body>
+</html>

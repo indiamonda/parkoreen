@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Block</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/">← v0.0 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>🟫 Block</h1>
+      <p class="subtitle">Solid ground tiles — the primary building material in Parkoreen v0.0.</p>
+    </div>
+
+    <h2>What is a block?</h2>
+    <p>A block is a solid rectangular tile that the player can stand on, walk into, and jump off of. Blocks are the primary material for building floors, walls, ceilings, and platforms.</p>
+    <p>Blocks snap to the <strong>32×32 px grid</strong>. You can drag to paint a rectangle of blocks in one stroke.</p>
+
+    <h2>Rendering</h2>
+    <p>A block is rendered as a filled rectangle in its configured color. In <code>solid</code> texture mode (the only texture in v0.0), a subtle highlight is drawn on the top-left edges and a shadow on the bottom-right edges to give a 3D bevel look.</p>
+    <p>The bevel is only drawn when the block is at least 16×16 px.</p>
+
+    <h2>Object config settings</h2>
+    <p>Clicking a block with the Select/Inspector tool (or right-clicking it) opens the object config panel:</p>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Name</strong></td><td><em>auto</em></td><td>An optional label used in the Layers panel. Does not affect gameplay.</td></tr>
+        <tr><td><strong>Color</strong></td><td>World default</td><td>The fill color of this block. Overrides the world default block color for this specific block.</td></tr>
+        <tr><td><strong>Opacity</strong></td><td><code>1.0</code> (100%)</td><td>Transparency. <code>1</code> = fully opaque; <code>0</code> = invisible. Stored as 0–1 internally; displayed as 0–100% in the editor.</td></tr>
+        <tr><td><strong>Rotation</strong></td><td><code>0°</code></td><td>Rotation angle in degrees (0, 90, 180, 270). Use the rotate buttons or <kbd>R</kbd> shortcut.</td></tr>
+        <tr><td><strong>Flip Horizontal</strong></td><td><code>off</code></td><td>Mirror the block horizontally. Useful for asymmetric textures.</td></tr>
+        <tr><td><strong>Collision</strong></td><td><code>on</code></td><td>Whether the block is physically solid. Disable for purely decorative blocks.</td></tr>
+        <tr><td><strong>Layer</strong></td><td><code>0</code></td><td>Render depth. 0 = back; 4 = front. Affects draw order only — all layers are physically active unless collision is disabled.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Collision</h2>
+    <p>When collision is <strong>on</strong>, the player cannot walk or fall through the block. The game performs separate ground and side collision checks so the player lands on top, slides along walls, and bumps their head on ceilings correctly.</p>
+    <p>When collision is <strong>off</strong>, the block is purely decorative — the player passes through it freely.</p>
+
+    <h2>Layers</h2>
+    <p>Layer values 0–4:</p>
+    <ul>
+      <li>Layer 0–1 render behind the player.</li>
+      <li>Layer 2 renders at the player's level.</li>
+      <li>Layer 3–4 render in front of the player.</li>
+    </ul>
+    <p>All layers participate in collision regardless of draw order.</p>
+
+    <div class="note">
+      In v0.0, blocks can only have the <code>solid</code> texture. Block textures (e.g. <em>Brick</em>) were added in v0.3.
+    </div>
+  </div>
+</body>
+</html>

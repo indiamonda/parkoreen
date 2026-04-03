@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Editor</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/">← v0.1 Overview</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>🖊 Editor</h1>
+      <p class="subtitle">The Parkoreen map editor — tools, grid, keyboard shortcuts, and camera controls in v0.1.</p>
+    </div>
+
+    <h2>Grid &amp; snapping</h2>
+    <p>All objects snap to a <strong>32×32 px grid</strong>. Grid lines are shown as faint lines on the canvas.</p>
+
+    <h2>Toolbar buttons</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Button</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>⚙️ <strong>Config</strong></td><td>Opens the Map Config panel</td></tr>
+        <tr><td>➕ <strong>Add</strong></td><td>Opens the Add menu (Block, Obstacle, Game Item, Spawn/End)</td></tr>
+        <tr><td>📋 <strong>Layers</strong></td><td>Opens the Layers panel</td></tr>
+        <tr><td>▶ <strong>Test Game</strong></td><td>Enters tester mode</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Editor tools</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Shortcut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Fly</strong></td><td><kbd>G</kbd></td><td>Free camera pan by drag or WASD.</td></tr>
+        <tr><td><strong>Move</strong></td><td><kbd>M</kbd></td><td>Drag an object to reposition it.</td></tr>
+        <tr><td><strong>Erase</strong></td><td><kbd>E</kbd></td><td>Click/drag to delete objects.</td></tr>
+        <tr><td><strong>Rotate</strong></td><td><kbd>R</kbd></td><td>Click an object to rotate 90° clockwise.</td></tr>
+        <tr><td><strong>Duplicate</strong></td><td><kbd>D</kbd></td><td>Duplicate selected object.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Placement modes (v0.1 adds Game Item)</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Mode</th><th>Objects</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Block</strong></td><td>Solid ground blocks</td></tr>
+        <tr><td><strong>Obstacle</strong></td><td>Spikes</td></tr>
+        <tr><td><strong>Game Item</strong> (new)</td><td>Checkpoints, zones, teleportals</td></tr>
+        <tr><td><strong>Spawn / End</strong></td><td>Spawn point, end goal</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Object inspector (new in v0.1)</h2>
+    <p>Click an existing object in the editor to open the <strong>Object Inspector</strong> — a panel with all per-object config settings. In v0.1 you can now edit horizontal flip here.</p>
+
+    <h2>Keyboard shortcuts</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>G</kbd></td><td>Fly tool</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Erase tool</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Rotate object / respawn (in tester)</td></tr>
+        <tr><td><kbd>D</kbd></td><td>Duplicate</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Undo</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Escape</kbd></td><td>Cancel placement / exit mode</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      See <a href="toolbar/">Placement Toolbar</a> for all placement options.
+    </div>
+  </div>
+</body>
+</html>

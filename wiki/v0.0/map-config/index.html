@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map Config — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Map Config</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/">← v0.0 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>⚙️ Map Config</h1>
+      <p class="subtitle">Global map settings — physics, background, default colors, and spike behavior — in v0.0.</p>
+    </div>
+
+    <div class="note">
+      The Map Config panel is opened by clicking the <strong>⚙️ Config</strong> button in the editor toolbar. Settings here apply to the entire map and are saved with the map file.
+    </div>
+
+    <h2>General</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Map Name</strong></td><td><code>Untitled Map</code></td><td>The display name of the map shown in the dashboard and room list.</td></tr>
+        <tr><td><strong>Background</strong></td><td><code>sky</code></td><td>The background style. Options: <code>sky</code> (light blue sky with clouds), <code>galaxy</code> (dark space background with clouds in a galaxy color). Clouds are rendered automatically based on this choice.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Physics</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Gravity</strong></td><td><code>0.71</code></td><td>Downward acceleration applied every frame. Higher = faster falling; lower = floatier feel. Must be a positive number.</td></tr>
+        <tr><td><strong>Jump Force</strong></td><td><code>−13.2</code></td><td>Vertical velocity applied when the player jumps. Must be negative (upward). More negative = higher jump.</td></tr>
+        <tr><td><strong>Player Speed</strong></td><td><code>5</code></td><td>Horizontal movement speed. Higher = faster left/right movement. Must be positive.</td></tr>
+        <tr><td><strong>Max Jumps</strong></td><td><code>1</code></td><td>How many times the player can jump before landing. Set to <code>2</code> for double-jump, etc.</td></tr>
+        <tr><td><strong>Infinite Jumps</strong></td><td><code>off</code></td><td>If enabled, the player can jump unlimited times mid-air.</td></tr>
+        <tr><td><strong>Additional Air Jump</strong></td><td><code>off</code></td><td>If enabled, the player gets one extra jump if they walk off a ledge without jumping (coyote-time style).</td></tr>
+        <tr><td><strong>Die Line Y</strong></td><td><code>1000</code></td><td>The Y coordinate (world units, positive = downward) below which the player dies automatically. Prevents players from falling forever off the bottom of the map.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Default Object Colors</h2>
+    <p>These colors are used when placing new objects. Individual objects can override them after placement.</p>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>What it affects</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Default Block Color</strong></td><td><code>#787878</code></td><td>Fill color for newly placed blocks.</td></tr>
+        <tr><td><strong>Default Spike Color</strong></td><td><code>#c45a3f</code></td><td>Fill color for newly placed spikes.</td></tr>
+        <tr><td><strong>Default Text Color</strong></td><td><code>#000000</code></td><td>Fill color for newly placed text objects.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Spike Settings</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Spike Touchbox</strong></td><td><code>normal</code></td><td>The default touchbox mode applied to all spikes that do not have an individual override. See <a href="/wiki/v0.0/spike/">Spike</a> for mode descriptions.</td></tr>
+        <tr><td><strong>Drop Hurt Only</strong></td><td><code>off</code></td><td>When enabled, spikes only damage the player if they are moving <em>toward</em> the spike tip (e.g. falling onto an upward-facing spike). Landing on the flat side from the wrong direction is safe. Applies to all spikes unless individually overridden.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Cloud colors</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Sky Cloud Color</strong></td><td><code>#ffffff</code></td><td>Color of clouds when background is <code>sky</code>.</td></tr>
+        <tr><td><strong>Galaxy Cloud Color</strong></td><td><code>#9382a8</code></td><td>Color of clouds when background is <code>galaxy</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Checkpoint Colors</h2>
+    <p>Not yet custom-configurable in v0.0. The engine uses hardcoded defaults:</p>
+    <ul>
+      <li><strong>Default state</strong> — gray <code>#808080</code></li>
+      <li><strong>Active (current respawn)</strong> — green <code>#4CAF50</code></li>
+      <li><strong>Touched (already used)</strong> — blue <code>#2196F3</code></li>
+    </ul>
+    <div class="note">Checkpoints are not available in v0.0 (added in v0.1).</div>
+  </div>
+</body>
+</html>

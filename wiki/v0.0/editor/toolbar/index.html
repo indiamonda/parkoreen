@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Placement Toolbar — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/editor/">Editor</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Placement Toolbar</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/editor/">← Editor</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>🔧 Placement Toolbar</h1>
+      <p class="subtitle">All options available on the side/bottom toolbar when placing blocks and spikes in v0.0.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>When you select a placement mode (Block, Obstacle, or Spawn/End), a contextual toolbar appears. The options change depending on what you are placing.</p>
+
+    <h2>Common options (all placement modes)</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Color</strong></td><td>Color picker</td><td>The fill color of the object. Click the color swatch to open the color picker.</td></tr>
+        <tr><td><strong>Opacity</strong></td><td>Number 0–100</td><td>How transparent the object is. <code>100</code> = fully opaque, <code>0</code> = fully invisible. Default <code>100</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Block options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Appearance</strong></td><td>Select <em>Ground</em> (solid block) as the visual type.</td></tr>
+        <tr><td><strong>Collision</strong></td><td>Toggle whether the block is physically solid. Disabling collision lets the block be used purely as decoration.</td></tr>
+        <tr><td><strong>Layer</strong></td><td>Which depth layer (0–4) new blocks are placed on. 0 is behind most objects; 4 is in front of everything.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Obstacle (spike) options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Spike Touchbox</strong></td><td>Override the world-default spike touchbox mode for newly placed spikes. See <a href="/wiki/v0.0/spike/">Spike</a> for mode descriptions.</td></tr>
+        <tr><td><strong>Damage Amount</strong></td><td>How much HP the spike removes on contact (default <code>1</code>). Only relevant when a health plugin is active.</td></tr>
+        <tr><td><strong>Layer</strong></td><td>Depth layer for newly placed spikes.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Spawn / End options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Type</strong></td><td>Switch between placing the <em>Spawn point</em> (where players start) or the <em>End goal</em> (where they must reach to finish).</td></tr>
+        <tr><td><strong>Color</strong></td><td>Color for the spawn/end marker visual.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      Only one spawn point and one end point can be active at a time. Placing a new spawn point replaces the old one.
+    </div>
+  </div>
+</body>
+</html>

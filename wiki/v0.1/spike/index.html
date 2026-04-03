@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spike — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Spike</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/">← v0.1 Overview</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>🔺 Spike</h1>
+      <p class="subtitle">Triangle-shaped hazard that kills the player on contact. Unchanged from v0.0.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Spikes are 32×32 triangle hazards. They use a map-level <strong>Spike Touchbox</strong> setting to determine when the player is killed.</p>
+
+    <h2>Orientation</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Rotation</th><th>Triangle points</th></tr></thead>
+      <tbody>
+        <tr><td>0° (up)</td><td>Base on bottom, point facing up</td></tr>
+        <tr><td>90°</td><td>Base on left, point facing right</td></tr>
+        <tr><td>180°</td><td>Base on top, point facing down</td></tr>
+        <tr><td>270°</td><td>Base on right, point facing left</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Touchbox modes (map-level setting)</h2>
+    <ul class="option-list">
+      <li><span class="opt-name">normal</span><span class="opt-default">default</span><span class="opt-desc">Triangle hitbox matching the visible spike shape.</span></li>
+      <li><span class="opt-name">full</span><span class="opt-default"></span><span class="opt-desc">Full 32×32 square hitbox — strict mode.</span></li>
+      <li><span class="opt-name">tip</span><span class="opt-default"></span><span class="opt-desc">Only the very tip of the triangle kills. Forgiving mode.</span></li>
+      <li><span class="opt-name">ground</span><span class="opt-default"></span><span class="opt-desc">Player dies only when touching the bottom row of pixels — for floor spikes.</span></li>
+      <li><span class="opt-name">flag</span><span class="opt-default"></span><span class="opt-desc">Tall narrow hitbox centered on the spike, useful for flag-shaped hazards.</span></li>
+      <li><span class="opt-name">air</span><span class="opt-default"></span><span class="opt-desc">Kills only when the player approaches from the air (no contact from sides/ground).</span></li>
+    </ul>
+
+    <h2>Drop Hurt Only</h2>
+    <p class="note">When <strong>Drop Hurt Only</strong> is enabled in Map Config, spikes only deal damage when the player is falling onto them from above. Running into the side of a spike will not kill the player.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Color</td><td>#c45a3f</td><td>Fill color of the spike triangle.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 1–100.</td></tr>
+        <tr><td>Rotation</td><td>0°</td><td>90°-step rotation to change orientation.</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the spike.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

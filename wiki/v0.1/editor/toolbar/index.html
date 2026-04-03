@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Placement Toolbar — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/editor/">Editor</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Placement Toolbar</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/editor/">← Editor</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>📦 Placement Toolbar</h1>
+      <p class="subtitle">All placement options available in the Add toolbar for v0.1.</p>
+    </div>
+
+    <h2>Block</h2>
+    <ul class="option-list">
+      <li><span class="opt-name">Color</span><span class="opt-default">#787878</span><span class="opt-desc">Fill color of the block.</span></li>
+      <li><span class="opt-name">Opacity</span><span class="opt-default">100%</span><span class="opt-desc">Transparency from 1–100 (0 = invisible).</span></li>
+      <li><span class="opt-name">Layer</span><span class="opt-default">0</span><span class="opt-desc">Draw order. Higher layers render on top.</span></li>
+      <li><span class="opt-name">Collision</span><span class="opt-default">On</span><span class="opt-desc">Whether the block is solid.</span></li>
+    </ul>
+
+    <h2>Obstacle (Spike)</h2>
+    <ul class="option-list">
+      <li><span class="opt-name">Color</span><span class="opt-default">#c45a3f</span><span class="opt-desc">Spike fill color.</span></li>
+      <li><span class="opt-name">Opacity</span><span class="opt-default">100%</span><span class="opt-desc">Transparency 1–100.</span></li>
+      <li><span class="opt-name">Layer</span><span class="opt-default">0</span><span class="opt-desc">Draw order.</span></li>
+    </ul>
+
+    <h2>Game Item — Checkpoint <span class="version-badge stable">New v0.1</span></h2>
+    <ul class="option-list">
+      <li><span class="opt-name">Opacity</span><span class="opt-default">100%</span><span class="opt-desc">Transparency.</span></li>
+      <li><span class="opt-name">Layer</span><span class="opt-default">0</span><span class="opt-desc">Draw order.</span></li>
+    </ul>
+
+    <h2>Game Item — Zone <span class="version-badge stable">New v0.1</span></h2>
+    <ul class="option-list">
+      <li><span class="opt-name">Name</span><span class="opt-default">(empty)</span><span class="opt-desc">Label displayed inside the zone rectangle in the editor.</span></li>
+      <li><span class="opt-name">Color</span><span class="opt-default">#9b59b6</span><span class="opt-desc">Border / tint color used in the editor view.</span></li>
+      <li><span class="opt-name">Opacity</span><span class="opt-default">100%</span><span class="opt-desc">Transparency of the zone's editor visualization.</span></li>
+    </ul>
+
+    <h2>Game Item — Teleportal <span class="version-badge stable">New v0.1</span></h2>
+    <ul class="option-list">
+      <li><span class="opt-name">Teleportal Name</span><span class="opt-default">(required)</span><span class="opt-desc">Unique identifier used to link portals together.</span></li>
+      <li><span class="opt-name">Send To</span><span class="opt-default">(empty)</span><span class="opt-desc">Comma-separated list of teleportal names to send the player to.</span></li>
+      <li><span class="opt-name">Color</span><span class="opt-default">#9b59b6</span><span class="opt-desc">Portal glow color.</span></li>
+      <li><span class="opt-name">Opacity</span><span class="opt-default">100%</span><span class="opt-desc">Opacity of the portal.</span></li>
+    </ul>
+
+    <h2>Spawn / End</h2>
+    <ul class="option-list">
+      <li><span class="opt-name">Type</span><span class="opt-default">—</span><span class="opt-desc">Spawn point (player start) or End point (level goal).</span></li>
+      <li><span class="opt-name">Layer</span><span class="opt-default">0</span><span class="opt-desc">Draw order.</span></li>
+    </ul>
+  </div>
+</body>
+</html>

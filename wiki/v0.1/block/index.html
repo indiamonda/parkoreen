@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Block</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/">← v0.1 Overview</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>🟫 Block</h1>
+      <p class="subtitle">Solid platforms the player can stand on. Unchanged from v0.0.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Blocks are the fundamental building unit of every Parkoreen map. They are solid, square objects (32×32 px) that the player can land on and push against.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Color</td><td>#787878</td><td>Fill color of the block face.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency (1–100). Setting to 0 makes the block invisible but still solid.</td></tr>
+        <tr><td>Rotation</td><td>0°</td><td>Visual rotation in 90° steps. Does not affect collision (block hitbox is always a square).</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the block horizontally.</td></tr>
+        <tr><td>Collision</td><td>On</td><td>When off the block is purely decorative and the player passes through it.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order relative to other objects.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Rendering</h2>
+    <p>Blocks are rendered as filled squares with a 1 px bevel (lighter top/left, darker bottom/right edge) to give a subtle 3-D appearance. The bevel is automatically derived from the block's fill color.</p>
+  </div>
+</body>
+</html>

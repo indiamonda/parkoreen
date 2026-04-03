@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coin — Current — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/current/">Current</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Coin</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/current/">← Current Overview</a>
+    <div class="page-header">
+      <span class="version-badge">Current</span>
+      <h1>🪙 Coin</h1>
+      <p class="subtitle">Collectable currency items that award the player a set amount when touched.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Coins are small pickup items scattered around a map. When the player walks into a coin it is collected and the player's coin total increases by the coin's <strong>Coin Amount</strong>. Collected coins disappear until the map is reset.</p>
+
+    <h2>Coin counter HUD</h2>
+    <p>When <strong>Show Coin Counter</strong> is enabled in Map Config, a coin counter is displayed on-screen during gameplay showing the player's current coin total.</p>
+
+    <h2>Activity scope</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Scope</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>global</code></td>
+          <td>The coin is collected once across all players. Once any player picks it up, it disappears for everyone.</td>
+        </tr>
+        <tr>
+          <td><code>player</code></td>
+          <td>Each player collects the coin independently. Collecting it does not remove it for other players.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Coin Amount</td><td>1</td><td>How many coins this pickup awards to the collecting player.</td></tr>
+        <tr><td>Coin Activity Scope</td><td>global</td><td><code>global</code> or <code>player</code> — see above.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0–100.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

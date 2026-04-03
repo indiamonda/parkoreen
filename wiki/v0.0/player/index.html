@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Player</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/">← v0.0 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>🧍 Player</h1>
+      <p class="subtitle">How the player character moves, jumps, and interacts with the world in v0.0.</p>
+    </div>
+
+    <h2>Size &amp; basics</h2>
+    <p>The player is a <strong>32×32 px</strong> square (1 grid cell). The player always appears at the spawn point when a game or test session begins.</p>
+
+    <h2>Movement</h2>
+    <ul>
+      <li><strong>Horizontal speed</strong> — controlled by the map's <code>playerSpeed</code> value (default <code>5</code>). The player accelerates and decelerates instantly (no friction ramp).</li>
+      <li><strong>Max fall speed</strong> — capped at <code>16 × (gravity / defaultGravity)</code> — scales with gravity so heavier maps don't launch players out of bounds.</li>
+      <li>Pressing left/right flips the player facing direction.</li>
+    </ul>
+
+    <h2>Jump</h2>
+    <p>The player has <strong>1 jump</strong> by default (configurable via <code>maxJumps</code> in map config). Jump force is controlled by <code>jumpForce</code> (default <code>−13.2</code>; negative = upward). The player can jump again immediately after landing.</p>
+    <p>If the map enables <strong>Infinite Jumps</strong>, the player can jump at any time, including mid-air.</p>
+
+    <h2>Gravity</h2>
+    <p>Gravity applies every physics frame. Default value is <code>0.71</code> per frame. This can be changed per-map in Map Config.</p>
+
+    <h2>Physics touchboxes</h2>
+    <p>The player has two internal rectangles used for collision detection:</p>
+    <ul>
+      <li><strong>Ground touchbox</strong> — <code>x:0, y:8, w:32, h:24</code> — used for landing on and pushing against solid objects. Slightly inset on top to allow the player to walk under overhangs.</li>
+      <li><strong>Hurt touchbox</strong> — <code>x:4, y:6, w:24, h:24</code> — used for spike damage checks. Smaller than the ground box so the player isn't hit by spikes that are visually far away.</li>
+    </ul>
+
+    <h2>Death</h2>
+    <p>If the player touches a spike (with the appropriate touchbox mode) they die and respawn at the spawn point. If the player falls below the map's <strong>die line Y</strong> (default Y = <code>1000</code>), they also die and respawn.</p>
+    <p>In v0.0 there are no checkpoints, so the player always respawns at the spawn point.</p>
+
+    <h2>Controls (default keyboard layout)</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>←</kbd> / <kbd>A</kbd></td><td>Move left</td></tr>
+        <tr><td><kbd>→</kbd> / <kbd>D</kbd></td><td>Move right</td></tr>
+        <tr><td><kbd>↑</kbd> / <kbd>W</kbd> / <kbd>Space</kbd></td><td>Jump</td></tr>
+        <tr><td><kbd>↓</kbd> / <kbd>S</kbd></td><td>Duck / drop (v0.0: no effect in base game)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note tip">
+      The player's name is displayed above them during multiplayer sessions. In solo play (editor tester), the name label is still rendered.
+    </div>
+
+    <h2>Respawn</h2>
+    <p>On death or at game start, the player is placed at the <strong>spawn point</strong> object's position, centered horizontally, just above it. If no spawn point exists in the map the player spawns at world coordinates <code>(0, 0)</code>.</p>
+  </div>
+</body>
+</html>

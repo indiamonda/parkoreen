@@ -1,1 +1,68 @@
- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tester Mode — v0.0 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.0/">v0.0</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Tester Mode</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.0/">← v0.0 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.0</span>
+      <h1>🎮 Tester Mode</h1>
+      <p class="subtitle">Play your map directly inside the editor to test it without hosting a room.</p>
+    </div>
+
+    <h2>What is Tester Mode?</h2>
+    <p>Tester Mode lets you run the full game loop (physics, collision, death, win condition) directly inside the editor, without hosting a multiplayer room. Click <strong>Test Game</strong> (▶) button to start, and the editor UI switches to a minimal HUD while the game runs.</p>
+
+    <h2>Starting and stopping</h2>
+    <ul>
+      <li>Click <strong>▶ Test Game</strong> in the toolbar to start.</li>
+      <li>Click <strong>■ Stop Test</strong> or press <kbd>Escape</kbd> to return to the editor.</li>
+    </ul>
+    <p>When tester mode stops, the map state is fully restored — objects that were moved or affected by gameplay (coins collected, buttons pressed, etc.) are reset.</p>
+
+    <h2>Tester controls</h2>
+    <p>While testing, keyboard controls match the in-game player controls:</p>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>←</kbd> / <kbd>A</kbd></td><td>Move left</td></tr>
+        <tr><td><kbd>→</kbd> / <kbd>D</kbd></td><td>Move right</td></tr>
+        <tr><td><kbd>↑</kbd> / <kbd>W</kbd> / <kbd>Space</kbd></td><td>Jump</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Respawn at spawn point / last checkpoint</td></tr>
+        <tr><td><kbd>Escape</kbd></td><td>Exit tester mode</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Tester toolbar extras</h2>
+    <p>While in tester mode, extra tools appear in the toolbar:</p>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Invincibility</strong></td><td>Toggle player invincibility — the player cannot die from spikes or fall damage while this is on. Useful for testing map layout without repeated deaths.</td></tr>
+        <tr><td><strong>Show Touchboxes</strong></td><td>Render the spike danger/tip/flat zones and the player hurt touchbox as colored overlays. Useful for debugging spike configuration. <br><em>Note: when you exit tester mode, touchboxes turn off automatically. The state is remembered the next time you enter tester mode.</em></td></tr>
+        <tr><td><strong>FPS Counter</strong></td><td>Shows current frames per second in the top-right corner. Only visible while in tester mode.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Camera in tester mode</h2>
+    <p>The camera follows the player smoothly. It is centered on the player and does not scroll past the map's die-line unless the player is falling.</p>
+
+    <div class="note">
+      Tester mode runs in exactly the same physics engine as the live game, so what you see in tester mode is what players will experience. Audio, particles, and all mechanics are active.
+    </div>
+  </div>
+</body>
+</html> 

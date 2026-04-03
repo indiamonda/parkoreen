@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player — v0.1 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/v0.1/">v0.1</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Player</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/v0.1/">← v0.1 Overview</a>
+    <div class="page-header">
+      <span class="version-badge stable">v0.1</span>
+      <h1>🧍 Player</h1>
+      <p class="subtitle">How the player character moves, jumps, dies, and respawns — including checkpoint support.</p>
+    </div>
+
+    <h2>Size &amp; basics</h2>
+    <p>The player is a <strong>32×32 px</strong> square (1 grid cell). They spawn at the spawn point at game start and respawn there (or at the last-touched checkpoint) on death.</p>
+
+    <h2>Movement</h2>
+    <ul>
+      <li><strong>Horizontal speed</strong> — set by <code>playerSpeed</code> in map config (default <code>5</code>).</li>
+      <li><strong>Max fall speed</strong> — capped proportionally to gravity so the player doesn't rocket off-screen on high-gravity maps.</li>
+    </ul>
+
+    <h2>Jump</h2>
+    <p>Default: <strong>1 jump</strong>. Configurable via <code>maxJumps</code>. Jump height is controlled by <code>jumpForce</code> (default <code>−13.2</code>).</p>
+    <ul>
+      <li><strong>Infinite Jumps</strong> — the player can jump anytime, unlimited.</li>
+      <li><strong>Additional Air Jump</strong> — grants one bonus jump if the player walks off an edge without jumping (coyote jump).</li>
+    </ul>
+
+    <h2>Gravity</h2>
+    <p>Default <code>0.71</code> per frame, configurable in map config. Higher values = faster fall; lower = floatier.</p>
+
+    <h2>Physics touchboxes</h2>
+    <ul>
+      <li><strong>Ground touchbox</strong> — <code>x:0, y:8, w:32, h:24</code> — for solid collision.</li>
+      <li><strong>Hurt touchbox</strong> — <code>x:4, y:6, w:24, h:24</code> — for spike damage detection.</li>
+    </ul>
+
+    <h2>Death &amp; respawn</h2>
+    <p>Death occurs when the player's hurt touchbox contacts a lethal spike, or when the player falls below the map's <strong>die line Y</strong> (default <code>1000</code>). On death, the player respawns at:</p>
+    <ol>
+      <li>The <strong>last activated checkpoint</strong> (new in v0.1), or</li>
+      <li>The <strong>spawn point</strong> if no checkpoint has been touched.</li>
+    </ol>
+
+    <h2>Checkpoint interaction</h2>
+    <p>When the player touches a checkpoint, it becomes their respawn point. The checkpoint changes color to indicate its state (see <a href="/wiki/v0.1/checkpoint/">Checkpoint</a>). In v0.1, checkpoints do not heal HP — they are purely respawn markers.</p>
+
+    <h2>Controls</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>←</kbd> / <kbd>A</kbd></td><td>Move left</td></tr>
+        <tr><td><kbd>→</kbd> / <kbd>D</kbd></td><td>Move right</td></tr>
+        <tr><td><kbd>↑</kbd> / <kbd>W</kbd> / <kbd>Space</kbd></td><td>Jump</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block — Current — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/current/">Current</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Block</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/current/">← Current Overview</a>
+    <div class="page-header">
+      <span class="version-badge">Current</span>
+      <h1>🟫 Block</h1>
+      <p class="subtitle">Solid platforming surface — the core building unit of every Parkoreen map, now with texture support.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Blocks are solid 32×32 px objects the player can stand on, jump off, and push against. In the current version, blocks can have a visual <strong>texture</strong> overlaid on top of their color.</p>
+
+    <h2>Textures</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Texture value</th><th>Appearance</th></tr></thead>
+      <tbody>
+        <tr><td><code>none</code></td><td>Plain filled rectangle with bevel (default).</td></tr>
+        <tr><td><code>solid</code></td><td>Flat, no bevel — good for seamless tiling.</td></tr>
+        <tr><td><code>brick</code></td><td>Brick pattern drawn over the fill color.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Color</td><td>#787878</td><td>Fill color of the block face.</td></tr>
+        <tr><td>Texture</td><td>none</td><td>Visual texture overlay (<code>none</code> / <code>solid</code> / <code>brick</code>).</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0–100. 0 = fully invisible but still solid by default.</td></tr>
+        <tr><td>Rotation</td><td>0°</td><td>Visual rotation (90° steps). Does not affect the square collision shape.</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the block texture horizontally.</td></tr>
+        <tr><td>Collision</td><td>On</td><td>When off the block is purely decorative.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order relative to other objects.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Rendering</h2>
+    <p>Without a texture, blocks are drawn as filled rectangles with a 1 px bevel (lighter top/left edges, darker bottom/right). The bevel color is derived automatically from the block's fill color. With the <code>solid</code> texture the bevel is omitted for seamless edges.</p>
+  </div>
+</body>
+</html>

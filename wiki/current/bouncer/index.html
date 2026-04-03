@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bouncer — Current — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/current/">Current</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Bouncer</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/current/">← Current Overview</a>
+    <div class="page-header">
+      <span class="version-badge">Current</span>
+      <h1>⬆ Bouncer</h1>
+      <p class="subtitle">A spring pad that launches the player in a set direction when stepped on.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Bouncers are spring-style launch pads. When the player contacts a bouncer, they are immediately launched with a configurable velocity in the bouncer's set direction. Bouncers visually compress and spring back when triggered.</p>
+
+    <h2>Direction values</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Direction value</th><th>Launch direction</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>Up</td></tr>
+        <tr><td>90</td><td>Right</td></tr>
+        <tr><td>180</td><td>Down</td></tr>
+        <tr><td>270</td><td>Left</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Bouncer Strength</td><td>15</td><td>Launch velocity applied in the bouncer's direction. Range: 5–50.</td></tr>
+        <tr><td>Bouncer Direction</td><td>0 (up)</td><td>Direction to launch the player: 0 / 90 / 180 / 270.</td></tr>
+        <tr><td>Color</td><td>#461A0C</td><td>Bouncer pad body color.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0–100.</td></tr>
+        <tr><td>Rotation</td><td>0°</td><td>Visual rotation in 90° steps.</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the bouncer sprite.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note tip">
+      Combine a high-strength bouncer (40–50) with a <code>Down</code> direction on the ceiling for an instant-kill-style trap.
+    </div>
+  </div>
+</body>
+</html>

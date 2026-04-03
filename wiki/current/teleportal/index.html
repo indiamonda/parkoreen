@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teleportal — Current — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="/wiki/">Parkoreen Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="/wiki/current/">Current</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Teleportal</span>
+    <a class="topbar-home" href="/">← Parkoreen</a>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="/wiki/current/">← Current Overview</a>
+    <div class="page-header">
+      <span class="version-badge">Current</span>
+      <h1>🟣 Teleportal</h1>
+      <p class="subtitle">Linked portals that instantly transport the player between map locations.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Teleportals are portal objects that warp the player to a named destination portal when touched. They emit a particle ring effect. Portals are linked by matching their <code>teleportalName</code> identifiers in the <strong>Send To</strong> field.</p>
+
+    <h2>Linking portals</h2>
+    <ol>
+      <li>Place portal <strong>A</strong> — set name to <code>A</code>, set "Send To" to <code>B</code>.</li>
+      <li>Place portal <strong>B</strong> — set name to <code>B</code>, set "Send To" to <code>A</code> for two-way travel.</li>
+    </ol>
+    <p>Entering portal A teleports the player to portal B's position, and vice versa. You can link one portal to multiple destinations by comma-separating names in the <strong>Send To</strong> field.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Teleportal Name</td><td>(required)</td><td>Unique identifier used by other portals' <em>Send To</em> lists.</td></tr>
+        <tr><td>Send To</td><td>(empty)</td><td>Comma-separated teleportal names to send the player to on contact.</td></tr>
+        <tr><td>Color</td><td>#9b59b6</td><td>Portal ring / glow color.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0–100.</td></tr>
+        <tr><td>Rotation</td><td>0°</td><td>Visual rotation.</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the portal sprite.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note warn">
+      A portal without a <strong>Send To</strong> value will not teleport the player anywhere.
+    </div>
+  </div>
+</body>
+</html>
