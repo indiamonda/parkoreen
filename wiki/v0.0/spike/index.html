@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spike — v0.0 — Parkoreen Wiki</title>
   <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
   <div class="topbar">
@@ -16,6 +17,7 @@
     <span class="topbar-sep">/</span>
     <span class="topbar-crumb">Spike</span>
     <a class="topbar-home" href="../../..">← Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,cur=d.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'),t=cur==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);document.getElementById('theme-toggle').textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
   </div>
   <div class="page-wrap">
     <a class="back-link" href="..">← v0.0 Overview</a>
@@ -102,5 +104,6 @@
     <h2>Saw Blade (spinner)</h2>
     <div class="note">Saw blades are not available in v0.0. They were added in v0.3.</div>
   </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
 </body>
 </html>

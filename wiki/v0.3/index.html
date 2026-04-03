@@ -13,7 +13,7 @@
     <span class="topbar-sep">/</span>
     <a class="topbar-logo topbar-wiki" href="../">Wiki</a>
     <a class="topbar-home" href="../../">&#8592; Parkoreen</a>
-    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,cur=d.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'),t=cur==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);document.getElementById('theme-toggle').textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
   </div>
   <div class="page-wrap">
     <a class="back-link" href="../">&#8592; All Versions</a>
@@ -62,11 +62,11 @@
         <div class="nav-card-text"><span class="nav-card-title">Block</span><span class="nav-card-desc">Solid platforms with textures</span></div>
       </a>
       <a class="nav-card" href="spike/">
-        <img class="nav-sprite" src="../../assets/svg/spike-64x.svg" alt="">
+        <img class="nav-sprite nav-sprite-red" src="../../assets/svg/spike-64x.svg" alt="">
         <div class="nav-card-text"><span class="nav-card-title">Spike</span><span class="nav-card-desc">Triangle hazards</span></div>
       </a>
       <a class="nav-card" href="saw-blade/">
-        <img class="nav-sprite" src="../../assets/svg/spinner.svg" alt="">
+        <img class="nav-sprite nav-sprite-red" src="../../assets/svg/spinner.svg" alt="">
         <div class="nav-card-text"><span class="nav-card-title">Saw Blade</span><span class="nav-card-desc">Spinning circular hazard</span></div>
       </a>
       <a class="nav-card" href="button/">
@@ -78,7 +78,7 @@
         <div class="nav-card-text"><span class="nav-card-title">Zone</span><span class="nav-card-desc">Named regions</span></div>
       </a>
       <a class="nav-card" href="teleportal/">
-        <img class="nav-sprite" src="../../assets/svg/portal-64x.svg" alt="">
+        <img class="nav-sprite nav-sprite-purple" src="../../assets/svg/portal-64x.svg" alt="">
         <div class="nav-card-text"><span class="nav-card-title">Teleportal</span><span class="nav-card-desc">Linked portals</span></div>
       </a>
       <a class="nav-card" href="checkpoint/">
@@ -91,6 +91,6 @@
       </a>
     </div>
   </div>
-  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
 </body>
 </html>

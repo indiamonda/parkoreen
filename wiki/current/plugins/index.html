@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugins — Current — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">Current</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Plugins</span>
+    <a class="topbar-home" href="../../..">← Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,cur=d.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'),t=cur==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);document.getElementById('theme-toggle').textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">← Current Overview</a>
+    <div class="page-header">
+      <span class="version-badge">Current</span>
+      <h1>🔌 Plugins</h1>
+      <p class="subtitle">An extensible plugin framework that adds optional mechanics on top of the base game.</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Plugins are opt-in extensions enabled per-map in the Map Config panel. Multiple plugins can be active simultaneously. The three built-in plugins are <strong>HK</strong>, <strong>HP</strong>, and <strong>Code</strong>.</p>
+
+    <h2>HK (Hollow Knight) plugin</h2>
+    <p>Adds Hollow Knight‑style mechanics to the player character.</p>
+    <table class="wiki-table">
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Mantis Claw</td><td>Player can cling to and jump off walls.</td></tr>
+        <tr><td>Attack</td><td>Player can slash in a directional arc. Damages enemies or interacts with objects.</td></tr>
+        <tr><td>Pogo</td><td>Attacking downward onto a surface bounces the player upward.</td></tr>
+        <tr><td>Soul Statue</td><td>Collectible objects that restore soul energy.</td></tr>
+        <tr><td>color.js / globals</td><td>HK plugin exposes colour helpers and global inject scripts for advanced maps.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>HP (Health) plugin</h2>
+    <p>Replaces instant-death hazards with a configurable health system.</p>
+    <table class="wiki-table">
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Health Bar HUD</td><td>On-screen bar showing the player's current HP.</td></tr>
+        <tr><td>Damage</td><td>Hazards deal configurable HP damage rather than killing instantly.</td></tr>
+        <tr><td>Heal</td><td>Specific objects (e.g. checkpoints with Heal at Checkpoints enabled) restore HP.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Code plugin</h2>
+    <p>Adds Python scripting via <strong>Skulpt</strong> — an in-browser Python interpreter. Allows custom game logic to run inside a map.</p>
+    <table class="wiki-table">
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Python scripts</td><td>Write Python code that executes each game tick or in response to events.</td></tr>
+        <tr><td>Custom fonts</td><td>Register custom <code>.ttf</code> fonts for use by <a href="../text/">Text</a> objects.</td></tr>
+        <tr><td>Zone events</td><td>Detect when the player enters or exits a named <a href="../zone/">Zone</a>.</td></tr>
+        <tr><td>Button events</td><td>Respond to <code>button.pressed</code> events from <a href="../button/">Buttons</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      The Code plugin API is considered <strong>stable</strong> in the current version. Custom fonts and zone/button event hooks are the primary integration points.
+    </div>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

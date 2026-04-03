@@ -29,33 +29,63 @@
   --badge-lgcy-bg:#2d3748; --badge-lgcy-txt:#a0aec0;
 }
 
-/* ── Light mode ── */
-@media (prefers-color-scheme: light) { :root {
-  --bg:          #f5f7fa;
-  --bg-card:     #ffffff;
-  --bg-card-alt: #f0f4f8;
-  --bg-table-h:  #e8edf5;
-  --border:      #d1d9e6;
-  --border-mid:  #b0bcd0;
-  --text:        #1a202c;
-  --text-muted:  #4a5568;
+/* ── Light mode (system preference, only when no manual override) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:          #f5f7fa;
+    --bg-card:     #ffffff;
+    --bg-card-alt: #f0f4f8;
+    --bg-table-h:  #e8edf5;
+    --border:      #d1d9e6;
+    --border-mid:  #b0bcd0;
+    --text:        #1a202c;
+    --text-muted:  #4a5568;
+    --text-dim:    #718096;
+    --text-body:   #2d3748;
+    --heading:     #0f1117;
+    --accent:      #0284c7;
+    --accent-h:    #0369a1;
+    --code-bg:     #eef2f7;
+    --code-text:   #c05621;
+    --note-bg:     #e8f0fb;
+    --note-warn-bg:#fef3cd;
+    --note-tip-bg: #e6f4ea;
+    --kbd-bg:      #e2e8f0;
+    --topbar-bg:   #ffffff;
+    --opt-bg:      #f8fafc;
+    --badge-curr-bg:#d1fae5; --badge-curr-txt:#065f46;
+    --badge-stbl-bg:#dbeafe; --badge-stbl-txt:#1e40af;
+    --badge-lgcy-bg:#e2e8f0; --badge-lgcy-txt:#4a5568;
+  }
+}
+/* ── Manual dark override (beats the media query) ── */
+[data-theme="dark"] {
+  --bg:          #0f1117;
+  --bg-card:     #1a1f2e;
+  --bg-card-alt: #1e2535;
+  --bg-table-h:  #1a2535;
+  --border:      #2d3748;
+  --border-mid:  #4a5568;
+  --text:        #e2e8f0;
+  --text-muted:  #a0aec0;
   --text-dim:    #718096;
-  --text-body:   #2d3748;
-  --heading:     #0f1117;
-  --accent:      #0284c7;
-  --accent-h:    #0369a1;
-  --code-bg:     #eef2f7;
-  --code-text:   #c05621;
-  --note-bg:     #e8f0fb;
-  --note-warn-bg:#fef3cd;
-  --note-tip-bg: #e6f4ea;
-  --kbd-bg:      #e2e8f0;
-  --topbar-bg:   #ffffff;
-  --opt-bg:      #f8fafc;
-  --badge-curr-bg:#d1fae5; --badge-curr-txt:#065f46;
-  --badge-stbl-bg:#dbeafe; --badge-stbl-txt:#1e40af;
-  --badge-lgcy-bg:#e2e8f0; --badge-lgcy-txt:#4a5568;
-}}
+  --text-body:   #cbd5e0;
+  --heading:     #f7fafc;
+  --accent:      #7dd3fc;
+  --accent-h:    #38bdf8;
+  --code-bg:     #1e2535;
+  --code-text:   #f6ad55;
+  --note-bg:     #1a2535;
+  --note-warn-bg:#231d10;
+  --note-tip-bg: #1a2e22;
+  --kbd-bg:      #2d3748;
+  --topbar-bg:   #1a1f2e;
+  --opt-bg:      #1a1f2e;
+  --badge-curr-bg:#1d3a27; --badge-curr-txt:#48bb78;
+  --badge-stbl-bg:#1a2e46; --badge-stbl-txt:#63b3ed;
+  --badge-lgcy-bg:#2d3748; --badge-lgcy-txt:#a0aec0;
+}
+/* ── Manual light override ── */
 [data-theme="light"] {
   --bg:          #f5f7fa;
   --bg-card:     #ffffff;
@@ -121,6 +151,10 @@ a:hover { text-decoration: underline; color: var(--accent-h); }
 .nav-card:hover { border-color: var(--border-mid); text-decoration: none; }
 .nav-card .nav-icon { font-size: 18px; flex-shrink: 0; }
 .nav-card .nav-sprite { width: 24px; height: 24px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
+.nav-sprite-purple { filter: invert(27%) sepia(90%) saturate(1200%) hue-rotate(254deg) brightness(90%) contrast(110%); }
+.topic-sprite-purple { filter: invert(27%) sepia(90%) saturate(1200%) hue-rotate(254deg) brightness(90%) contrast(110%); }
+.nav-sprite-red { filter: invert(22%) sepia(90%) saturate(1500%) hue-rotate(345deg) brightness(95%) contrast(110%); }
+.topic-sprite-red { filter: invert(22%) sepia(90%) saturate(1500%) hue-rotate(345deg) brightness(95%) contrast(110%); }
 .nav-card .nav-label { font-size: 13px; color: var(--text); font-weight: 500; }
 .nav-card .nav-sub { font-size: 11px; color: var(--text-dim); }
 /* nav-card text block */

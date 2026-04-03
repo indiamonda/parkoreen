@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Current — Parkoreen Wiki</title>
   <link rel="stylesheet" href="../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body>
   <div class="topbar">
@@ -14,6 +15,7 @@
     <span class="topbar-sep">/</span>
     <span class="topbar-crumb">Current</span>
     <a class="topbar-home" href="../..">← Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,cur=d.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'),t=cur==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);document.getElementById('theme-toggle').textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
   </div>
   <div class="page-wrap">
     <a class="back-link" href="..">← Wiki Home</a>
@@ -94,7 +96,7 @@
         <span class="nav-card-desc">Named invisible regions</span>
       </a>
       <a class="nav-card" href="teleportal/">
-        <span class="nav-card-icon">🟣</span>
+        <img class="nav-sprite nav-sprite-purple" src="../assets/svg/portal-64x.svg" alt="">
         <span class="nav-card-title">Teleportal</span>
         <span class="nav-card-desc">Linked teleport portals</span>
       </a>
@@ -113,6 +115,11 @@
         <span class="nav-card-title">Spawn &amp; End</span>
         <span class="nav-card-desc">Map start and goal points</span>
       </a>
+      <a class="nav-card" href="plugins/">
+        <span class="nav-card-icon">🔌</span>
+        <span class="nav-card-title">Plugins</span>
+        <span class="nav-card-desc">HK, HP, Code plugin framework</span>
+      </a>
       <a class="nav-card" href="tester/">
         <span class="nav-card-icon">▶</span>
         <span class="nav-card-title">Tester</span>
@@ -120,5 +127,6 @@
       </a>
     </div>
   </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
 </body>
 </html>

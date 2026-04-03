@@ -37,7 +37,7 @@
     <span class="topbar-sep">/</span>
     <a class="topbar-logo topbar-wiki" href="./">Wiki</a>
     <a class="topbar-home" href="../">← Parkoreen</a>
-    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'☾ Dark':'☀ Light';})()">☀ Light</button>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,cur=d.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'),t=cur==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);document.getElementById('theme-toggle').textContent=t==='light'?'☾ Dark':'☀ Light';})()">☀ Light</button>
   </div>
 
   <div class="hero">
@@ -107,11 +107,11 @@
         <div><div class="topic-title">Block</div><div class="topic-sub">Ground, textures, collision, opacity</div></div>
       </a>
       <a href="current/spike/" class="topic-card">
-        <img class="topic-sprite" src="../assets/svg/spike-64x.svg" alt="">
+        <img class="topic-sprite topic-sprite-red" src="../assets/svg/spike-64x.svg" alt="">
         <div><div class="topic-title">Spike</div><div class="topic-sub">Touchbox modes, damage, orientation</div></div>
       </a>
       <a href="current/saw-blade/" class="topic-card">
-        <img class="topic-sprite" src="../assets/svg/spinner.svg" alt="">
+        <img class="topic-sprite topic-sprite-red" src="../assets/svg/spinner.svg" alt="">
         <div><div class="topic-title">Saw Blade</div><div class="topic-sub">Spinning obstacle, speed, direction</div></div>
       </a>
       <a href="current/coin/" class="topic-card">
@@ -131,7 +131,7 @@
         <div><div class="topic-title">Zone</div><div class="topic-sub">Invisible regions, labels, collision</div></div>
       </a>
       <a href="current/teleportal/" class="topic-card">
-        <img class="topic-sprite" src="../assets/svg/portal-64x.svg" alt="">
+        <img class="topic-sprite topic-sprite-purple" src="../assets/svg/portal-64x.svg" alt="">
         <div><div class="topic-title">Teleportal</div><div class="topic-sub">Teleport links, send/receive</div></div>
       </a>
       <a href="current/checkpoint/" class="topic-card">
@@ -152,6 +152,6 @@
       </a>
     </div>
   </div>
-  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'☾ Dark':'☀ Light';})();</script>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'☾ Dark':'☀ Light';})();</script>
 </body>
 </html>
