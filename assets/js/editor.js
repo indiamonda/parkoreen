@@ -212,11 +212,8 @@ class Editor {
         
         // Debug tools
         this.invincibilityEnabled = false;
-        try {
-            this.showTouchboxes = localStorage.getItem('parkoreen_tester_show_touchboxes') === '1';
-        } catch (e) {
-            this.showTouchboxes = false;
-        }
+        this.showTouchboxes = false; // Always off in editor; restored per-tester-session via _testerTouchboxState
+        this._testerTouchboxState = false; // Touchbox state remembered across tester sessions within the same page load
         
         // Erase settings
         this.eraseSettings = {
@@ -1081,6 +1078,7 @@ class Editor {
                                     <option value="full">Full Spike</option>
                                     <option value="normal" selected>Normal Spike</option>
                                     <option value="tip">Tip Spike</option>
+                                    <option value="all-spike">All Spike</option>
                                     <option value="ground">Ground</option>
                                     <option value="flag">Flag</option>
                                     <option value="air">Air</option>
@@ -1808,6 +1806,7 @@ class Editor {
                             <option value="full">Full Spike</option>
                             <option value="normal">Normal Spike</option>
                             <option value="tip">Tip Spike</option>
+                            <option value="all-spike">All Spike</option>
                             <option value="ground">Ground</option>
                             <option value="flag">Flag</option>
                             <option value="air">Air</option>
@@ -2187,6 +2186,7 @@ class Editor {
             'full': 'The entire spike is dangerous. Any contact damages the player.',
             'normal': 'The flat base acts as ground. Other parts damage the player.',
             'tip': 'Only the peak is dangerous. Base is ground, middle has no collision.',
+            'all-spike': 'No safe zone. The spike tip, danger zone, and flat base all damage the player.',
             'ground': 'Acts completely as solid ground. No damage.',
             'flag': 'Only the flat base acts as ground. Rest has no collision.',
             'air': 'No collision at all. Players pass through.'
@@ -2456,7 +2456,7 @@ class Editor {
             actingType: this.obstacleSettings.actingType || 'spike',
             collision: true,
             color: this.obstacleSettings.color || '#ff4444',
-            opacity: this.obstacleSettings.opacity || 1,
+            opacity: this.obstacleSettings.opacity ?? 1,
             spinSpeed: this.obstacleSettings.spinSpeed || 1,
             rotation: 0
         });
@@ -2486,7 +2486,7 @@ class Editor {
             collision: false,
             color: '#F52C2C',
             buttonColor2: '#CFCFCF',
-            opacity: this.koreenSettings.opacity || 1,
+            opacity: this.koreenSettings.opacity ?? 1,
             name: 'New Button',
             displayName: 'Button',
             displayDescription: '',
@@ -2613,7 +2613,7 @@ class Editor {
             actingType: this.teleportalSettings.actingType || 'portal',
             collision: true,
             color: this.teleportalSettings.color || this.world.defaultPortalColor || '#9b59b6',
-            opacity: this.teleportalSettings.opacity || 1,
+            opacity: this.teleportalSettings.opacity ?? 1,
             name: 'New Teleportal',
             teleportalName: '' // Will be set by naming popup
         });
@@ -4233,7 +4233,8 @@ class Editor {
 
         // Opacity
         document.getElementById('placement-opacity-input').addEventListener('change', (e) => {
-            const opacity = Math.max(0, Math.min(100, parseInt(e.target.value) || 100));
+            const _raw = parseInt(e.target.value);
+            const opacity = Math.max(0, Math.min(100, isNaN(_raw) ? 100 : _raw));
             e.target.value = opacity;
             if (this.placementMode === PlacementMode.BLOCK) {
                 this.placementSettings.opacity = opacity / 100;
@@ -4958,6 +4959,14 @@ class Editor {
                 hexInput.blur();
             }
         });
+
+        // Close picker when clicking outside it
+        document.addEventListener('mousedown', (e) => {
+            const picker = this.ui.colorPickerPopup;
+            if (picker && picker.classList.contains('active') && !picker.contains(e.target)) {
+                this.closeColorPicker();
+            }
+        });
     }
     
     // Auto-correct hex input
@@ -5512,6 +5521,9 @@ class Editor {
         previewText.textContent = content.split('\n')[0].substring(0, 30) || 'Preview Text';
         previewText.style.fontFamily = `"${font}"`;
         previewText.style.color = color;
+        
+        const box = document.getElementById('object-edit-font-preview');
+        if (box) box.style.background = this.contrastBackground(color);
     }
 
     addRecentFont(font) {
@@ -5738,6 +5750,10 @@ class Editor {
 
     toggleTouchboxes() {
         this.showTouchboxes = !this.showTouchboxes;
+        // If toggled while in tester mode, keep the tester-session state in sync
+        if (this.engine.state === GameState.TESTING) {
+            this._testerTouchboxState = this.showTouchboxes;
+        }
         try {
             localStorage.setItem('parkoreen_tester_show_touchboxes', this.showTouchboxes ? '1' : '0');
         } catch (e) { /* ignore quota / private mode */ }
@@ -6180,6 +6196,7 @@ class Editor {
                 { value: 'full', label: 'Full Spike' },
                 { value: 'normal', label: 'Normal Spike' },
                 { value: 'tip', label: 'Tip Spike' },
+                { value: 'all-spike', label: 'All Spike' },
                 { value: 'ground', label: 'Ground' },
                 { value: 'flag', label: 'Flag' },
                 { value: 'air', label: 'Air' }
@@ -6198,6 +6215,16 @@ class Editor {
         );
         if (allDamaging) {
             fields.push({ key: 'damageAmount', label: 'Damage Amount', type: 'number', min: 0, step: 1, defaultValue: 1 });
+        }
+
+        // Spin direction/speed — only if ALL objects are spinners (saw blades)
+        const allSpinners = objects.every(o => o.type === 'spinner' || o.appearanceType === 'spinner');
+        if (allSpinners) {
+            fields.push({ key: 'spinDirection', label: 'Spin Direction', type: 'select', castInt: true, options: [
+                { value: '1', label: 'Clockwise' },
+                { value: '-1', label: 'Counter-CW' }
+            ]});
+            fields.push({ key: 'spinSpeed', label: 'Spin Speed', type: 'number', min: 0, step: 0.1, float: true, defaultValue: 1 });
         }
 
         // Button fields — only if ALL objects are buttons
@@ -6357,7 +6384,8 @@ class Editor {
                 if (mixedOverlay) mixedOverlay.remove();
                 
                 if (field.type === 'number') {
-                    val = Math.max(field.min ?? -Infinity, parseInt(val) || (field.defaultValue ?? 0));
+                    const _parsed = field.float ? parseFloat(val) : parseInt(val);
+                    val = Math.max(field.min ?? -Infinity, isNaN(_parsed) ? (field.defaultValue ?? 0) : _parsed);
                     input.value = val;
                 }
 
@@ -6396,10 +6424,12 @@ class Editor {
                 const mixedOverlay = popup.querySelector(`[data-multi-mixed="${key}"]`);
                 if (mixedOverlay) mixedOverlay.remove();
                 
+                const _selField = fields.find(f => f.key === key);
                 let val = select.value;
                 if (val === 'true') val = true;
                 else if (val === 'false') val = false;
                 else if (val === '') val = undefined;
+                else if (_selField?.castInt) val = parseInt(val);
                 
                 for (const obj of objects) {
                     obj[key] = val;
@@ -6911,6 +6941,9 @@ class Editor {
         previewText.style.fontFamily = `"${font}"`;
         previewText.style.color = color;
         previewText.style.fontSize = `${previewFontSize}px`;
+        
+        const box = document.getElementById('font-preview-box');
+        if (box) box.style.background = this.contrastBackground(color);
     }
 
     reattachAppearanceListeners() {
@@ -7394,12 +7427,18 @@ class Editor {
             }
             document.getElementById('placement-color-preview').style.background = hex;
             document.getElementById('placement-color-input').value = hex;
+            if (this.placementMode === PlacementMode.TEXT) {
+                this.updatePlacementFontPreview();
+            }
         } else if (target === 'object-edit') {
             if (this.editingObject) {
                 this.editingObject.color = hex;
                 document.getElementById('object-edit-color').value = hex;
                 document.getElementById('object-edit-color-preview').style.background = hex;
                 this.triggerMapChange();
+                if (this.editingObject.type === 'text') {
+                    this.updateObjectEditFontPreview();
+                }
             }
         } else if (target && target.startsWith('config-')) {
             const type = target.replace('config-', '');
@@ -7422,6 +7461,16 @@ class Editor {
             else if (type === 'bouncer') this.world.defaultBouncerColor = hex;
             }
         }
+    }
+
+    // Returns a contrasting preview background — dark for bright text, light for dark text
+    contrastBackground(hex) {
+        if (!hex || hex.length < 7) return 'rgba(0,0,0,0.5)';
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        return lum > 0.45 ? 'rgba(30,30,30,0.85)' : 'rgba(220,220,220,0.85)';
     }
 
     hslToHex(h, s, l) {
@@ -8523,6 +8572,9 @@ class Editor {
         const extraEl = document.getElementById('toolbar-extra');
         if (extraEl) extraEl.classList.add('hidden');
         
+        // Restore touchbox state from previous tester session (off by default until explicitly enabled in tester)
+        if (this._testerTouchboxState === undefined) this._testerTouchboxState = false;
+        this.showTouchboxes = this._testerTouchboxState;
         const touchboxBtnTest = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
         if (touchboxBtnTest) touchboxBtnTest.classList.toggle('active', this.showTouchboxes);
         
@@ -8536,7 +8588,9 @@ class Editor {
         this.stopMusicPlayback();
         this.hideInspectBox();
         
-        // Reset debug overlays (keep touchbox visibility — persisted for next tester session)
+        // Save touchbox state for next tester session, then disable it in editor mode
+        this._testerTouchboxState = this.showTouchboxes;
+        this.showTouchboxes = false;
         this.invincibilityEnabled = false;
         
         // Reset tool state
@@ -9043,6 +9097,7 @@ if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#461A0
             'full': '<strong style="color: #ff6b6b;">Full Spike:</strong> The entire spike is dangerous. Any contact with the spike will damage the player. There is no safe zone.',
             'normal': '<strong style="color: #ffd93d;">Normal Spike:</strong> The flat base of the spike acts as solid ground. All other parts will damage the player on contact. This is the default behavior.',
             'tip': '<strong style="color: #6bcb77;">Tip Spike:</strong> Only the very peak of the spike is dangerous. The flat base acts as ground, and the middle section has no collision at all.',
+            'all-spike': '<strong style="color: #ff9f43;">All Spike:</strong> No safe zone. Like Normal Spike but the flat base now also damages the player. The danger zone and the flat base are both lethal — the player cannot stand on it.',
             'ground': '<strong style="color: #4d96ff;">Ground:</strong> The spike acts completely as solid ground. It will not damage the player at all - useful for decorative spikes.',
             'flag': '<strong style="color: #9b59b6;">Flag:</strong> Only the flat base acts as solid ground. The rest of the spike has no collision - player can pass through but won\'t take damage.',
             'air': '<strong style="color: #888;">Air:</strong> The spike has no collision at all. Players pass through completely without any interaction.'

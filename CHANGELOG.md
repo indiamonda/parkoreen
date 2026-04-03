@@ -46,10 +46,15 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 - Sample map updates; **download map** from dashboard; default value tweaks.
 
 ### Gameplay & plugins
+- **All Spike** touchbox mode: new spike configuration option where the flat base also damages the player (no safe standing zone). The danger zone and the flat base are both lethal; the player cannot stand on it.
+- **Bouncer in editor mode**: bouncer now applies its launch force to the player while in edit mode (not just during test/play).
+- **FPS counter** now only visible in tester mode (hidden in editor and play).
+- **Touchbox memory**: when exiting tester mode with touchboxes enabled, they are automatically hidden in editor but remembered — re-entering tester mode restores them. Starting tester mode fresh always begins with touchboxes off.
 - **Hollow Knight** plugin: attack range/speed, controllable jump, keyboard fixes, **CJ** plugin addition.
 - **Teleportals**: particle effects, collision/touch fixes.
 - HP bar appearance; HP-related fixes; **pogo** / movement fixes.
-- **Space** fly-up removed; **space** fly speed boost; fly movement and performance improvements.
+- **Performance improvements**: `SpatialHash` deduplication now uses an integer stamp per object (replaces `Set.has/add` string-key hashing — significantly faster per query); circle particles batch into a single `beginPath/arc.../fill()` per color+alpha group instead of one draw call per particle; portal particles skip `globalAlpha` assignment when alpha unchanged; off-screen particles are culled from the update loop; solid block highlight/shadow drawn with two batched `beginPath` calls instead of four separate `fillRect` calls.
+- **Fly movement and performance improvements**.
 - Lower max fall speed; text position and color-picker fixes.
 
 ### Clouds & backgrounds

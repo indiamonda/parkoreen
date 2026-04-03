@@ -431,8 +431,8 @@ class Player {
                 // In 'air' mode, spikes have no collision at all
                 if (spikeMode === 'air') continue;
                 
-                // In 'full' mode, spikes only damage, no ground collision
-                if (spikeMode === 'full') continue;
+                // In 'full' or 'all-spike' mode, spikes only damage, no ground collision
+                if (spikeMode === 'full' || spikeMode === 'all-spike') continue;
                 
                 // Only the flat base of the spike is solid ground.
                 // The pointy part must let the player through so they can take damage.
@@ -506,6 +506,15 @@ class Player {
                     // In 'full' mode, any contact with spike = damage
                     if (spikeMode === 'full') {
                         if (this.boxIntersects(hurtBox, obj)) {
+                            gotHit = true;
+                        }
+                    }
+                    
+                    // In 'all-spike' mode, danger zone AND flat base both damage (no safe ground)
+                    if (spikeMode === 'all-spike') {
+                        const dangerBox = this.getSpikeDanger(obj);
+                        const flatBox = this.getSpikeFlat(obj);
+                        if (this.boxIntersects(hurtBox, dangerBox) || this.boxIntersects(hurtBox, flatBox)) {
                             gotHit = true;
                         }
                     }
@@ -1158,12 +1167,18 @@ class WorldObject {
         if (texture !== 'solid' && BlockTextures[texture]?.loaded && BlockTextures[texture]?.image) {
             fillBlockSurfaceTexture(ctx, texture, x, y, w, h);
         } else if (texture === 'solid' && w >= 16 && h >= 16) {
+            // Shadow (bottom-right): two rects combined into one beginPath for fewer GPU state flushes
             ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-            ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
-            ctx.fillRect(x + 4, y + h - 4, w - 4, 4);
+            ctx.beginPath();
+            ctx.rect(x + w - 4, y + 4, 4, h - 4);
+            ctx.rect(x + 4, y + h - 4, w - 4, 4);
+            ctx.fill();
+            // Highlight (top-left)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(x, y, w - 4, 4);
-            ctx.fillRect(x, y, 4, h - 4);
+            ctx.beginPath();
+            ctx.rect(x, y, w - 4, 4);
+            ctx.rect(x, y, 4, h - 4);
+            ctx.fill();
         }
     }
 
@@ -1904,6 +1919,7 @@ class SpatialHash {
     constructor(cellSize) {
         this.cellSize = cellSize;
         this.cells = new Map();
+        this._stamp = 0;
     }
 
     clear() {
@@ -1943,8 +1959,8 @@ class SpatialHash {
         const y0 = Math.floor(y / cs);
         const x1 = Math.floor((x + w) / cs);
         const y1 = Math.floor((y + h) / cs);
-        const seen = this._seen || (this._seen = new Set());
-        seen.clear();
+        // Use integer stamp for dedup — avoids Set allocation and hashing overhead
+        const stamp = ++this._stamp;
         const result = this._result || (this._result = []);
         result.length = 0;
         for (let cx = x0; cx <= x1; cx++) {
@@ -1953,8 +1969,8 @@ class SpatialHash {
                 if (!cell) continue;
                 for (let i = 0; i < cell.length; i++) {
                     const obj = cell[i];
-                    if (!seen.has(obj.id)) {
-                        seen.add(obj.id);
+                    if (obj._spatialStamp !== stamp) {
+                        obj._spatialStamp = stamp;
                         result.push(obj);
                     }
                 }
@@ -2045,6 +2061,7 @@ class World {
         // 'ground' - Entire spike acts as ground (no damage)
         // 'flag' - Only flat part acts as ground, rest = air
         // 'air' - No interaction at all
+        // 'all-spike' - No ground: both danger zone AND flat base damage the player
         this.spikeTouchbox = 'normal';
         
         // Drop Hurt Only - spikes only damage when player moves toward the spike tip
@@ -2895,7 +2912,7 @@ class World {
         this.cameraLerpY = (typeof data.cameraLerpY === 'number' && data.cameraLerpY > 0 && data.cameraLerpY <= 1) ? data.cameraLerpY : CAMERA_LERP_Y;
         
         // Spike touchbox mode
-        const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air'];
+        const validSpikeModes = ['full', 'normal', 'tip', 'ground', 'flag', 'air', 'all-spike'];
         this.spikeTouchbox = validSpikeModes.includes(data.spikeTouchbox) ? data.spikeTouchbox : 'normal';
         
         // Drop Hurt Only
@@ -3101,6 +3118,11 @@ class GameEngine {
     }
     
     updateParticles(dt) {
+        const cam = this.camera;
+        const vpL = cam.x - 200;
+        const vpR = cam.x + cam.width / cam.zoom + 200;
+        const vpT = cam.y - 200;
+        const vpB = cam.y + cam.height / cam.zoom + 200;
         let writeIdx = 0;
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
@@ -3109,7 +3131,7 @@ class GameEngine {
             p.vy += 200 * dt;
             p.life -= p.decay;
             p.alpha = p.life;
-            if (p.life > 0) {
+            if (p.life > 0 && p.x >= vpL && p.x <= vpR && p.y >= vpT && p.y <= vpB) {
                 this.particles[writeIdx++] = p;
             }
         }
@@ -3183,9 +3205,11 @@ class GameEngine {
         const cy = this.camera.y;
         const zoom = this.camera.zoom;
         let lastColor = '';
+        let lastAlpha = -1;
         for (let i = 0; i < this._portalParticles.length; i++) {
             const p = this._portalParticles[i];
-            ctx.globalAlpha = p.life * 0.7;
+            const alpha = p.life * 0.7;
+            if (alpha !== lastAlpha) { ctx.globalAlpha = alpha; lastAlpha = alpha; }
             if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
             const sz = p.size * zoom;
             ctx.fillRect((p.x - cx) * zoom - sz, (p.y - cy) * zoom - sz, sz * 2, sz * 2);
@@ -3201,23 +3225,37 @@ class GameEngine {
         const zoom = this.camera.zoom;
         const TAU = Math.PI * 2;
 
+        // First pass: square particles (fillRect — no path overhead)
         let lastColor = '';
         let lastAlpha = -1;
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-            const screenX = (p.x - cx) * zoom;
-            const screenY = (p.y - cy) * zoom;
-            const size = p.size * zoom;
+            if (p.shape === 'circle') continue;
             if (p.alpha !== lastAlpha) { ctx.globalAlpha = p.alpha; lastAlpha = p.alpha; }
             if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
-            if (p.shape === 'circle') {
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, size, 0, TAU);
-                ctx.fill();
-            } else {
-                ctx.fillRect(screenX - size, screenY - size, size * 2, size * 2);
-            }
+            const size = p.size * zoom;
+            ctx.fillRect((p.x - cx) * zoom - size, (p.y - cy) * zoom - size, size * 2, size * 2);
         }
+
+        // Second pass: circle particles — batch all circles of same color+alpha into one path
+        lastColor = '';
+        lastAlpha = -1;
+        let pathOpen = false;
+        for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            if (p.shape !== 'circle') continue;
+            if (p.alpha !== lastAlpha || p.color !== lastColor) {
+                if (pathOpen) { ctx.fill(); pathOpen = false; }
+                if (p.alpha !== lastAlpha) { ctx.globalAlpha = p.alpha; lastAlpha = p.alpha; }
+                if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
+                ctx.beginPath();
+                pathOpen = true;
+            }
+            const size = p.size * zoom;
+            ctx.moveTo((p.x - cx) * zoom + size, (p.y - cy) * zoom);
+            ctx.arc((p.x - cx) * zoom, (p.y - cy) * zoom, size, 0, TAU);
+        }
+        if (pathOpen) ctx.fill();
         ctx.globalAlpha = 1;
     }
     
@@ -3897,6 +3935,7 @@ class GameEngine {
                     this.localPlayer.updateFlying(this.world, true);
                 } else {
                     this.localPlayer.updatePhysics(this.world, null, true);
+                    this.checkBouncerCollisions();
                 }
                 this.camera.follow(this.localPlayer);
             }
@@ -4430,7 +4469,7 @@ class GameEngine {
         }
         
         // FPS counter (top-right corner)
-        if (this._fpsDisplay !== undefined) {
+        if (this._fpsDisplay !== undefined && this.state === GameState.TESTING) {
             const fps = this._fpsDisplay;
             this.ctx.save();
             this.ctx.font = '12px monospace';
