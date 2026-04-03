@@ -51,6 +51,10 @@ class AudioManager {
         this.sounds.checkpoint.volume = this.volume;
         this.sounds.endpoint = new Audio('/parkoreen/assets/ogg/endpoint.ogg');
         this.sounds.endpoint.volume = this.volume;
+        this.sounds.place = new Audio('/parkoreen/assets/ogg/place.ogg');
+        this.sounds.place.volume = this.volume;
+        this.sounds.erase = new Audio('/parkoreen/assets/ogg/erase.ogg');
+        this.sounds.erase.volume = this.volume;
     }
 
     setVolume(vol) {

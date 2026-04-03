@@ -20,6 +20,7 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 ### Audio
 - **New sounds wired up**: `bounce.ogg` plays on bouncer trigger; `button.ogg` plays when a button is activated (both click and collide types); `checkpoint.ogg` plays when first touching a new checkpoint; `endpoint.ogg` plays when reaching the end.
 - **Jump sound**: switched from `mp3/jump.mp3` to `ogg/jump.ogg`.
+- **Place & erase sounds**: `place.ogg` plays whenever any object is placed in the editor (blocks, coins, spinners, buttons, zones, etc.); `erase.ogg` plays whenever one or more objects are erased.
 
 ### Editor & maps
 - **Coin config**: coins now have an **Amount** field (how much the coin adds to the counter, default 1) and an **Activity Scope** toggle (`Global` — coin disappears/appears for all players; `Player` — only the collecting player sees the change). Color picker added (default `#FFDD00` matching the coin SVG).
@@ -38,6 +39,7 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 - **Host game** (`host.html`): `create_room` now sends **mapId** and **mapName** with map data (same as the default editor `hostGame` flow).
 - **Undo / redo** for editor actions.
 - **Spawn & end** markers: dedicated add-menu tool; “Koreen” add-menu label → **Game Item**.
+- **Saw blade drag-resize**: the W/H number inputs for saw blades (spinners) have been replaced with a drag-handle system identical to zone region adjustment. Click **Adjust Size** in the object inspector to enter resize mode — eight handles (corners + edges) appear around the blade in orange; drag them on the grid. Press **Escape** or click **Stop Adjusting** to exit and reopen the inspector with the updated size.
 - **Saw blades**: size unit controls, **spin direction**, damage amount; spinning behavior tied to rotation; updated blade artwork.
 - **Damage amount** on spikes/saw blades; touchbox tuning (gaps, teleportal size, tester tool, invincibility testing).
 - **Plugin logic** fixes; **three-dots** / HUD menu fixes.
@@ -134,25 +136,13 @@ _Git range: initial commit → `origin/V0.0`._
 
 ---
 
-## Changelog version ↔ git branches
-
-| Changelog | Git branch tip (on `origin`) |
-|-----------|------------------------------|
-| **[Current] - Unreleased** | `next`, `v0.4-Indev` |
-| **v1.4** | `v0.3` |
-| **v1.3** | `v0.2` |
-| **v1.2** | `V0.1` |
-| **v1.1** | `V0.0` |
-
-`main` may differ; use `git log main..next` to compare. There are **no git tags** tied to v1.x in-repo; these labels are **documentation mapping** only.
-
 ### Regenerating detail
 
 ```bash
-git log --oneline origin/v0.2..origin/v0.3    # v1.4
-git log --oneline origin/V0.1..origin/v0.2    # v1.3
-git log --oneline origin/V0.0..origin/V0.1    # v1.2
-git log --oneline <initial>..origin/V0.0      # v1.1
+git log --oneline origin/v0.2..origin/v0.3    # v0.3
+git log --oneline origin/V0.1..origin/v0.2    # v0.2
+git log --oneline origin/V0.0..origin/V0.1    # v0.1
+git log --oneline <initial>..origin/V0.0      # V0.0
 git log --oneline origin/v0.3..origin/next  # Current
 ```
 

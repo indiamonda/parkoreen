@@ -168,6 +168,13 @@ class Editor {
             draggerHeld: null
         };
         
+        // Spinner adjustment mode
+        this.spinnerAdjustment = {
+            active: false,
+            spinner: null,
+            draggerHeld: null
+        };
+        
         // Text settings
         this.textSettings = {
             content: 'Text',
@@ -250,6 +257,7 @@ class Editor {
         this._moveRotateUndoActive = false;
         this._selectionMoveUndoActive = false;
         this._zoneDragUndoActive = false;
+        this._spinnerDragUndoActive = false;
         this._quickEraseUndoActive = false;
         
         // Audio elements for music
@@ -309,6 +317,7 @@ class Editor {
         this._moveRotateUndoActive = false;
         this._selectionMoveUndoActive = false;
         this._zoneDragUndoActive = false;
+        this._spinnerDragUndoActive = false;
         this._quickEraseUndoActive = false;
     }
 
@@ -1765,22 +1774,13 @@ class Editor {
                     
                     <div class="form-group" id="object-edit-spinner-group" style="display: none;">
                         <label class="form-label">Size</label>
-                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                            <label style="font-size: 12px; color: #aaa;">W</label>
-                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-width" min="1" step="1" style="width: 68px;">
-                            <select class="form-select" id="object-edit-spinner-width-unit" style="width: auto; padding: 4px 6px; font-size: 12px; min-width: 0;">
-                                <option value="blocks">Blocks</option>
-                                <option value="units">Units</option>
-                            </select>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span id="object-edit-spinner-size-label" style="font-size: 12px; color: #aaa;">2 × 2 blocks</span>
                         </div>
-                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px;">
-                            <label style="font-size: 12px; color: #aaa;">H</label>
-                            <input type="number" class="form-input form-input-sm" id="object-edit-spinner-height" min="1" step="1" style="width: 68px;">
-                            <select class="form-select" id="object-edit-spinner-height-unit" style="width: auto; padding: 4px 6px; font-size: 12px; min-width: 0;">
-                                <option value="blocks">Blocks</option>
-                                <option value="units">Units</option>
-                            </select>
-                        </div>
+                        <button class="btn btn-secondary" id="spinner-edit-adjust" style="width: 100%; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">open_with</span>
+                            Adjust Size
+                        </button>
                         <div style="margin-top: 8px;">
                             <label class="form-label">Spin Speed</label>
                             <div style="display: flex; gap: 8px; align-items: center;">
@@ -2009,71 +2009,6 @@ class Editor {
         });
         
         // Update singular/plural labels on input
-        document.getElementById('object-edit-spinner-width').addEventListener('input', () => this._updateSpinnerUnitLabels());
-        document.getElementById('object-edit-spinner-height').addEventListener('input', () => this._updateSpinnerUnitLabels());
-
-        // Spinner width
-        document.getElementById('object-edit-spinner-width').addEventListener('change', (e) => {
-            if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
-                const unit = document.getElementById('object-edit-spinner-width-unit').value;
-                let val = parseFloat(e.target.value) || 1;
-                const px = unit === 'blocks' ? Math.round(val * GRID_SIZE) : Math.round(val);
-                const clamped = Math.max(GRID_SIZE, px);
-                this.editingObject.width = clamped;
-                e.target.value = unit === 'blocks' ? clamped / GRID_SIZE : clamped;
-                this._updateSpinnerUnitLabels();
-                this.triggerMapChange();
-            }
-        });
-
-        // Spinner width unit change
-        document.getElementById('object-edit-spinner-width-unit').addEventListener('change', (e) => {
-            if (!this.editingObject) return;
-            const widthInput = document.getElementById('object-edit-spinner-width');
-            const px = this.editingObject.width;
-            if (e.target.value === 'blocks') {
-                widthInput.value = px / GRID_SIZE;
-                widthInput.step = '1';
-                widthInput.min = '1';
-            } else {
-                widthInput.value = px;
-                widthInput.step = '1';
-                widthInput.min = '1';
-            }
-            this._updateSpinnerUnitLabels();
-        });
-
-        // Spinner height
-        document.getElementById('object-edit-spinner-height').addEventListener('change', (e) => {
-            if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
-                const unit = document.getElementById('object-edit-spinner-height-unit').value;
-                let val = parseFloat(e.target.value) || 1;
-                const px = unit === 'blocks' ? Math.round(val * GRID_SIZE) : Math.round(val);
-                const clamped = Math.max(GRID_SIZE, px);
-                this.editingObject.height = clamped;
-                e.target.value = unit === 'blocks' ? clamped / GRID_SIZE : clamped;
-                this._updateSpinnerUnitLabels();
-                this.triggerMapChange();
-            }
-        });
-
-        // Spinner height unit change
-        document.getElementById('object-edit-spinner-height-unit').addEventListener('change', (e) => {
-            if (!this.editingObject) return;
-            const heightInput = document.getElementById('object-edit-spinner-height');
-            const px = this.editingObject.height;
-            if (e.target.value === 'blocks') {
-                heightInput.value = px / GRID_SIZE;
-                heightInput.step = '1';
-                heightInput.min = '1';
-            } else {
-                heightInput.value = px;
-                heightInput.step = '1';
-                heightInput.min = '1';
-            }
-            this._updateSpinnerUnitLabels();
-        });
-        
         // Spinner spin speed
         document.getElementById('object-edit-spin-speed-range').addEventListener('input', (e) => {
             if (this.editingObject && (this.editingObject.type === 'spinner' || this.editingObject.appearanceType === 'spinner')) {
@@ -2530,6 +2465,7 @@ class Editor {
 
         this.world.addObject(spinner);
         this.triggerMapChange();
+        if (this.engine && this.engine.audioManager) this.engine.audioManager.play('place');
     }
 
     completeButtonPlacement() {
@@ -2564,6 +2500,7 @@ class Editor {
         this.world.addObject(button);
         this.updateLayersList();
         this.triggerMapChange();
+        if (this.engine && this.engine.audioManager) this.engine.audioManager.play('place');
         
         // Open edit popup for the new button
         this.openButtonEditPopup(button);
@@ -2660,6 +2597,7 @@ class Editor {
         this.world.addObject(this.pendingZone);
         this.updateLayersList();
         this.triggerMapChange();
+        if (this.engine && this.engine.audioManager) this.engine.audioManager.play('place');
         
         this.closeZoneNamePopup();
     }
@@ -2840,16 +2778,19 @@ class Editor {
         const isSpinner = obj.type === 'spinner' || obj.appearanceType === 'spinner';
         if (isSpinner) {
             spinnerGroup.style.display = 'block';
-            // Default to Blocks if size is a clean multiple of GRID_SIZE, else Units
-            const wIsBlocks = obj.width % GRID_SIZE === 0;
-            const hIsBlocks = obj.height % GRID_SIZE === 0;
-            const wUnitSel = document.getElementById('object-edit-spinner-width-unit');
-            const hUnitSel = document.getElementById('object-edit-spinner-height-unit');
-            wUnitSel.value = wIsBlocks ? 'blocks' : 'units';
-            hUnitSel.value = hIsBlocks ? 'blocks' : 'units';
-            document.getElementById('object-edit-spinner-width').value = wIsBlocks ? obj.width / GRID_SIZE : obj.width;
-            document.getElementById('object-edit-spinner-height').value = hIsBlocks ? obj.height / GRID_SIZE : obj.height;
-            this._updateSpinnerUnitLabels();
+            // Show current size as read-only label
+            const wBlocks = Math.round(obj.width / GRID_SIZE * 10) / 10;
+            const hBlocks = Math.round(obj.height / GRID_SIZE * 10) / 10;
+            const sizeLabel = document.getElementById('object-edit-spinner-size-label');
+            if (sizeLabel) sizeLabel.textContent = `${wBlocks} × ${hBlocks} blocks (${obj.width} × ${obj.height} px)`;
+            // Wire the Adjust Size button
+            const adjustBtn = document.getElementById('spinner-edit-adjust');
+            if (adjustBtn) {
+                adjustBtn.onclick = () => {
+                    this.editingObject = obj;
+                    this.startSpinnerAdjustmentMode();
+                };
+            }
             const speed = obj.spinSpeed || 1;
             document.getElementById('object-edit-spin-speed-range').value = Math.round(speed * 10);
             document.getElementById('object-edit-spin-speed-label').textContent = speed.toFixed(1) + '/s';
@@ -3846,6 +3787,231 @@ class Editor {
         }
         
         return null;
+    }
+
+    startSpinnerAdjustmentMode() {
+        if (!this.editingObject) return;
+        
+        this.spinnerAdjustment.active = true;
+        this.spinnerAdjustment.spinner = this.editingObject;
+        
+        // Close the object edit popup
+        const popup = document.getElementById('object-edit-popup');
+        if (popup) popup.style.display = 'none';
+        
+        // Hide all UI except the stop button
+        document.querySelectorAll('.toolbar, .panel, .add-menu, .placement-toolbar, .editor-btn-corner').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Create stop button
+        let stopBtn = document.getElementById('spinner-adjust-stop');
+        if (!stopBtn) {
+            stopBtn = document.createElement('button');
+            stopBtn.id = 'spinner-adjust-stop';
+            stopBtn.className = 'btn btn-danger zone-adjust-stop spinner-adjust-stop';
+            stopBtn.innerHTML = '<span class="material-symbols-outlined">close</span> Stop Adjusting';
+            stopBtn.addEventListener('click', () => this.exitSpinnerAdjustmentMode());
+            document.body.appendChild(stopBtn);
+        }
+        stopBtn.style.display = 'flex';
+        
+        // Enable fly mode for navigation
+        this.isFlying = true;
+    }
+
+    exitSpinnerAdjustmentMode() {
+        const spinner = this.spinnerAdjustment.spinner;
+        
+        this.spinnerAdjustment.active = false;
+        this.spinnerAdjustment.spinner = null;
+        this.spinnerAdjustment.draggerHeld = null;
+        
+        // Hide stop button
+        const stopBtn = document.getElementById('spinner-adjust-stop');
+        if (stopBtn) stopBtn.style.display = 'none';
+        
+        // Restore all UI
+        document.querySelectorAll('.toolbar, .editor-btn-corner').forEach(el => {
+            el.style.display = '';
+        });
+        
+        this.updateLayersList();
+        this.triggerMapChange();
+        
+        // Re-open the object edit popup
+        if (spinner) {
+            this.openObjectEditPopup(spinner);
+        }
+    }
+
+    handleSpinnerDraggerMove(gridX, gridY) {
+        const spinner = this.spinnerAdjustment.spinner;
+        const dragger = this.spinnerAdjustment.draggerHeld;
+        if (!spinner || !dragger) return;
+        
+        const minSize = GRID_SIZE;
+        
+        switch (dragger) {
+            case 'top': {
+                const newTop = gridY;
+                const maxTop = spinner.y + spinner.height - minSize;
+                if (newTop <= maxTop) {
+                    const diff = spinner.y - newTop;
+                    spinner.y = newTop;
+                    spinner.height += diff;
+                }
+                break;
+            }
+            case 'bottom': {
+                const newBottom = gridY + GRID_SIZE;
+                const minBottom = spinner.y + minSize;
+                if (newBottom >= minBottom) {
+                    spinner.height = newBottom - spinner.y;
+                }
+                break;
+            }
+            case 'left': {
+                const newLeft = gridX;
+                const maxLeft = spinner.x + spinner.width - minSize;
+                if (newLeft <= maxLeft) {
+                    const diff = spinner.x - newLeft;
+                    spinner.x = newLeft;
+                    spinner.width += diff;
+                }
+                break;
+            }
+            case 'right': {
+                const newRight = gridX + GRID_SIZE;
+                const minRight = spinner.x + minSize;
+                if (newRight >= minRight) {
+                    spinner.width = newRight - spinner.x;
+                }
+                break;
+            }
+            case 'top-left': {
+                const newT = gridY;
+                const maxT = spinner.y + spinner.height - minSize;
+                if (newT <= maxT) {
+                    const diffY = spinner.y - newT;
+                    spinner.y = newT;
+                    spinner.height += diffY;
+                }
+                const newL = gridX;
+                const maxL = spinner.x + spinner.width - minSize;
+                if (newL <= maxL) {
+                    const diffX = spinner.x - newL;
+                    spinner.x = newL;
+                    spinner.width += diffX;
+                }
+                break;
+            }
+            case 'top-right': {
+                const newT = gridY;
+                const maxT = spinner.y + spinner.height - minSize;
+                if (newT <= maxT) {
+                    const diffY = spinner.y - newT;
+                    spinner.y = newT;
+                    spinner.height += diffY;
+                }
+                const newR = gridX + GRID_SIZE;
+                const minR = spinner.x + minSize;
+                if (newR >= minR) {
+                    spinner.width = newR - spinner.x;
+                }
+                break;
+            }
+            case 'bottom-left': {
+                const newB = gridY + GRID_SIZE;
+                const minB = spinner.y + minSize;
+                if (newB >= minB) {
+                    spinner.height = newB - spinner.y;
+                }
+                const newL = gridX;
+                const maxL = spinner.x + spinner.width - minSize;
+                if (newL <= maxL) {
+                    const diffX = spinner.x - newL;
+                    spinner.x = newL;
+                    spinner.width += diffX;
+                }
+                break;
+            }
+            case 'bottom-right': {
+                const newB = gridY + GRID_SIZE;
+                const minB = spinner.y + minSize;
+                if (newB >= minB) {
+                    spinner.height = newB - spinner.y;
+                }
+                const newR = gridX + GRID_SIZE;
+                const minR = spinner.x + minSize;
+                if (newR >= minR) {
+                    spinner.width = newR - spinner.x;
+                }
+                break;
+            }
+        }
+    }
+
+    getSpinnerDraggerAtPoint(worldX, worldY) {
+        if (!this.spinnerAdjustment.active || !this.spinnerAdjustment.spinner) return null;
+        
+        const spinner = this.spinnerAdjustment.spinner;
+        const handleSize = 12 / this.camera.zoom;
+        
+        const draggers = [
+            { name: 'top-left', x: spinner.x, y: spinner.y },
+            { name: 'top', x: spinner.x + spinner.width / 2, y: spinner.y },
+            { name: 'top-right', x: spinner.x + spinner.width, y: spinner.y },
+            { name: 'left', x: spinner.x, y: spinner.y + spinner.height / 2 },
+            { name: 'right', x: spinner.x + spinner.width, y: spinner.y + spinner.height / 2 },
+            { name: 'bottom-left', x: spinner.x, y: spinner.y + spinner.height },
+            { name: 'bottom', x: spinner.x + spinner.width / 2, y: spinner.y + spinner.height },
+            { name: 'bottom-right', x: spinner.x + spinner.width, y: spinner.y + spinner.height }
+        ];
+        
+        for (const d of draggers) {
+            if (Math.abs(worldX - d.x) < handleSize && Math.abs(worldY - d.y) < handleSize) {
+                return d.name;
+            }
+        }
+        
+        return null;
+    }
+
+    renderSpinnerAdjustmentHandles(ctx, camera) {
+        const spinner = this.spinnerAdjustment.spinner;
+        const handleSize = 12 / camera.zoom;
+        
+        const screenX = spinner.x - camera.x;
+        const screenY = spinner.y - camera.y;
+        const screenW = spinner.width;
+        const screenH = spinner.height;
+        
+        // Draw spinner highlight (orange to match spinner/saw blade theme)
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3 / camera.zoom;
+        ctx.setLineDash([]);
+        ctx.strokeRect(screenX, screenY, screenW, screenH);
+        
+        // Dragger positions
+        const draggers = [
+            { x: screenX, y: screenY },
+            { x: screenX + screenW / 2, y: screenY },
+            { x: screenX + screenW, y: screenY },
+            { x: screenX, y: screenY + screenH / 2 },
+            { x: screenX + screenW, y: screenY + screenH / 2 },
+            { x: screenX, y: screenY + screenH },
+            { x: screenX + screenW / 2, y: screenY + screenH },
+            { x: screenX + screenW, y: screenY + screenH }
+        ];
+        
+        for (const d of draggers) {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(d.x - handleSize / 2, d.y - handleSize / 2, handleSize, handleSize);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2 / camera.zoom;
+            ctx.strokeRect(d.x - handleSize / 2, d.y - handleSize / 2, handleSize, handleSize);
+        }
     }
 
     createColorPicker() {
@@ -7374,6 +7540,12 @@ class Editor {
             return;
         }
         
+        // Cancel spinner adjustment mode
+        if (this.spinnerAdjustment.active) {
+            this.exitSpinnerAdjustmentMode();
+            return;
+        }
+        
         // Cancel zone placement
         if (this.zonePlacement.isPlacing) {
             this.zonePlacement.isPlacing = false;
@@ -7468,6 +7640,12 @@ class Editor {
         // Zone adjustment - handle dragger movement
         if (this.zoneAdjustment.active && this.zoneAdjustment.draggerHeld && this.engine.mouse.down) {
             this.handleZoneDraggerMove(gridPos.x, gridPos.y);
+            return;
+        }
+
+        // Spinner adjustment - handle dragger movement
+        if (this.spinnerAdjustment.active && this.spinnerAdjustment.draggerHeld && this.engine.mouse.down) {
+            this.handleSpinnerDraggerMove(gridPos.x, gridPos.y);
             return;
         }
 
@@ -7570,6 +7748,19 @@ class Editor {
                 this.zoneAdjustment.draggerHeld = dragger;
                 this.beginUndoTransaction();
                 this._zoneDragUndoActive = true;
+                return;
+            }
+            // If clicking outside draggers, allow camera panning
+        }
+
+        // Handle spinner adjustment draggers
+        if (this.spinnerAdjustment.active) {
+            const worldPos = this.engine.getMouseWorldPos();
+            const dragger = this.getSpinnerDraggerAtPoint(worldPos.x, worldPos.y);
+            if (dragger) {
+                this.spinnerAdjustment.draggerHeld = dragger;
+                this.beginUndoTransaction();
+                this._spinnerDragUndoActive = true;
                 return;
             }
             // If clicking outside draggers, allow camera panning
@@ -7764,6 +7955,18 @@ class Editor {
             return;
         }
         
+        // Release spinner adjustment dragger
+        if (this.spinnerAdjustment.draggerHeld) {
+            this.spinnerAdjustment.draggerHeld = null;
+            if (this._spinnerDragUndoActive) {
+                this._spinnerDragUndoActive = false;
+                this._discardMatchingTopUndoIfUnchanged();
+                this.endUndoTransaction();
+            }
+            this.triggerMapChange();
+            return;
+        }
+        
         // Stop brush placement
         this.isPlacing = false;
         if (this._brushUndoActive) {
@@ -7817,7 +8020,8 @@ class Editor {
             el.closest('.object-edit-panel') ||
             el.closest('.zone-name-panel') ||
             el.closest('.zone-edit-panel') ||
-            el.closest('.zone-adjust-stop')
+            el.closest('.zone-adjust-stop') ||
+            el.closest('.spinner-adjust-stop')
         );
     }
 
@@ -7922,6 +8126,7 @@ class Editor {
                 coin.layer = 2;
                 this.world.addObject(coin);
                 this.triggerMapChange();
+                if (this.engine && this.engine.audioManager) this.engine.audioManager.play('place');
                 return;
             }
         } else if (this.placementMode === PlacementMode.TEXT) {
@@ -7999,6 +8204,7 @@ class Editor {
         this.world.addObject(obj);
         this.mergeBlockWithAdjacent(obj);
         this.triggerMapChange();
+        if (this.engine && this.engine.audioManager) this.engine.audioManager.play('place');
     }
 
     /**
@@ -8063,6 +8269,7 @@ class Editor {
         } finally {
             if (!skipOuterTransaction) this.endUndoTransaction();
         }
+        if (didErase && this.engine && this.engine.audioManager) this.engine.audioManager.play('erase');
         return didErase;
     }
 
@@ -9655,6 +9862,11 @@ if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#461A0
         // Zone adjustment handles
         if (this.zoneAdjustment.active && this.zoneAdjustment.zone) {
             this.renderZoneAdjustmentHandles(ctx, camera);
+        }
+        
+        // Spinner adjustment handles
+        if (this.spinnerAdjustment.active && this.spinnerAdjustment.spinner) {
+            this.renderSpinnerAdjustmentHandles(ctx, camera);
         }
         
         // Touchbox debug overlay (works in both editor and test modes)
