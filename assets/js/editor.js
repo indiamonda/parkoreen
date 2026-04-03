@@ -1887,6 +1887,13 @@ class Editor {
                             • <span style="color: #4ade80;">Green</span> = Valid two-way connection (player will teleport)<br>
                             • <span style="color: #f87171;">Red</span> = One-way only (no teleport)
                         </div>
+
+                        <hr style="border-color: var(--surface-light); margin: 12px 0;">
+                        <label class="form-label">Particle Opacity</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="object-edit-teleportal-particle-opacity" min="0" max="100" step="1" value="100" style="flex: 1;">
+                            <span id="object-edit-teleportal-particle-opacity-label" style="font-size: 13px; min-width: 36px; text-align: right; color: #fff;">100%</span>
+                        </div>
                     </div>
                     
                     <div class="form-group" id="object-edit-bouncer-group" style="display: none;">
@@ -2156,6 +2163,16 @@ class Editor {
             if (this.editingObject && this.editingObject.type === 'teleportal') {
                 this.editingObject.receiveFrom.push({ name: '', enabled: true });
                 this.updateTeleportalConnectionLists();
+                this.triggerMapChange();
+            }
+        });
+
+        // Teleportal particle opacity slider
+        document.getElementById('object-edit-teleportal-particle-opacity').addEventListener('input', (e) => {
+            if (this.editingObject && this.editingObject.type === 'teleportal') {
+                const val = parseInt(e.target.value);
+                this.editingObject.particleOpacity = val;
+                document.getElementById('object-edit-teleportal-particle-opacity-label').textContent = val + '%';
                 this.triggerMapChange();
             }
         });
@@ -2852,6 +2869,9 @@ class Editor {
         if (obj.type === 'teleportal' && obj.actingType === 'portal') {
             teleportalGroup.style.display = 'block';
             this.updateTeleportalConnectionLists();
+            const particleOpacity = typeof obj.particleOpacity === 'number' ? obj.particleOpacity : 100;
+            document.getElementById('object-edit-teleportal-particle-opacity').value = particleOpacity;
+            document.getElementById('object-edit-teleportal-particle-opacity-label').textContent = particleOpacity + '%';
         } else {
             teleportalGroup.style.display = 'none';
         }

@@ -1048,6 +1048,7 @@ class WorldObject {
         this.receiveFrom = (config.receiveFrom || []).map(item => 
             typeof item === 'string' ? { name: item, enabled: true } : item
         );
+        this.particleOpacity = config.particleOpacity !== undefined ? config.particleOpacity : 100;
         
         this.name = config.name || this.getDefaultName();
     }
@@ -1906,6 +1907,7 @@ class WorldObject {
             teleportalName: this.teleportalName,
             sendTo: this.sendTo,
             receiveFrom: this.receiveFrom,
+            particleOpacity: this.particleOpacity,
             name: this.name
         };
     }
@@ -3130,7 +3132,7 @@ class GameEngine {
             p.y += p.vy * dt;
             p.vy += 200 * dt;
             p.life -= p.decay;
-            p.alpha = p.life;
+            p.alpha = p.life * (p.maxAlpha !== undefined ? p.maxAlpha : 1);
             if (p.life > 0 && p.x >= vpL && p.x <= vpR && p.y >= vpT && p.y <= vpB) {
                 this.particles[writeIdx++] = p;
             }
@@ -3177,7 +3179,8 @@ class GameEngine {
                     size: 1.5 + Math.random() * 2,
                     color: obj.color,
                     life: 1,
-                    decay: 0.008 + Math.random() * 0.006
+                    decay: 0.008 + Math.random() * 0.006,
+                    maxAlpha: (obj.particleOpacity !== undefined ? obj.particleOpacity : 100) / 100
                 });
             }
         }
@@ -3208,7 +3211,7 @@ class GameEngine {
         let lastAlpha = -1;
         for (let i = 0; i < this._portalParticles.length; i++) {
             const p = this._portalParticles[i];
-            const alpha = p.life * 0.7;
+            const alpha = p.life * (p.maxAlpha !== undefined ? p.maxAlpha : 1) * 0.7;
             if (alpha !== lastAlpha) { ctx.globalAlpha = alpha; lastAlpha = alpha; }
             if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
             const sz = p.size * zoom;
@@ -4194,7 +4197,8 @@ class GameEngine {
                     this.lastTeleportTime = now;
                     
                     // Spawn teleport particles at destination
-                    this.spawnTeleportParticles(targetX + this.localPlayer.width / 2, targetY + this.localPlayer.height / 2, obj.color);
+                    const particleMaxAlpha = (obj.particleOpacity !== undefined ? obj.particleOpacity : 100) / 100;
+                    this.spawnTeleportParticles(targetX + this.localPlayer.width / 2, targetY + this.localPlayer.height / 2, obj.color, particleMaxAlpha);
                     
                     return; // Only teleport once per frame
                 }
@@ -4304,7 +4308,7 @@ class GameEngine {
         }
     }
 
-    spawnTeleportParticles(x, y, color) {
+    spawnTeleportParticles(x, y, color, maxAlpha = 1) {
         // Create a burst of particles at teleport destination
         const particleCount = 12;
         for (let i = 0; i < particleCount; i++) {
@@ -4315,10 +4319,12 @@ class GameEngine {
                 y: y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                life: 0.6 + Math.random() * 0.3,
-                maxLife: 0.6 + Math.random() * 0.3,
+                life: 1,
+                decay: 0.018 + Math.random() * 0.01,
+                maxAlpha: maxAlpha,
                 size: 4 + Math.random() * 4,
-                color: color || '#9b59b6'
+                color: color || '#9b59b6',
+                shape: 'circle'
             });
         }
     }

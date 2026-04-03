@@ -1,338 +1,419 @@
-# 🏃 Parkoreen
+# Parkoreen
 
-**A multiplayer parkour game where you build your own maps and challenge friends!**
+**A multiplayer 2D parkour game where you build maps and race friends.**
 
-Build creative parkour courses, test them yourself, then host games and race against others in real-time.
+Build parkour courses in the editor, test them locally, then host a real-time multiplayer game and share the room code with anyone.
 
-![Parkoreen](https://img.shields.io/badge/version-2.0.0-green) ![License](https://img.shields.io/badge/license-Proprietary-red)
-
-![Parkoreen Cover](assets/png/cover.png)
+![License](https://img.shields.io/badge/license-Proprietary-red)
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Features](#-features)
-- [Getting Started](#-getting-started)
-- [Editor Guide](#-editor-guide)
-- [Playing the Game](#-playing-the-game)
-- [Multiplayer](#-multiplayer)
-- [Keyboard Shortcuts](#-keyboard-shortcuts)
-- [File Format](#-file-format)
-- [License](#-license)
-
----
-
-## ✨ Features
-
-- 🎮 **2D Platformer Physics** - Smooth movement, jumping, and collision detection
-- 🏗️ **Powerful Map Editor** - Create complex parkour courses with ease
-- 👥 **Real-time Multiplayer** - Race against friends with live position sync
-- 💾 **Cloud Storage** - All your maps are saved online
-- 📤 **Export/Import** - Share maps as `.pkrn` files (ZIP-based format)
-- 📱 **Touchscreen Support** - Play on mobile devices with joystick controls
-- 🎨 **Customizable Checkpoints** - Set custom colors for checkpoint states
-- 🎵 **Background Music** - Built-in tracks or upload your own
-- 🖼️ **Custom Backgrounds** - Images, GIFs, or videos as backgrounds
-- 🏷️ **Zones** - Define named rectangular regions for scripting
-- 🌀 **Teleportals** - Create linked portals for teleportation
-- ⚙️ **Physics Settings** - Customize player speed, jump height, and gravity
-- 🔄 **Object Transforms** - Rotate and flip objects horizontally
-- 🔤 **Adjustable Font Size** - Global font scaling in settings
-- 🎯 **Drop Hurt Only Mode** - Spikes only damage when moving toward them
-- 📖 **How To Play Guide** - In-app tutorial for new players
+- [Features](#features)
+- [Pages & Navigation](#pages--navigation)
+- [Editor Guide](#editor-guide)
+- [Game Objects](#game-objects)
+- [Map Config](#map-config)
+- [Playing the Game](#playing-the-game)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Multiplayer](#multiplayer)
+- [Plugins](#plugins)
+- [File Format](#file-format)
+- [Cloudflare Worker](#cloudflare-worker)
+- [Resources](#resources)
+- [License](#license)
 
 ---
 
-## 🚀 Getting Started
+## Features
 
-### Creating an Account
-
-1. Visit the game
-2. Click **Sign Up** to create a new account
-3. Enter your **Display Name**, **Username**, and **Password**
-4. Click **Create Account**
-
-### Your Dashboard
-
-After logging in, you'll see your **Dashboard** with all your maps:
-
-- **Join** - Enter a game code to join someone else's room
-- **Settings** - Adjust volume and touchscreen mode
-- **New Map** - Create a fresh map to start building
-
-Each map card shows:
-- 🏠 **Host** - Start a multiplayer game with this map
-- ✏️ **Edit** - Open the map in the editor
-- 📋 **Duplicate** - Create a copy of the map
-- 🗑️ **Delete** - Remove the map (requires confirmation)
+- **2D platformer physics** — smooth movement, jumping, variable gravity
+- **Full map editor** — place, move, rotate, resize, multi-select, undo/redo
+- **Real-time multiplayer** — live position sync across all players in a room
+- **Cloud map storage** — maps saved to the server; download as `.pkrn` files
+- **Export / Import** — `.pkrn` files are ZIP archives (JSON or compressed binary)
+- **Plugin system** — Hollow Knight–style ability plugins (HP bar, attacks, wall-cling, etc.)
+- **Touchscreen support** — virtual joystick and buttons for mobile play
+- **Admin tools** — drag players, quick kill, maps/rooms/users management panel
 
 ---
 
-## 🛠️ Editor Guide
+## Pages & Navigation
 
-### Interface Overview
+| Path | Purpose |
+|------|---------|
+| `/` → redirects to `/dashboard/` | Entry point |
+| `/dashboard/` | Map list, create/edit/host maps |
+| `/login/` `/signup/` | Authentication |
+| `/settings/` | Volume, font size, touchscreen, keyboard layout |
+| `/join/` | Join a room by code |
+| `/mails/` | In-app mail / notifications |
+| `/admin/` | Admin panel (role-gated) |
+| `/wiki/` | Game wiki (offline-first HTML) |
+| `/changelog/` | Version history |
+| `/howtoplay/` | New-player tutorial |
+| `host.html` | Host game runtime (opened by editor) |
 
-When you open the editor, you'll see:
+The **Dashboard hamburger menu** links to Mails, Settings, Wiki, Changelog, and Admin (role-gated).
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ [⚙ Config]                              [⚙ Settings]    │
-│                                                         │
-│                    GAME CANVAS                          │
-│                  (your map here)                        │
-│                                                         │
-│ [+ Add]                                    [≡ Layers]   │
-│                                                         │
-│        [  Fly  | Move | Dup | Rot | + | - | Erase ]     │
-└─────────────────────────────────────────────────────────┘
-```
+---
 
-### Navigation
+## Editor Guide
+
+### Opening the editor
+
+From the Dashboard, click **Edit** on any map card, or click **New Map** to create one.
+
+### Toolbar (bottom of screen)
+
+| Button / Key | Action |
+|---|---|
+| **Fly** · `G` | Pan the camera freely; hold to fly the test player |
+| **Move** · `M` | Click an object to drag it |
+| **Duplicate** · `C` | Click an object to clone it |
+| **Rotate** · `R` | Click an object to rotate it 90° clockwise |
+| **Select** · `V` | Drag a box to multi-select; then move/rotate/delete the selection |
+| **Erase** · `Q` | Click to delete objects (modes: All, Top Layer, Bottom Layer) |
+| **Grid** · `H` | Toggle snap-to-grid overlay |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
+| `Escape` | Cancel current action / close open panel |
+
+### Zoom
 
 | Action | Method |
-|--------|--------|
-| **Pan Camera** | Enable Fly mode (`G`), then click and drag |
-| **Zoom In** | `Ctrl/Cmd + Scroll Up` or click `+` button |
-| **Zoom Out** | `Ctrl/Cmd + Scroll Down` or click `-` button |
+|---|---|
+| Zoom in | `Ctrl/Cmd + Scroll Up` or `+` button |
+| Zoom out | `Ctrl/Cmd + Scroll Down` or `−` button |
 
-### Toolbar Tools
+### Adding objects
 
-| Tool | Key | Description |
-|------|-----|-------------|
-| **Fly** | `G` | Move freely around the map |
-| **Move** | `M` | Reposition existing objects |
-| **Duplicate** | `C` | Copy an existing object |
-| **Rotate Right** | - | Single click to rotate object 90° clockwise |
-| **Rotate** | - | Click and drag to rotate object (snaps to 90° increments) |
-| **Erase** | - | Delete objects (options: All, Top Layer, Bottom Layer) |
+Click **Add** to open the placement menu. Select a category, configure options, then click on the canvas to place. Most objects snap to the grid.
 
-### Adding Objects
+### Editing objects
 
-Click **Add** to open the placement menu:
+Click any object with no tool active to open its **Edit Popup**:
 
-#### 🟫 Block
-Solid platforms and obstacles with options:
-- **Appearance**: Ground or Spike
-- **Acting Type**: Ground, Spike, Checkpoint, Spawnpoint, Endpoint
-- **Collision**: On/Off
-- **Fill Mode**: Add, Replace, or Overlap (place on top of existing)
+- **Name** — custom label
+- **Color** — color picker (hex + presets)
+- **Opacity** — 0–100%
+- **Rotation** — left / right buttons
+- **Flip Horizontal** — mirror sprite
+- **Collision** — toggle solid collision
+- **Layer** — draw-order integer
 
-#### 🔷 Koreen
-Special marker objects:
-- Checkpoint flags
-- Spawn points
-- End points
-- **Zones**: Named rectangular regions (click & drag to place)
+Type-specific options (spikes, teleportals, bouncers, buttons, text, zones) appear in their own sections of the popup.
 
-#### 📝 Text
-Text labels with customizable:
-- **Font** - Choose from many available fonts
-- **Font Size** - Adjustable size (8-200px)
-- **Alignment** - Horizontal and vertical alignment
-- **Spacing** - Letter and line spacing
+### Adjusting saw-blade size
 
-#### 🌀 Teleportal
-Teleportation portals that can be linked together:
-- Name each portal uniquely
-- Configure **Send To** and **Receive From** connections
-- Connected portals show green lines, invalid connections show red
-
-### Editing Objects
-
-Click on any object (with no tool active) to open the **Edit Popup**:
-
-- **Name** - Custom name for the object
-- **Color** - Change the object's color
-- **Opacity** - Transparency (0-100%)
-- **Rotation** - Rotate left/right buttons
-- **Collision** - Enable/disable collision
-- **Flip Horizontal** - Mirror the object horizontally (not available for zones)
-
-For **Spikes**, you can also set per-object touchbox behavior and Drop Hurt Only mode. Spikes are rendered with a pixel-art sawtooth style and have carefully tuned hitboxes - the dangerous area is small and focused on the tip, giving players more forgiving collision.
-
-For **Text**, you can edit the content, font, and preview the text.
-
-For **Teleportals**, you can configure portal connections.
-
-### Configuration Panel
-
-Access via the Config button (top-left):
-
-#### Game Settings
-- **Test Game** - Try your map instantly
-- **Map Name** - Set the map's display name
-- **Background** - Sky, Galaxy, or Custom (image/video)
-
-#### Physics
-- **Player Speed** - Movement speed (default: 5)
-- **Jump Height** - Jump force (default: -14)
-- **Gravity** - Fall speed modifier (default: 0.8)
-
-#### Player Settings
-- **Jumps** - Set number or infinite
-- **Additional Airjump** - All jumps available in air
-- **Collide with Each Other** - Player collision in multiplayer
-
-#### Checkpoint Colors
-- **Default Color** - Untouched checkpoints (gray)
-- **Active Color** - Current checkpoint (green)
-- **Already Checked** - Previously touched (blue)
-
-#### Spike Behavior
-Configure how spikes interact with players:
-- **Full Spike** - Entire spike is dangerous
-- **Normal Spike** - Flat base is ground, rest damages
-- **Tip Spike** - Only peak damages
-- **Ground** - Acts as solid ground
-- **Flag** - Flat part is ground, rest passes through
-- **Air** - No collision at all
-
-**Drop Hurt Only** (toggle): When enabled, spikes only damage the player when they are moving *toward* the spike's tip direction. For example, a spike pointing up will only hurt a player falling down onto it, not one jumping up through it. This can be set globally or per-spike.
-
-#### Music
-- Built-in tracks or upload custom music
-- Volume control and loop toggle
-
-#### Export/Import Settings
-- **Data Type**: `.json` (readable) or `.dat` (compressed)
+In the object inspector, click **Adjust Size** to enter resize mode. Eight handles (corners + edges) appear in orange — drag them on the grid. Press `Escape` or **Stop Adjusting** to exit.
 
 ---
 
-## 🎮 Playing the Game
+## Game Objects
+
+### Block
+
+Solid platform. Options:
+
+- **Appearance** — Ground, Spike, Decorator
+- **Acting type** — Ground, Spike, Checkpoint, Spawn, End, Text, Zone
+- **Texture** — None, Brick, etc.
+- **Collision** — on/off
+- **Fill mode** — Add / Replace / Overlap
+
+### Spike
+
+Damage-dealing obstacle. Per-object options:
+
+| Option | Description |
+|---|---|
+| **Touchbox preset** | Full, Normal (tip + sides), Tip Only, Ground, Flag, Air |
+| **All Spike** | Flat base is also lethal — no safe standing zone |
+| **Drop Hurt Only** | Only damages when the player is moving *toward* the tip |
+| **Damage amount** | How much damage each hit deals |
+
+### Saw Blade (Spinner)
+
+Rotating circular obstacle. Options:
+
+- **Size** — drag-handle resize in editor
+- **Spin direction** — clockwise / counter-clockwise
+- **Spin speed**
+- **Damage amount**
+
+### Teleportal
+
+Linked portal pair. Teleports the player on contact.
+
+- Each portal has a **Teleportal Name** (must be unique)
+- **Send To** list — portal names this portal sends the player to
+- **Receive From** list — portal names allowed to send players here
+- A connection is active **only when both sides are set**: A's Send To must contain B _and_ B's Receive From must contain A
+- Editor highlights valid connections in green, incomplete (one-way) entries in red
+- **Particle Opacity** — 0–100% slider controlling the opacity of the portal's particle effects (default 100%)
+
+### Bouncer
+
+Spring pad that launches the player on contact.
+
+- **Direction** — up / right / down / left (arrow picker in edit popup)
+- **Match Appearance** — links launch direction and visual orientation together
+- **Bounce strength** — 5–50 (default 20; normal jump is ~13)
+- Bouncer works in both test mode and editor fly mode
+- Spring animation plays on trigger; amplitude ramps up on rapid re-trigger (max ×3.5×)
+
+### Button
+
+Interactive trigger.
+
+| Mode | Behavior |
+|---|---|
+| **Click** | Player enters zone → popup appears → click to confirm |
+| **Collide** | Triggers immediately and silently when the player steps on it |
+
+- **One-Time Trigger** — fires only once per session
+- **Face Color** / **Base Color** — two independent color pickers
+- Fires the `button.pressed` plugin hook when triggered
+
+### Coin
+
+Collectible item.
+
+- Floats with a gentle up/down animation; disappears when collected; plays `coin.ogg`
+- **Amount** — value added to the coin counter (default 1)
+- **Activity Scope** — `Global` (all players see the change) or `Player` (only the collector)
+- Coin counter shown above the toolbar during test/host mode; hidden if the map has no coins; controlled by **Show Coin Counter** in map config
+
+### Zone
+
+Named rectangular region used by plugins or game logic.
+
+- Drag to place; drag handles to resize
+- Each zone has a **Name** and **Color**
+
+### Text
+
+Floating text label.
+
+- **Font** — Parkoreen Game and others
+- **Font size** — 8–200 px
+- **Alignment** — horizontal + vertical
+- **Letter / line spacing**
+
+### Checkpoint, Spawn Point, End Point
+
+Placed via the **Game Item** entry in the Add menu.
+
+---
+
+## Map Config
+
+Access via the **Config** button (top-left in the editor).
+
+### General
+
+| Setting | Description |
+|---|---|
+| Map Name | Display name |
+| Background | Sky, Galaxy, or Custom (image / GIF / video) |
+| Die Line Y | Y coordinate below which the player dies |
+| Show Coin Counter | Show/hide the coin counter HUD |
+
+### Physics
+
+| Setting | Default |
+|---|---|
+| Player speed | 5 |
+| Jump force | −14 |
+| Gravity | 0.8 |
+
+### Player
+
+| Setting | Description |
+|---|---|
+| Jumps | Number of jumps allowed (or infinite) |
+| Additional airjump | All jumps available in air |
+| Collide with each other | Player–player collision in multiplayer |
+
+### Default Colors
+
+| Object | Default |
+|---|---|
+| Block | `#787878` |
+| Spike | `#c45a3f` |
+| Portal | `#9b59b6` |
+| Bouncer | `#f59e0b` |
+
+New objects are seeded from these world defaults.
+
+### Checkpoint Colors
+
+| State | Default |
+|---|---|
+| Default (untouched) | `#808080` |
+| Active (current) | `#4CAF50` |
+| Touched (past) | `#2196F3` |
+
+### Spike Behavior (global defaults)
+
+- **Touchbox preset** — Full / Normal / Tip / Ground / Flag / Air
+- **Drop Hurt Only** — spikes only damage when the player moves toward the tip
+- **Damage amount** — default damage per hit
+
+### Music
+
+Built-in tracks or upload custom audio; volume + loop controls.
+
+### Data Type
+
+`.json` (human-readable) or `.dat` (compressed binary) for the inner map data file.
+
+---
+
+## Playing the Game
 
 ### Controls
 
 | Action | Keyboard | Touch |
-|--------|----------|-------|
-| Move Left | `A` or `←` | Joystick Left |
-| Move Right | `D` or `→` | Joystick Right |
+|---|---|---|
+| Move left/right | `A` / `D` or `←` / `→` | Joystick |
 | Jump | `W`, `↑`, or `Space` | Jump button |
-| Fly Up | `W` or `↑` (in fly mode) | Joystick Up |
-| Fly Down | `S` or `↓` (in fly mode) | Joystick Down |
+| Fly up/down | `W`/`S` or `↑`/`↓` (fly mode) | Joystick |
 
-> **Note:** In fly mode, the joystick provides full 360° movement. In normal mode, only left/right is used.
+> **Keyboard layouts:** JimmyQrg (default) and Hollow Knight Original are selectable in Settings — attack, heal, dash, and super-dash keys differ between layouts.
 
-### Test Mode
+### Tester mode (in editor)
 
-- Press `G` to toggle fly mode during testing
-- Fly mode is OFF by default when starting a test
-- Player position coordinates are displayed above the player
-
-### Settings
-
-Access Settings from the Dashboard or in-game (Editor/Test/Play modes):
-
-- **Volume** - Adjust game audio volume
-- **Touchscreen Mode** - Enable touch controls
-- **Font Size** - Scale all text (50-150%)
-- **How To Play** - Opens an in-app tutorial explaining game mechanics
-- **Back to Dashboard** - Return to your map list (with confirmation)
+| Key / Button | Action |
+|---|---|
+| Tester button | Start/stop test |
+| `G` | Toggle fly |
+| Respawn button | Respawn at last checkpoint / spawn point |
+| Invincibility button | Toggle god mode |
+| Touchboxes button | Show/hide hitbox overlays |
+| `Escape` | Exit test and return to editor |
 
 ---
 
-## 👥 Multiplayer
+## Keyboard Shortcuts
 
-### Hosting a Game
-
-1. Open your map in the editor
-2. Click **Config** → **Host Game**
-3. Set max players and optional password
-4. Click **Host Game**
-5. Share the 6-character room code
-
-### Joining a Game
-
-1. From Dashboard, click **Join**
-2. Enter the room code
-3. Enter password if required
-4. Click **Join**
-
-### Player Colors
-
-Each player gets a unique color automatically calculated to be maximally different from other players in the room.
-
----
-
-## ⌨️ Keyboard Shortcuts
+### Editor
 
 | Key | Action |
-|-----|--------|
-| `G` | Toggle Fly mode |
+|---|---|
+| `G` | Fly tool (also active in tester) |
 | `M` | Move tool |
 | `C` | Duplicate tool |
-| `Escape` | Cancel current action / Close panels |
-| `Ctrl/Cmd + Scroll` | Zoom in/out (centered on player) |
-| `Ctrl/Cmd + Shift + Scroll` | Reset zoom to 100% |
+| `R` | Rotate tool |
+| `V` | Select tool (multi-select) |
+| `Q` | Erase tool |
+| `H` | Toggle grid |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
+| `Escape` | Cancel / close |
+
+### Admin (in-game)
+
+| Key | Action |
+|---|---|
+| `G` | Toggle fly |
+| `M` | Toggle Quick Drag Player |
+| `K` | Quick Kill |
 
 ---
 
-## 📁 File Format
+## Multiplayer
 
-Parkoreen maps use the `.pkrn` file extension.
+### Hosting
 
-### Version 2.0 Format
+1. Open a map in the editor → **Config** → **Host Game**
+2. Set max players and optional password → **Host Game**
+3. Share the 6-character room code
 
-`.pkrn` files are ZIP archives containing:
+The map is auto-saved when the tab is closed or reloaded (keepalive fetch).
+
+### Joining
+
+1. Dashboard → **Join** (or `/join/`)
+2. Enter room code and password (if required) → **Join**
+
+### Player colors
+
+Each player gets a distinct color calculated to be maximally different from all current players in the room.
+
+---
+
+## Plugins
+
+Plugins extend gameplay with custom mechanics loaded from `/assets/plugins/`.
+
+| Plugin | Description |
+|---|---|
+| **HK** (Hollow Knight) | HP bar, attacks, wall-cling, dash, soul statue, pogo |
+| **HP** | Generic HP system without HK abilities |
+| **Code** | In-map JavaScript scripting (BETA) |
+| **CJ** | Additional movement abilities |
+
+Plugins expose hooks (`player.damage`, `player.respawn`, `button.pressed`, etc.) for inter-plugin communication. Gravity, jump height, and keyboard layout are individually configurable per plugin.
+
+---
+
+## File Format
+
+Parkoreen maps use the `.pkrn` extension. A `.pkrn` file is a ZIP archive:
 
 ```
-map_name.pkrn (ZIP)
-├── data.json          (or data.dat for compressed)
-├── uploaded_img_1.png (custom backgrounds)
-├── uploaded_sound_1.mp3 (custom music)
+my_map.pkrn  (ZIP)
+├── data.json            ← map data (or data.dat for compressed)
+├── uploaded_img_1.png   ← custom background (optional)
+├── uploaded_sound_1.mp3 ← custom music (optional)
 └── ...
 ```
 
-### Data Structure
+### Map data structure (excerpt)
 
 ```json
 {
   "version": "2.0",
-  "metadata": {
-    "name": "My Map",
-    "createdAt": "2026-02-07T00:00:00.000Z",
-    "objectCount": 42
-  },
+  "metadata": { "name": "My Map", "objectCount": 42 },
   "settings": {
     "background": "sky",
-    "defaultBlockColor": "#787878",
-    "defaultSpikeColor": "#c45a3f",
-    "checkpointDefaultColor": "#808080",
-    "checkpointActiveColor": "#4CAF50",
-    "checkpointTouchedColor": "#2196F3",
     "playerSpeed": 5,
     "jumpForce": -14,
     "gravity": 0.8,
-    "spikeTouchbox": "normal",
-    "dropHurtOnly": false,
-    "storedDataType": "json"
+    "defaultPortalColor": "#9b59b6",
+    "defaultBouncerColor": "#f59e0b",
+    "showCoinCounter": true
   },
   "objects": [...]
 }
 ```
 
-### Backward Compatibility
-
-Old `.pkrn` files (v1.x JSON format) are still supported and will be automatically upgraded on import.
+Old v1.x `.pkrn` files (JSON-only) are automatically upgraded on import.
 
 ---
 
-## 📄 License
+## Cloudflare Worker
 
-**PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
-
-Copyright (c) 2026 JimmyQrg
-
-This software and all associated files are the exclusive property of JimmyQrg. No permission is granted to use, copy, modify, distribute, or create derivative works from this software.
-
-See the [LICENSE](LICENSE) file for full terms.
+The `cloudflare-worker/` directory contains the backend API (Cloudflare Workers + KV / D1).
+See [`cloudflare-worker/README.md`](cloudflare-worker/README.md) for setup and deployment.
 
 ---
 
-## 🙏 Credits
+## Resources
 
-Created by **JimmyQrg** © 2026
+- **Wiki** — `/wiki/` — per-object and per-version documentation
+- **Changelog** — `/changelog/` — full version history
+- **How to Play** — `/howtoplay/` — new-player guide
 
 ---
 
-**Happy Parkour-ing! 🏃‍♂️💨**
+## License
+
+**PROPRIETARY SOFTWARE — ALL RIGHTS RESERVED**
+
+Copyright © 2026 JimmyQrg
+
+No permission is granted to use, copy, modify, distribute, or create derivative works from this software. See [LICENSE](LICENSE) for full terms.
