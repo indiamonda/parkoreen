@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button — v0.4 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.4</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Button</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.4 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.4</span>
+      <h1>&#9724; Button</h1>
+    </div>
+
+    <p class="subtitle">Interactive objects — v0.4 adds Collide type, One-Time trigger, and color pickers.</p>
+
+    <h2>Interaction types</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Click</td><td>Player must click the button to trigger it.</td></tr>
+        <tr><td>Collide (new in v0.4)</td><td>Triggers when the player walks onto or into the button &#8212; works as a pressure plate.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>One-Time trigger (new in v0.4)</h2>
+    <p>When <strong>One-Time</strong> is enabled, the button can only be triggered once per map session. After triggering it becomes inert.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Button ID</td><td>0</td><td>Identifier linking this button to game logic.</td></tr>
+        <tr><td>Interaction Type</td><td>Click</td><td><code>Click</code> or <code>Collide</code>.</td></tr>
+        <tr><td>One-Time</td><td>Off</td><td>Only triggers once per session.</td></tr>
+        <tr><td>Face Color</td><td>#44aa44</td><td>Button surface color.</td></tr>
+        <tr><td>Base Color</td><td>#226622</td><td>Button base/rim color.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0&#8211;100.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

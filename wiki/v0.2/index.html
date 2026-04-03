@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>v0.2 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../">Wiki</a>
+    <a class="topbar-home" href="../../">← Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'☾ Dark':'☀ Light';})()">☀ Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="../">← All Versions</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.2</span>
+      <h1>Parkoreen v0.2</h1>
+      <p class="subtitle">Introduced the plugin system — Hollow Knight, HP, and Code plugins — plus improved portal visuals and mobile support.</p>
+    </div>
+
+    <h2>What's new in v0.2</h2>
+    <ul>
+      <li><strong>Plugin system</strong> — extensible plugin framework with HK, HP, and Code plugins</li>
+      <li><strong>HK (Hollow Knight) plugin</strong> — soul statue, Mantis Claw, attack, pogo</li>
+      <li><strong>HP plugin</strong> — health bar, damage/heal mechanics</li>
+      <li><strong>Code plugin (Beta)</strong> — Python scripting via Skulpt</li>
+      <li>Improved portal and spike visuals</li>
+      <li>Load bar for asset loading</li>
+      <li>Mobile / touchscreen support improvements</li>
+    </ul>
+    <div class="note">
+      This article documents the <strong>complete feature set of v0.2</strong>. For a diff from v0.1, see the <a href="../../CHANGELOG.md" target="_blank">CHANGELOG</a>.
+    </div>
+
+    <h2>Topics</h2>
+    <div class="nav-grid">
+      <a class="nav-card" href="player/">
+        <span class="nav-icon">🧑</span>
+        <div class="nav-card-text"><span class="nav-card-title">Player</span><span class="nav-card-desc">Movement, physics, respawn</span></div>
+      </a>
+      <a class="nav-card" href="editor/">
+        <span class="nav-icon">🖊</span>
+        <div class="nav-card-text"><span class="nav-card-title">Editor</span><span class="nav-card-desc">Tools, shortcuts, layers</span></div>
+      </a>
+      <a class="nav-card" href="editor/toolbar/">
+        <span class="nav-icon">📦</span>
+        <div class="nav-card-text"><span class="nav-card-title">Placement Toolbar</span><span class="nav-card-desc">All placement options</span></div>
+      </a>
+      <a class="nav-card" href="map-config/">
+        <span class="nav-icon">⚙️</span>
+        <div class="nav-card-text"><span class="nav-card-title">Map Config</span><span class="nav-card-desc">All map-level settings</span></div>
+      </a>
+      <a class="nav-card" href="block/">
+        <img class="nav-sprite" src="../../assets/svg/block-brick.svg" alt="">
+        <div class="nav-card-text"><span class="nav-card-title">Block</span><span class="nav-card-desc">Solid platforms</span></div>
+      </a>
+      <a class="nav-card" href="spike/">
+        <img class="nav-sprite" src="../../assets/svg/spike-64x.svg" alt="">
+        <div class="nav-card-text"><span class="nav-card-title">Spike</span><span class="nav-card-desc">Triangle hazards</span></div>
+      </a>
+      <a class="nav-card" href="zone/">
+        <span class="nav-icon">⬜</span>
+        <div class="nav-card-text"><span class="nav-card-title">Zone</span><span class="nav-card-desc">Named regions</span></div>
+      </a>
+      <a class="nav-card" href="teleportal/">
+        <img class="nav-sprite" src="../../assets/svg/portal-64x.svg" alt="">
+        <div class="nav-card-text"><span class="nav-card-title">Teleportal</span><span class="nav-card-desc">Linked portals</span></div>
+      </a>
+      <a class="nav-card" href="checkpoint/">
+        <span class="nav-icon">🏁</span>
+        <div class="nav-card-text"><span class="nav-card-title">Checkpoint</span><span class="nav-card-desc">Respawn markers</span></div>
+      </a>
+      <a class="nav-card" href="plugins/">
+        <span class="nav-icon">🔌</span>
+        <div class="nav-card-text"><span class="nav-card-title">Plugins</span><span class="nav-card-desc">HK, HP, Code plugin system</span></div>
+      </a>
+      <a class="nav-card" href="tester/">
+        <span class="nav-icon">▶</span>
+        <div class="nav-card-text"><span class="nav-card-title">Tester</span><span class="nav-card-desc">Testing your map</span></div>
+      </a>
+    </div>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'☾ Dark':'☀ Light';})();</script>
+</body>
+</html>

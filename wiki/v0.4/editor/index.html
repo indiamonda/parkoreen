@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — v0.4 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.4</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Editor</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.4 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.4</span>
+      <h1>&#9998; Editor</h1>
+    </div>
+
+    <p class="subtitle">The map editor — now with undo/redo, a dedicated Spawn &amp; End tool, and drag-resize for saw blades.</p>
+
+    <h2>Tools</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Shortcut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Place</td><td><kbd>Q</kbd></td><td>Click/drag to place the selected object type.</td></tr>
+        <tr><td>Erase</td><td><kbd>W</kbd></td><td>Click/drag to delete objects.</td></tr>
+        <tr><td>Select</td><td><kbd>E</kbd></td><td>Click or drag to select objects.</td></tr>
+        <tr><td>Move Camera</td><td><kbd>R</kbd></td><td>Pan the view.</td></tr>
+        <tr><td>Spawn &amp; End</td><td>&#8212;</td><td>New dedicated tool for placing spawn/end markers.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Undo / Redo (new in v0.4)</h2>
+    <p>Editor actions are recorded in a history stack. Use <kbd>Ctrl+Z</kbd> to undo and <kbd>Ctrl+Y</kbd> (or <kbd>Ctrl+Shift+Z</kbd>) to redo.</p>
+
+    <h2>Drag-resize for saw blades</h2>
+    <p>When a <a href="../saw-blade/">Saw Blade</a> is selected, drag handles appear at the edges for resizing without opening the config panel.</p>
+
+    <h2>Keyboard shortcuts</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>Ctrl+Z</kbd></td><td>Undo</td></tr>
+        <tr><td><kbd>Ctrl+Y</kbd></td><td>Redo</td></tr>
+        <tr><td><kbd>Delete</kbd></td><td>Delete selected object(s)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

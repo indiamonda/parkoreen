@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saw Blade — v0.3 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.3</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Saw Blade</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.3 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.3</span>
+      <h1>&#9881; Saw Blade</h1>
+    </div>
+
+    <p class="subtitle">A spinning circular hazard introduced in v0.3.</p>
+
+    <h2>Overview</h2>
+    <p>Saw blades (internally <em>spinners</em>) are 32&#215;32 circular obstacles that rotate continuously. Touching a saw blade kills the player. The circular collision shape is equally dangerous from all sides.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Color</td><td>#787878</td><td>Blade fill color.</td></tr>
+        <tr><td>Spin Speed</td><td>2</td><td>Rotation speed in degrees per tick. <code>0</code> = no spin.</td></tr>
+        <tr><td>Spin Direction</td><td>Clockwise</td><td><code>Clockwise</code> (1) or <code>Counter-clockwise</code> (&#8722;1).</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0&#8211;100.</td></tr>
+        <tr><td>Rotation</td><td>0&#176;</td><td>Visual starting angle.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note tip">
+      Setting <strong>Spin Speed</strong> to <code>0</code> creates a still circular obstacle — useful as a decorative hazard.
+    </div>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

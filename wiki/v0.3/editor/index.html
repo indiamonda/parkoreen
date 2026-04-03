@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — v0.3 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.3</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Editor</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.3 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.3</span>
+      <h1>&#9998; Editor</h1>
+    </div>
+
+    <p class="subtitle">The map editor — now with multi-select and rotate controls.</p>
+
+    <h2>Tools</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Shortcut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Place</td><td><kbd>Q</kbd></td><td>Click/drag to place the selected object type.</td></tr>
+        <tr><td>Erase</td><td><kbd>W</kbd></td><td>Click/drag to delete objects.</td></tr>
+        <tr><td>Select</td><td><kbd>E</kbd></td><td>Click to select one object; drag to multi-select a region.</td></tr>
+        <tr><td>Move Camera</td><td><kbd>R</kbd></td><td>Pan the view.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Multi-selection (new in v0.3)</h2>
+    <p>With the <strong>Select tool</strong>, drag a rectangle to select multiple objects. The <strong>Object Inspector</strong> panel shows properties shared by all selected objects and allows bulk editing.</p>
+
+    <h2>Rotate Left</h2>
+    <p>A new Rotate Left button appears in the toolbar when an object is selected. It rotates the object&#39;s visual orientation 90&#176; counter-clockwise.</p>
+
+    <h2>Keyboard shortcuts</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>Q</kbd></td><td>Place tool</td></tr>
+        <tr><td><kbd>W</kbd></td><td>Erase tool</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Select tool</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Move Camera</td></tr>
+        <tr><td><kbd>Delete</kbd></td><td>Delete selected object(s)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

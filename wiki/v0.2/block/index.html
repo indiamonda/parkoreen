@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block — v0.2 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.2</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Block</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.2 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.2</span>
+      <h1>&#9632; Block</h1>
+    </div>
+
+    <p class="subtitle">Solid, collidable platform tiles.</p>
+
+    <h2>Overview</h2>
+    <p>Blocks are the primary platform tiles. They occupy one 32&#215;32 grid cell and stop the player&#39;s movement on all sides. Blocks have no special behavior beyond solid collision.</p>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Color</td><td>#8B4513</td><td>Block fill color.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0&#8211;100.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order (higher = drawn on top).</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

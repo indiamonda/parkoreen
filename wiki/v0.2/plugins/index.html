@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugins — v0.2 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.2</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Plugins</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.2 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.2</span>
+      <h1>&#128268; Plugins</h1>
+    </div>
+
+    <p class="subtitle">v0.2 introduced an extensible plugin system with three built-in plugins.</p>
+
+    <h2>Overview</h2>
+    <p>Plugins extend the base game with additional mechanics. They are enabled per-map in the Map Config panel. Multiple plugins can be active at once.</p>
+
+    <h2>HK (Hollow Knight) plugin</h2>
+    <p>Adds Hollow Knight&#8211;style mechanics to the player character.</p>
+    <table class="wiki-table">
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Soul Statue</td><td>Collectible statues that restore soul energy.</td></tr>
+        <tr><td>Mantis Claw</td><td>Allows wall-clinging and wall-jumping.</td></tr>
+        <tr><td>Attack</td><td>Player can attack with a directional slash.</td></tr>
+        <tr><td>Pogo</td><td>Players can bounce off enemies/objects by attacking downward.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>HP (Health) plugin</h2>
+    <p>Adds a health bar and damage system to the player. Instead of dying in one hit from some hazards, the player has HP that can be depleted and restored.</p>
+    <table class="wiki-table">
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Health Bar</td><td>On-screen HUD showing current HP.</td></tr>
+        <tr><td>Damage</td><td>Hazards deal configurable damage rather than instant death.</td></tr>
+        <tr><td>Heal</td><td>Specific map objects can restore HP.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Code plugin <span class="version-badge legacy" style="font-size:0.7em;vertical-align:middle">Beta</span></h2>
+    <p>Adds Python scripting support via <strong>Skulpt</strong> (an in-browser Python compiler). Allows custom game logic to be written in Python and executed in the map.</p>
+    <div class="note">
+      The Code plugin is <strong>in beta</strong> in v0.2. The API is unstable and may change in later versions.
+    </div>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map Config — v0.2 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.2</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Map Config</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.2 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.2</span>
+      <h1>&#9881;&#65039; Map Config</h1>
+    </div>
+
+    <p class="subtitle">Map-level settings controlling physics, camera, and game rules.</p>
+
+    <h2>Physics</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Gravity</td><td>0.71</td><td>Downward acceleration per frame.</td></tr>
+        <tr><td>Player Speed</td><td>5</td><td>Horizontal movement speed.</td></tr>
+        <tr><td>Jump Force</td><td>&#8722;13.2</td><td>Initial vertical velocity on jump.</td></tr>
+        <tr><td>Max Jumps</td><td>1</td><td>Number of jumps allowed mid-air.</td></tr>
+        <tr><td>Infinite Jumps</td><td>Off</td><td>Jump any number of times.</td></tr>
+        <tr><td>Additional Air Jump</td><td>Off</td><td>Coyote-jump bonus.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>World</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Die Line Y</td><td>1000</td><td>Y position below which the player dies.</td></tr>
+        <tr><td>Background Color</td><td>#222</td><td>Canvas background.</td></tr>
+        <tr><td>Cloud Color</td><td>#fff</td><td>Color of background cloud shapes.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

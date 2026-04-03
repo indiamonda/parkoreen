@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spike — v0.4 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.4</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Spike</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.4 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.4</span>
+      <h1>&#9651; Spike</h1>
+    </div>
+
+    <p class="subtitle">Triangular lethal hazards — v0.4 adds the all-spike touchbox mode.</p>
+
+    <h2>Touchbox modes</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Mode</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Triangle (default)</td><td>Lethal area follows the spike&#39;s triangular shape.</td></tr>
+        <tr><td>Full</td><td>Full 32&#215;32 bounding box is lethal.</td></tr>
+        <tr><td>All-Spike (new in v0.4)</td><td>Treats the entire cell, including space above the triangle tip, as lethal — useful for ceiling spikes.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Config options</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Color</td><td>#cc3333</td><td>Spike fill color.</td></tr>
+        <tr><td>Touchbox Mode</td><td>Triangle</td><td>Collision shape.</td></tr>
+        <tr><td>Rotation</td><td>0&#176;</td><td>Orientation.</td></tr>
+        <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the spike.</td></tr>
+        <tr><td>Opacity</td><td>100</td><td>Transparency 0&#8211;100.</td></tr>
+        <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

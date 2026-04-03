@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player — v0.3 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.3</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Player</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.3 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.3</span>
+      <h1>&#129399; Player</h1>
+    </div>
+
+    <p class="subtitle">How the player character moves, jumps, dies, and respawns. Unchanged from v0.2.</p>
+
+    <h2>Size &amp; basics</h2>
+    <p>The player is a <strong>32&#215;32&nbsp;px</strong> square (1 grid cell). They spawn at the spawn point and respawn at the last-touched checkpoint on death.</p>
+
+    <h2>Movement</h2>
+    <ul>
+      <li><strong>Horizontal speed</strong> — set by <code>playerSpeed</code> (default <code>5</code>).</li>
+      <li><strong>Gravity</strong> — set by <code>gravity</code> (default <code>0.71</code>).</li>
+    </ul>
+
+    <h2>Jump</h2>
+    <p>Default: <strong>1 jump</strong>. Configurable via <code>maxJumps</code>. Also supports Infinite Jumps and Additional Air Jump options.</p>
+
+    <h2>Physics touchboxes</h2>
+    <ul>
+      <li><strong>Ground touchbox</strong> — <code>x:0, y:8, w:32, h:24</code></li>
+      <li><strong>Hurt touchbox</strong> — <code>x:4, y:6, w:24, h:24</code></li>
+    </ul>
+
+    <h2>Controls</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>&#8592;</kbd> / <kbd>A</kbd></td><td>Move left</td></tr>
+        <tr><td><kbd>&#8594;</kbd> / <kbd>D</kbd></td><td>Move right</td></tr>
+        <tr><td><kbd>&#8593;</kbd> / <kbd>W</kbd> / <kbd>Space</kbd></td><td>Jump</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>

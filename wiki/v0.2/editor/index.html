@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor — v0.2 — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../../wiki.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-crumb" href="..">v0.2</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Editor</span>
+    <a class="topbar-home" href="../../..">&#8592; Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);var b=document.getElementById('theme-toggle');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+  <div class="page-wrap">
+    <a class="back-link" href="..">&#8592; v0.2 Overview</a>
+    <div class="page-header">
+      <span class="version-badge legacy">v0.2</span>
+      <h1>&#9998; Editor</h1>
+    </div>
+
+    <p class="subtitle">The map editor: placing, selecting, and deleting objects on a grid.</p>
+
+    <h2>Overview</h2>
+    <p>The editor works on a <strong>32&#215;32&nbsp;px grid</strong>. Objects snap to grid cells. The camera can be panned with <kbd>Middle-click drag</kbd> or arrow keys, and zoomed with the scroll wheel.</p>
+
+    <h2>Tools</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Tool</th><th>Shortcut</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Place</td><td><kbd>Q</kbd></td><td>Click/drag to place the selected object type.</td></tr>
+        <tr><td>Erase</td><td><kbd>W</kbd></td><td>Click/drag to delete objects.</td></tr>
+        <tr><td>Move Camera</td><td><kbd>E</kbd></td><td>Pan the camera without placing.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Selection</h2>
+    <p>Click an object to select it and open its config panel. Clicking empty space deselects.</p>
+
+    <h2>Keyboard shortcuts</h2>
+    <table class="wiki-table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>Q</kbd></td><td>Switch to Place tool</td></tr>
+        <tr><td><kbd>W</kbd></td><td>Switch to Erase tool</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Switch to Move Camera tool</td></tr>
+        <tr><td><kbd>Delete</kbd></td><td>Delete selected object</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Deselect / close panel</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>
