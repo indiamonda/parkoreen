@@ -9,6 +9,7 @@ All notable changes to **Parkoreen** are summarized here. **[Current] - Unreleas
 Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered v1.x release.
 
 ### Admin & moderation
+- **Admin Drag Player** shortcut: press **M** to toggle the Quick Drag Player tool (joins **G** for Fly and **K** for Quick Kill).
 - Admin panel: users, rooms, **maps** tab; scrolling; fixes for access and layout.
 - **Parkoreen** admin welcome flow; admin chat commands in-game.
 - **Maps**: list/detail, rename/delete, room↔map linkage; admin edit/host flows.

@@ -86,7 +86,7 @@
             <span class="material-symbols-outlined">dangerous</span>
             <span class="toolbar-btn-label">Kill (K)</span>
         </button>
-        <button class="toolbar-btn" data-admin-tool="drag" title="Drag Player">
+        <button class="toolbar-btn" data-admin-tool="drag" title="Drag Player (M)">
             <span class="material-symbols-outlined">drag_indicator</span>
             <span class="toolbar-btn-label">Drag</span>
         </button>
@@ -2234,6 +2234,10 @@
             if (e.code === 'KeyK') {
                 e.preventDefault();
                 setAdminTool('quickkill');
+            }
+            if (e.code === 'KeyM') {
+                e.preventDefault();
+                setAdminTool('drag');
             }
         }
 
