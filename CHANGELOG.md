@@ -4,6 +4,8 @@ All notable changes to **Parkoreen** are summarized here. **[Current] - Unreleas
 
 ---
 
+# Dev
+
 ## [Current] - Unreleased
 
 Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered v1.x release.
@@ -16,9 +18,16 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 - **Reserved official names** handling; role-based admin powers.
 
 ### Audio
+- **New sounds wired up**: `bounce.ogg` plays on bouncer trigger; `button.ogg` plays when a button is activated (both click and collide types); `checkpoint.ogg` plays when first touching a new checkpoint; `endpoint.ogg` plays when reaching the end.
 - **Jump sound**: switched from `mp3/jump.mp3` to `ogg/jump.ogg`.
 
 ### Editor & maps
+- **Coin config**: coins now have an **Amount** field (how much the coin adds to the counter, default 1) and an **Activity Scope** toggle (`Global` — coin disappears/appears for all players; `Player` — only the collecting player sees the change). Color picker added (default `#FFDD00` matching the coin SVG).
+- **Bouncer config**: dedicated edit popup with a **direction picker** (arrows around a rotating sprite preview; 4 directions: up / right / down / left). A **Match Appearance** toggle controls whether one unified direction drives both the launch trajectory and the visual orientation, or if they can be configured separately. Default color updated to `#461A0C` to match the bouncer SVG. Direction is serialized as `bouncerDirection` / `bouncerAppearanceDirection`.
+- **Button config**: new **One-Time Trigger** boolean — when enabled the button fires only once per play session and ignores further interactions. Two **color pickers** added: Face Color (default `#F52C2C`) and Base/Border Color (default `#CFCFCF`), matching the button SVG. Coins and bouncers now open their own dedicated edit popups (same pattern as buttons/zones) instead of going through the generic object inspector.
+- **Default colors updated** to match uploaded SVG assets: bouncer → `#461A0C`; button face → `#F52C2C`; button base → `#CFCFCF`; coin → `#FFDD00`.
+- **Bouncer spring animation**: the pad extends upward on trigger, then compresses hard, then small up/down oscillations before settling — a damped spring curve. If the player bounces again while the animation is still running, the amplitude ramps up (max ×3.5×).
+- **Coins**: new collectible koreen game item. Coins float up and down gently, disappear when the player touches them, and play a `coin.ogg` sound on collection. The editor shows a coin counter (`collected / total`) above the toolbar(s) during tester / host mode; a **Show Coin Counter** toggle in map config controls visibility. The counter is automatically hidden from the map if the map has no coins.
 - **Button interaction types**: buttons now have two modes — **Click** (existing behavior: player enters zone, a popup appears, clicking it triggers `button.pressed`) and **Collide** (new: triggers immediately and silently when the player walks onto the button, no popup). Collide buttons render as a pressure-plate graphic. Selectable via a Click / Collide toggle in the button edit popup; serialized as `buttonInteraction`.
 - **Default portal / bouncer colors** in map config: `defaultPortalColor` (default `#9b59b6`) and `defaultBouncerColor` (default `#f59e0b`) added to the World class; editable in the config panel's Default Colors section; serialized with the map; new portals and bouncers placed in the editor seed their color from these world defaults.
 - **Bouncer** game item: new koreen-type object that launches the player upward on contact; configurable bounce strength (5–50) per object; spring-pad visual with coils and upward arrow; uses world gravity for natural arc; 200ms cooldown to prevent re-triggering.
@@ -52,7 +61,7 @@ Development on `origin/next` (after the `v0.3` merge); not yet cut as a numbered
 
 ---
 
-## v1.4
+## v0.3
 
 _Git range: `origin/v0.2` → `origin/v0.3`._
 
@@ -72,7 +81,7 @@ _Git range: `origin/v0.2` → `origin/v0.3`._
 
 ---
 
-## v1.3
+## v0.2
 
 _Git range: `origin/V0.1` → `origin/v0.2`._
 
@@ -91,7 +100,7 @@ _Git range: `origin/V0.1` → `origin/v0.2`._
 
 ---
 
-## v1.2
+## v0.1
 
 _Git range: `origin/V0.0` → `origin/V0.1`. (Historical tip commit: “finish V1.1.0”.)_
 
@@ -106,7 +115,7 @@ _Git range: `origin/V0.0` → `origin/V0.1`. (Historical tip commit: “finish V
 
 ---
 
-## v1.1
+## v0.0
 
 _Git range: initial commit → `origin/V0.0`._
 

@@ -906,6 +906,24 @@ class Editor {
                         </div>
                     </div>
                 </div>
+
+                <!-- Coins -->
+                <div class="config-section collapsible">
+                    <div class="config-section-header">
+                        <span class="config-section-title">Coins</span>
+                        <span class="material-symbols-outlined config-section-arrow">expand_more</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="form-group">
+                            <label class="form-label">Show Coin Counter</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="config-show-coin-counter" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <small style="color: #888; font-size: 11px; display: block; margin-top: 4px;">Shows collected / total coins during gameplay. Automatically hidden if the map has no coins.</small>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Music -->
                 <div class="config-section collapsible">
@@ -2530,13 +2548,15 @@ class Editor {
             appearanceType: 'button',
             actingType: 'button',
             collision: false,
-            color: 'rgba(59, 130, 246, 0.35)',
+            color: '#F52C2C',
+            buttonColor2: '#CFCFCF',
             opacity: this.koreenSettings.opacity || 1,
             name: 'New Button',
             displayName: 'Button',
             displayDescription: '',
             buttonVisible: true,
             buttonInteraction: 'click',
+            buttonOnlyOnce: false,
             buttonWidth: null,
             buttonHeight: null
         });
@@ -2778,6 +2798,18 @@ class Editor {
             this.openButtonEditPopup(obj);
             return;
         }
+
+        // Special handling for coins
+        if (obj.appearanceType === 'coin') {
+            this.openCoinEditPopup(obj);
+            return;
+        }
+
+        // Special handling for bouncers
+        if (obj.appearanceType === 'bouncer') {
+            this.openBouncerEditPopup(obj);
+            return;
+        }
         
         this.editingObject = obj;
         const popup = this.ui.objectEditPopup;
@@ -3003,6 +3035,9 @@ class Editor {
     openButtonEditPopup(button) {
         let popup = document.getElementById('button-edit-popup');
         if (popup) popup.remove();
+
+        const col1 = button.color || '#F52C2C';
+        const col2 = button.buttonColor2 || '#CFCFCF';
         
         popup = document.createElement('div');
         popup.id = 'button-edit-popup';
@@ -3033,6 +3068,16 @@ class Editor {
                         <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;" id="button-interact-hint">${button.buttonInteraction === 'collide' ? 'Triggers when the player walks onto the button.' : 'Triggers when the player clicks the popup inside the zone.'}</div>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">One-Time Trigger</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <label class="toggle">
+                                <input type="checkbox" id="button-edit-only-once" ${button.buttonOnlyOnce ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span style="font-size: 12px; color: var(--text-muted);">Button can only be triggered once per play session.</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Display Name</label>
                         <input type="text" class="form-input" id="button-edit-display-name" value="${this.escapeAttr(button.displayName)}" placeholder="Title shown to player">
                     </div>
@@ -3046,6 +3091,25 @@ class Editor {
                             <input type="checkbox" id="button-edit-visible" ${button.buttonVisible ? 'checked' : ''}>
                             <span class="toggle-slider"></span>
                         </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Colors</label>
+                        <div style="display: flex; gap: 16px;">
+                            <div style="flex:1;">
+                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Face Color</div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <div id="button-edit-color1-preview" style="width:28px;height:28px;border-radius:5px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:${col1};flex-shrink:0;"></div>
+                                    <input type="text" class="form-input" id="button-edit-color1-input" value="${col1}" placeholder="#F52C2C" style="flex:1;font-size:12px;">
+                                </div>
+                            </div>
+                            <div style="flex:1;">
+                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Base / Border Color</div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <div id="button-edit-color2-preview" style="width:28px;height:28px;border-radius:5px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:${col2};flex-shrink:0;"></div>
+                                    <input type="text" class="form-input" id="button-edit-color2-input" value="${col2}" placeholder="#CFCFCF" style="flex:1;font-size:12px;">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Button Display Size</label>
@@ -3134,7 +3198,45 @@ class Editor {
             button.buttonVisible = e.target.checked;
             this.triggerMapChange();
         });
-        
+
+        // One-time trigger
+        document.getElementById('button-edit-only-once').addEventListener('change', (e) => {
+            button.buttonOnlyOnce = e.target.checked;
+            this.triggerMapChange();
+        });
+
+        // Color 1 (face)
+        const col1Preview = document.getElementById('button-edit-color1-preview');
+        const col1Input = document.getElementById('button-edit-color1-input');
+        col1Preview.addEventListener('click', () => col1Input.click());
+        col1Input.addEventListener('change', (e) => {
+            const c = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(c)) {
+                button.color = c;
+                col1Preview.style.background = c;
+                this.triggerMapChange();
+            }
+        });
+        col1Input.addEventListener('input', (e) => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) col1Preview.style.background = e.target.value;
+        });
+
+        // Color 2 (base/border)
+        const col2Preview = document.getElementById('button-edit-color2-preview');
+        const col2Input = document.getElementById('button-edit-color2-input');
+        col2Preview.addEventListener('click', () => col2Input.click());
+        col2Input.addEventListener('change', (e) => {
+            const c = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(c)) {
+                button.buttonColor2 = c;
+                col2Preview.style.background = c;
+                this.triggerMapChange();
+            }
+        });
+        col2Input.addEventListener('input', (e) => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) col2Preview.style.background = e.target.value;
+        });
+
         // Width
         document.getElementById('button-edit-width').addEventListener('change', (e) => {
             const val = parseInt(e.target.value);
@@ -3174,7 +3276,359 @@ class Editor {
         }
         this.editingButton = null;
     }
-    
+
+    openCoinEditPopup(coin) {
+        let popup = document.getElementById('coin-edit-popup');
+        if (popup) popup.remove();
+
+        popup = document.createElement('div');
+        popup.id = 'coin-edit-popup';
+        popup.className = 'modal-overlay';
+        popup.innerHTML = `
+            <div class="object-edit-panel" style="max-width: 400px;">
+                <div class="panel-header">
+                    <span class="panel-title">Edit Coin</span>
+                    <button class="btn btn-icon btn-ghost" id="close-coin-edit">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="form-label">Object Name</label>
+                        <input type="text" class="form-input" id="coin-edit-name" value="${this.escapeAttr(coin.name)}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Amount</label>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">How much this coin is worth when collected.</div>
+                        <input type="number" class="form-input" id="coin-edit-amount" value="${coin.coinAmount !== undefined ? coin.coinAmount : 1}" min="0" step="0.5" style="width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Activity Scope</label>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Whether collecting this coin affects all players or only the one who collected it.</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="placement-opt-btn ${(coin.coinActivityScope || 'global') === 'global' ? 'active' : ''}" id="coin-scope-global" style="flex:1; padding: 8px 6px; font-size: 13px;">Global</button>
+                            <button class="placement-opt-btn ${(coin.coinActivityScope || 'global') === 'player' ? 'active' : ''}" id="coin-scope-player" style="flex:1; padding: 8px 6px; font-size: 13px;">Player</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <div id="coin-edit-color-preview" style="width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:${coin.color || '#FFDD00'};flex-shrink:0;"></div>
+                            <input type="text" class="form-input" id="coin-edit-color-input" value="${coin.color || '#FFDD00'}" placeholder="#FFDD00" style="flex:1;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Opacity</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="coin-edit-opacity" min="0" max="100" value="${Math.round(coin.opacity * 100)}" style="flex: 1;">
+                            <span id="coin-edit-opacity-label" style="font-size: 12px; min-width: 35px;">${Math.round(coin.opacity * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                        <button class="btn btn-danger" id="coin-edit-delete" style="width: 100%;">
+                            <span class="material-symbols-outlined">delete</span>
+                            Delete Coin
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        popup.classList.add('active');
+
+        this.editingCoin = coin;
+
+        document.getElementById('close-coin-edit').addEventListener('click', () => this.closeCoinEditPopup());
+        popup.addEventListener('click', (e) => { if (e.target === popup) this.closeCoinEditPopup(); });
+
+        document.getElementById('coin-edit-name').addEventListener('change', (e) => {
+            coin.name = e.target.value || 'Coin';
+            this.updateLayersList();
+            this.triggerMapChange();
+        });
+
+        document.getElementById('coin-edit-amount').addEventListener('change', (e) => {
+            const val = parseFloat(e.target.value);
+            coin.coinAmount = isNaN(val) ? 1 : Math.max(0, val);
+            e.target.value = coin.coinAmount;
+            this.triggerMapChange();
+        });
+
+        document.getElementById('coin-scope-global').addEventListener('click', () => {
+            coin.coinActivityScope = 'global';
+            document.getElementById('coin-scope-global').classList.add('active');
+            document.getElementById('coin-scope-player').classList.remove('active');
+            this.triggerMapChange();
+        });
+        document.getElementById('coin-scope-player').addEventListener('click', () => {
+            coin.coinActivityScope = 'player';
+            document.getElementById('coin-scope-player').classList.add('active');
+            document.getElementById('coin-scope-global').classList.remove('active');
+            this.triggerMapChange();
+        });
+
+        const colorPreview = document.getElementById('coin-edit-color-preview');
+        const colorInput = document.getElementById('coin-edit-color-input');
+        colorPreview.addEventListener('click', () => colorInput.click());
+        colorInput.addEventListener('change', (e) => {
+            const c = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(c)) {
+                coin.color = c;
+                colorPreview.style.background = c;
+                this.triggerMapChange();
+            }
+        });
+        colorInput.addEventListener('input', (e) => {
+            const c = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(c)) {
+                colorPreview.style.background = c;
+            }
+        });
+
+        document.getElementById('coin-edit-opacity').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            coin.opacity = val / 100;
+            document.getElementById('coin-edit-opacity-label').textContent = val + '%';
+            this.triggerMapChange();
+        });
+
+        document.getElementById('coin-edit-delete').addEventListener('click', () => {
+            this.world.removeObject(coin.id);
+            this.closeCoinEditPopup();
+            this.updateLayersList();
+            this.triggerMapChange();
+        });
+    }
+
+    closeCoinEditPopup() {
+        const popup = document.getElementById('coin-edit-popup');
+        if (popup) {
+            popup.classList.remove('active');
+            setTimeout(() => popup.remove(), 200);
+        }
+        this.editingCoin = null;
+    }
+
+    openBouncerEditPopup(bouncer) {
+        let popup = document.getElementById('bouncer-edit-popup');
+        if (popup) popup.remove();
+
+        // Helper to build a direction picker widget HTML
+        const buildDirPicker = (idPrefix, selectedDir, label) => {
+            const dirs = [
+                { dir: 0,   label: '▲', pos: 'top' },
+                { dir: 90,  label: '▶', pos: 'right' },
+                { dir: 180, label: '▼', pos: 'bottom' },
+                { dir: 270, label: '◀', pos: 'left' }
+            ];
+            const btnStyle = (dir) => `
+                padding: 6px 10px; font-size: 15px; border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 6px; cursor: pointer; background: ${dir === selectedDir ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.07)'};
+                color: ${dir === selectedDir ? '#fff' : 'rgba(255,255,255,0.6)'};
+                transition: background 0.15s;
+            `.replace(/\s+/g, ' ');
+
+            const rotDeg = selectedDir;
+            return `
+                <div style="margin-bottom: 6px; font-size: 12px; color: var(--text-muted);">${label}</div>
+                <div style="display: grid; grid-template-columns: 40px 56px 40px; grid-template-rows: 40px 56px 40px; gap: 4px; width: fit-content; margin: 0 auto 8px;">
+                    <div></div>
+                    <button class="bouncer-dir-btn" data-picker="${idPrefix}" data-dir="0" style="${btnStyle(0)}">▲</button>
+                    <div></div>
+                    <button class="bouncer-dir-btn" data-picker="${idPrefix}" data-dir="270" style="${btnStyle(270)}">◀</button>
+                    <div style="display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.2);">
+                        <img src="/parkoreen/assets/svg/bouncer.svg" id="${idPrefix}-sprite" style="width:40px;height:40px;transform:rotate(${rotDeg}deg);transition:transform 0.2s;filter:sepia(0.3);" alt="bouncer">
+                    </div>
+                    <button class="bouncer-dir-btn" data-picker="${idPrefix}" data-dir="90" style="${btnStyle(90)}">▶</button>
+                    <div></div>
+                    <button class="bouncer-dir-btn" data-picker="${idPrefix}" data-dir="180" style="${btnStyle(180)}">▼</button>
+                    <div></div>
+                </div>
+            `;
+        };
+
+        const matchApp = bouncer.bouncerMatchAppearance !== false;
+        const launchDir = bouncer.bouncerDirection || 0;
+        const appearDir = bouncer.bouncerAppearanceDirection || 0;
+        const col1 = bouncer.color || '#461A0C';
+
+        popup = document.createElement('div');
+        popup.id = 'bouncer-edit-popup';
+        popup.className = 'modal-overlay';
+        popup.innerHTML = `
+            <div class="object-edit-panel" style="max-width: 440px;">
+                <div class="panel-header">
+                    <span class="panel-title">Edit Bouncer</span>
+                    <button class="btn btn-icon btn-ghost" id="close-bouncer-edit">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="form-label">Object Name</label>
+                        <input type="text" class="form-input" id="bouncer-edit-name" value="${this.escapeAttr(bouncer.name)}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Match Appearance</label>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">When enabled, the launch direction and appearance direction are the same.</div>
+                        <label class="toggle">
+                            <input type="checkbox" id="bouncer-edit-match-app" ${matchApp ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" id="bouncer-dir-unified" ${matchApp ? '' : 'style="display:none"'}>
+                        ${buildDirPicker('bouncer-unified', matchApp ? launchDir : launchDir, 'Direction (launch &amp; appearance)')}
+                    </div>
+                    <div id="bouncer-dir-split" ${matchApp ? 'style="display:none"' : ''}>
+                        <div class="form-group">
+                            ${buildDirPicker('bouncer-launch', launchDir, 'Launch Direction')}
+                        </div>
+                        <div class="form-group">
+                            ${buildDirPicker('bouncer-appear', appearDir, 'Appearance Direction')}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bounce Strength</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="bouncer-edit-strength" min="5" max="60" value="${bouncer.bouncerStrength !== undefined ? bouncer.bouncerStrength : 20}" style="flex: 1;">
+                            <span id="bouncer-edit-strength-label" style="font-size: 12px; min-width: 28px;">${bouncer.bouncerStrength !== undefined ? bouncer.bouncerStrength : 20}</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <div id="bouncer-edit-color-preview" style="width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:${col1};flex-shrink:0;"></div>
+                            <input type="text" class="form-input" id="bouncer-edit-color-input" value="${col1}" placeholder="#461A0C" style="flex:1;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Opacity</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="range" class="form-range" id="bouncer-edit-opacity" min="0" max="100" value="${Math.round(bouncer.opacity * 100)}" style="flex: 1;">
+                            <span id="bouncer-edit-opacity-label" style="font-size: 12px; min-width: 35px;">${Math.round(bouncer.opacity * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
+                        <button class="btn btn-danger" id="bouncer-edit-delete" style="width: 100%;">
+                            <span class="material-symbols-outlined">delete</span>
+                            Delete Bouncer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        popup.classList.add('active');
+
+        this.editingBouncer = bouncer;
+
+        document.getElementById('close-bouncer-edit').addEventListener('click', () => this.closeBouncerEditPopup());
+        popup.addEventListener('click', (e) => { if (e.target === popup) this.closeBouncerEditPopup(); });
+
+        document.getElementById('bouncer-edit-name').addEventListener('change', (e) => {
+            bouncer.name = e.target.value || 'Bouncer';
+            this.updateLayersList();
+            this.triggerMapChange();
+        });
+
+        // Match appearance toggle
+        document.getElementById('bouncer-edit-match-app').addEventListener('change', (e) => {
+            bouncer.bouncerMatchAppearance = e.target.checked;
+            const unified = document.getElementById('bouncer-dir-unified');
+            const split = document.getElementById('bouncer-dir-split');
+            if (e.target.checked) {
+                unified.style.display = '';
+                split.style.display = 'none';
+            } else {
+                unified.style.display = 'none';
+                split.style.display = '';
+            }
+            this.triggerMapChange();
+        });
+
+        // Direction picker button handler (delegated)
+        popup.addEventListener('click', (e) => {
+            const btn = e.target.closest('.bouncer-dir-btn');
+            if (!btn) return;
+            const picker = btn.dataset.picker;
+            const dir = parseInt(btn.dataset.dir);
+
+            // Update model
+            if (picker === 'bouncer-unified') {
+                bouncer.bouncerDirection = dir;
+                bouncer.bouncerAppearanceDirection = dir;
+            } else if (picker === 'bouncer-launch') {
+                bouncer.bouncerDirection = dir;
+            } else if (picker === 'bouncer-appear') {
+                bouncer.bouncerAppearanceDirection = dir;
+            }
+
+            // Update sprite rotation
+            const sprite = document.getElementById(picker + '-sprite');
+            if (sprite) sprite.style.transform = `rotate(${dir}deg)`;
+
+            // Update button highlight in picker
+            popup.querySelectorAll(`.bouncer-dir-btn[data-picker="${picker}"]`).forEach(b => {
+                const bDir = parseInt(b.dataset.dir);
+                const active = bDir === dir;
+                b.style.background = active ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.07)';
+                b.style.color = active ? '#fff' : 'rgba(255,255,255,0.6)';
+            });
+
+            this.triggerMapChange();
+        });
+
+        // Strength
+        document.getElementById('bouncer-edit-strength').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value) || 20;
+            bouncer.bouncerStrength = val;
+            document.getElementById('bouncer-edit-strength-label').textContent = val;
+            this.triggerMapChange();
+        });
+
+        // Color
+        const colorPreview = document.getElementById('bouncer-edit-color-preview');
+        const colorInput = document.getElementById('bouncer-edit-color-input');
+        colorPreview.addEventListener('click', () => colorInput.click());
+        colorInput.addEventListener('change', (e) => {
+            const c = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(c)) {
+                bouncer.color = c;
+                colorPreview.style.background = c;
+                this.triggerMapChange();
+            }
+        });
+        colorInput.addEventListener('input', (e) => {
+            const c = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(c)) {
+                colorPreview.style.background = c;
+            }
+        });
+
+        document.getElementById('bouncer-edit-opacity').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            bouncer.opacity = val / 100;
+            document.getElementById('bouncer-edit-opacity-label').textContent = val + '%';
+            this.triggerMapChange();
+        });
+
+        document.getElementById('bouncer-edit-delete').addEventListener('click', () => {
+            this.world.removeObject(bouncer.id);
+            this.closeBouncerEditPopup();
+            this.updateLayersList();
+            this.triggerMapChange();
+        });
+    }
+
+    closeBouncerEditPopup() {
+        const popup = document.getElementById('bouncer-edit-popup');
+        if (popup) {
+            popup.classList.remove('active');
+            setTimeout(() => popup.remove(), 200);
+        }
+        this.editingBouncer = null;
+    }
+
     escapeAttr(str) {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -3818,6 +4272,11 @@ class Editor {
 
         document.getElementById('config-collide').addEventListener('change', (e) => {
             this.world.collideWithEachOther = e.target.checked;
+            this.triggerMapChange();
+        });
+
+        document.getElementById('config-show-coin-counter').addEventListener('change', (e) => {
+            this.world.showCoinCounter = e.target.checked;
             this.triggerMapChange();
         });
 
@@ -6136,6 +6595,7 @@ class Editor {
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'checkpoint' ? 'active' : ''}" data-appearance="checkpoint">Checkpoint</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'zone' ? 'active' : ''}" data-appearance="zone">Zone</button>
                 <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'bouncer' ? 'active' : ''}" data-appearance="bouncer">Bouncer</button>
+                <button class="placement-opt-btn ${this.koreenSettings.appearanceType === 'coin' ? 'active' : ''}" data-appearance="coin">Coin</button>
             `;
             if (hkEnabled) {
                 koreenAppearanceHtml += `
@@ -6162,7 +6622,11 @@ class Editor {
                     <button class="placement-opt-btn active" data-acting="bouncer">Bouncer</button>
                 `;
                 this.koreenSettings.actingType = 'bouncer';
-                this.koreenSettings.color = this.world.defaultBouncerColor || '#f59e0b';
+                this.koreenSettings.color = this.world.defaultBouncerColor || '#461A0C';
+            } else if (this.koreenSettings.appearanceType === 'coin') {
+                actingBtns.innerHTML = `<button class="placement-opt-btn active" data-acting="coin">Coin</button>`;
+                this.koreenSettings.actingType = 'coin';
+                this.koreenSettings.collision = false;
             } else {
                 let koreenActingHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
@@ -7438,6 +7902,28 @@ class Editor {
         } else if (this.placementMode === PlacementMode.KOREEN) {
             settings = this.koreenSettings;
             type = 'koreen';
+            if (settings.appearanceType === 'coin') {
+                // Coin: single-click place, fixed 24x24 size, centered on click
+                const coinSize = Math.round(GRID_SIZE * 0.75);
+                const coin = new WorldObject({
+                    x: x + (GRID_SIZE - coinSize) / 2,
+                    y: y + (GRID_SIZE - coinSize) / 2,
+                    width: coinSize,
+                    height: coinSize,
+                    type: 'koreen',
+                    appearanceType: 'coin',
+                    actingType: 'coin',
+                    collision: false,
+                    color: '#FFDD00',
+                    opacity: this.koreenSettings.opacity || 1,
+                    name: 'Coin'
+                });
+                coin._bobOffset = Math.random() * Math.PI * 2; // randomize bob phase
+                coin.layer = 2;
+                this.world.addObject(coin);
+                this.triggerMapChange();
+                return;
+            }
         } else if (this.placementMode === PlacementMode.TEXT) {
             settings = this.textSettings;
             type = 'text';
@@ -8057,8 +8543,8 @@ class Editor {
 
         const bouncerColor = document.getElementById('config-bouncer-color');
         const bouncerPreview = document.getElementById('config-bouncer-color-preview');
-        if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#f59e0b';
-        if (bouncerPreview) bouncerPreview.style.background = this.world.defaultBouncerColor || '#f59e0b';
+if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#461A0C';
+                if (bouncerPreview) bouncerPreview.style.background = this.world.defaultBouncerColor || '#461A0C';
         
         // Cloud colors
         const cloudSkyColor = document.getElementById('config-cloud-sky');
@@ -8103,6 +8589,10 @@ class Editor {
         if (airjumpGroup) airjumpGroup.classList.toggle('hidden', this.world.infiniteJumps);
         if (airjumpCheck) airjumpCheck.checked = this.world.additionalAirjump;
         if (collideCheck) collideCheck.checked = this.world.collideWithEachOther;
+
+        // Coin counter
+        const showCoinCounter = document.getElementById('config-show-coin-counter');
+        if (showCoinCounter) showCoinCounter.checked = this.world.showCoinCounter !== false;
         
         // Die line Y
         const dieLineY = document.getElementById('config-die-line-y');

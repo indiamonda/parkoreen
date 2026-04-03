@@ -41,6 +41,16 @@ class AudioManager {
     loadSounds() {
         this.sounds.jump = new Audio('/parkoreen/assets/ogg/jump.ogg');
         this.sounds.jump.volume = this.volume;
+        this.sounds.coin = new Audio('/parkoreen/assets/ogg/coin.ogg');
+        this.sounds.coin.volume = this.volume;
+        this.sounds.bounce = new Audio('/parkoreen/assets/ogg/bounce.ogg');
+        this.sounds.bounce.volume = this.volume;
+        this.sounds.button = new Audio('/parkoreen/assets/ogg/button.ogg');
+        this.sounds.button.volume = this.volume;
+        this.sounds.checkpoint = new Audio('/parkoreen/assets/ogg/checkpoint.ogg');
+        this.sounds.checkpoint.volume = this.volume;
+        this.sounds.endpoint = new Audio('/parkoreen/assets/ogg/endpoint.ogg');
+        this.sounds.endpoint.volume = this.volume;
     }
 
     setVolume(vol) {
@@ -989,8 +999,15 @@ class WorldObject {
         // Zone-specific property
         this.zoneName = config.zoneName || null;
 
-        // Bouncer-specific property
+        // Bouncer-specific properties
         this.bouncerStrength = config.bouncerStrength !== undefined ? config.bouncerStrength : 20;
+        this.bouncerDirection = config.bouncerDirection !== undefined ? config.bouncerDirection : 0; // 0=up, 90=right, 180=down, 270=left
+        this.bouncerMatchAppearance = config.bouncerMatchAppearance !== undefined ? config.bouncerMatchAppearance : true;
+        this.bouncerAppearanceDirection = config.bouncerAppearanceDirection !== undefined ? config.bouncerAppearanceDirection : 0;
+
+        // Coin-specific properties
+        this.coinAmount = config.coinAmount !== undefined ? config.coinAmount : 1;
+        this.coinActivityScope = config.coinActivityScope || 'global'; // 'global' | 'player'
 
         // Damage amount (for spikes and spinners)
         this.damageAmount = config.damageAmount !== undefined ? config.damageAmount : 1;
@@ -1006,6 +1023,8 @@ class WorldObject {
         this.buttonWidth = config.buttonWidth || null;
         this.buttonHeight = config.buttonHeight || null;
         this.buttonInteraction = config.buttonInteraction || 'click'; // 'click' | 'collide'
+        this.buttonOnlyOnce = config.buttonOnlyOnce !== undefined ? config.buttonOnlyOnce : false;
+        this.buttonColor2 = config.buttonColor2 || '#CFCFCF';
 
         // Teleportal-specific properties
         this.teleportalName = config.teleportalName || null;
@@ -1037,7 +1056,8 @@ class WorldObject {
             teleportal: 'Teleportal',
             soulStatue: 'Soul Statue',
             button: 'Button',
-            bouncer: 'Bouncer'
+            bouncer: 'Bouncer',
+            coin: 'Coin'
         };
         return typeNames[this.appearanceType] || 'Object';
     }
@@ -1096,6 +1116,8 @@ class WorldObject {
             this.renderButton(ctx, screenX, screenY, width, height);
         } else if (at === 'bouncer') {
             this.renderBouncer(ctx, screenX, screenY, width, height);
+        } else if (at === 'coin') {
+            if (!this._collected) this.renderCoin(ctx, screenX, screenY, width, height);
         } else if (at === 'teleportal' || this.type === 'teleportal') {
             this.renderTeleportal(ctx, screenX, screenY, width, height);
         } else if (at === 'soulStatue') {
@@ -1345,7 +1367,7 @@ class WorldObject {
             const by = y + h - plateH;
 
             // Shadow / depth
-            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillStyle = this.buttonColor2 || '#CFCFCF';
             ctx.fillRect(bx + 3, by + 5, bw, plateH);
 
             // Main surface (rounded top)
@@ -1359,7 +1381,7 @@ class WorldObject {
             ctx.lineTo(bx, by + r);
             ctx.quadraticCurveTo(bx, by, bx + r, by);
             ctx.closePath();
-            ctx.fillStyle = this.color || '#4ade80';
+            ctx.fillStyle = this.color || '#F52C2C';
             ctx.fill();
 
             // Shine strip
@@ -1413,9 +1435,9 @@ class WorldObject {
         ctx.quadraticCurveTo(bx, by, bx + r, by);
         ctx.closePath();
         
-        ctx.fillStyle = this.color || 'rgba(59, 130, 246, 0.35)';
+        ctx.fillStyle = this.color || '#F52C2C';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.9)';
+        ctx.strokeStyle = this.buttonColor2 || '#CFCFCF';
         ctx.lineWidth = 2;
         ctx.stroke();
         
@@ -1430,57 +1452,143 @@ class WorldObject {
         }
     }
 
+    renderCoin(ctx, x, y, w, h) {
+        const now = Date.now();
+        const bob = Math.sin(now / 400 + (this._bobOffset || 0)) * 4; // gentle float
+        const cx = x + w / 2;
+        const cy = y + h / 2 + bob;
+        const r = Math.min(w, h) * 0.42;
+
+        // Outer glow
+        const grd = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 1.4);
+        grd.addColorStop(0, 'rgba(255, 230, 60, 0.35)');
+        grd.addColorStop(1, 'rgba(255, 230, 60, 0)');
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2);
+        ctx.fillStyle = grd;
+        ctx.fill();
+
+        // Coin body
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = this.color || '#FFDD00';
+        ctx.fill();
+
+        // Shine highlight
+        ctx.beginPath();
+        ctx.arc(cx - r * 0.22, cy - r * 0.28, r * 0.42, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 220, 0.55)';
+        ctx.fill();
+
+        // Rim
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#c8960c';
+        ctx.lineWidth = Math.max(1.5, r * 0.12);
+        ctx.stroke();
+
+        // $ symbol
+        const fs = Math.max(8, Math.round(r * 0.95));
+        ctx.font = `bold ${fs}px "Parkoreen Game", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#7a5500';
+        ctx.fillText('$', cx, cy + 1);
+    }
+
     renderBouncer(ctx, x, y, w, h) {
-        const color = this.color || '#f59e0b';
+        const color = this.color || '#461A0C';
 
-        // Main pad surface (top 30%)
-        const padH = Math.max(6, h * 0.3);
-        const padY = y;
+        // Determine appearance direction
+        const appearDir = this.bouncerMatchAppearance !== false
+            ? (this.bouncerDirection || 0)
+            : (this.bouncerAppearanceDirection || 0);
 
-        // Body / base (bottom 70%)
+        // If not pointing up, rotate the whole render around the object center
+        const needsRotation = appearDir !== 0;
+        if (needsRotation) {
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(appearDir * Math.PI / 180);
+            ctx.translate(-(x + w / 2), -(y + h / 2));
+        }
+
+        // Spring animation: damped oscillation offset on the pad
+        // Positive offset = pad moves DOWN (compress), negative = pad moves UP (extend)
+        let padOffset = 0;
+        if (this._bounceAnimStart) {
+            const ANIM_DURATION = 700;
+            const elapsed = Date.now() - this._bounceAnimStart;
+            if (elapsed < ANIM_DURATION) {
+                const t = elapsed / 1000; // seconds
+                const A = Math.min(h * 0.35, 14) * (this._bounceIntensity || 1);
+                // Negative: pad shoots UP first, then down (hard), then small up/down
+                // sin(ωt)*e^(-dt): starts 0, goes positive → pad would go up, but we negate for "extend up"
+                padOffset = -A * Math.exp(-5 * t) * Math.sin(18 * t);
+            } else {
+                this._bounceAnimStart = null;
+                this._bounceIntensity = 1;
+            }
+        }
+
+        // Clamp offset so pad stays within reasonable bounds
+        const maxUp = h * 0.45;  // how far pad can go up
+        const maxDown = h * 0.25; // how far pad can compress down
+        padOffset = Math.max(-maxUp, Math.min(maxDown, padOffset));
+
+        // Pad (top surface)
+        const padH = Math.max(5, h * 0.22);
+        const padY = y + padOffset;  // moves with animation
+
+        // Base fills from padBottom down to the bottom of the zone
         const baseY = padY + padH;
-        const baseH = h - padH;
+        const baseH = Math.max(0, (y + h) - baseY);
 
-        // Draw base (slightly darkened via save/restore)
+        // Base (slightly darkened)
         ctx.save();
         ctx.globalAlpha *= 0.7;
         ctx.fillStyle = color;
-        ctx.fillRect(x + w * 0.1, baseY, w * 0.8, baseH);
+        if (baseH > 0) ctx.fillRect(x + w * 0.12, baseY, w * 0.76, baseH);
         ctx.restore();
 
-        // Draw spring coils in the base
-        const coils = Math.max(2, Math.floor(h / 16));
-        const coilH = baseH / coils;
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 1.5;
-        for (let i = 0; i < coils; i++) {
-            const cy = baseY + i * coilH + coilH / 2;
-            ctx.beginPath();
-            ctx.moveTo(x + w * 0.15, cy);
-            ctx.lineTo(x + w * 0.85, cy);
-            ctx.stroke();
+        // Spring coils — squash/stretch with animation
+        if (baseH > 4) {
+            const coils = Math.max(2, Math.floor(baseH / 12));
+            const coilH = baseH / coils;
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < coils; i++) {
+                const cy = baseY + i * coilH + coilH / 2;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.18, cy);
+                ctx.lineTo(x + w * 0.82, cy);
+                ctx.stroke();
+            }
         }
 
-        // Draw bright bouncy pad on top
+        // Pad surface (top)
         ctx.fillStyle = color;
         ctx.fillRect(x, padY, w, padH);
 
         // Shine strip on pad
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.fillRect(x + w * 0.05, padY + padH * 0.15, w * 0.9, padH * 0.3);
+        ctx.fillRect(x + w * 0.05, padY + padH * 0.12, w * 0.9, padH * 0.28);
 
-        // Up-arrow indicator above the pad
+        // Up-arrow — moves with pad
         const arrowCx = x + w / 2;
-        const arrowTipY = padY - Math.min(h * 0.25, 10);
-        const arrowBaseY = padY;
-        const arrowHalfW = w * 0.18;
+        const arrowTipY = padY - Math.min(h * 0.22, 10);
+        const arrowHalfW = w * 0.16;
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         ctx.beginPath();
         ctx.moveTo(arrowCx, arrowTipY);
-        ctx.lineTo(arrowCx - arrowHalfW, arrowBaseY);
-        ctx.lineTo(arrowCx + arrowHalfW, arrowBaseY);
+        ctx.lineTo(arrowCx - arrowHalfW, padY);
+        ctx.lineTo(arrowCx + arrowHalfW, padY);
         ctx.closePath();
         ctx.fill();
+
+        if (needsRotation) {
+            ctx.restore();
+        }
     }
 
     renderTeleportal(ctx, x, y, w, h) {
@@ -1762,6 +1870,11 @@ class WorldObject {
             dropHurtOnly: this.dropHurtOnly,
             zoneName: this.zoneName,
             bouncerStrength: this.bouncerStrength,
+            bouncerDirection: this.bouncerDirection,
+            bouncerMatchAppearance: this.bouncerMatchAppearance,
+            bouncerAppearanceDirection: this.bouncerAppearanceDirection,
+            coinAmount: this.coinAmount,
+            coinActivityScope: this.coinActivityScope,
             spinSpeed: this.spinSpeed,
             displayName: this.displayName,
             displayDescription: this.displayDescription,
@@ -1769,6 +1882,8 @@ class WorldObject {
             buttonWidth: this.buttonWidth,
             buttonHeight: this.buttonHeight,
             buttonInteraction: this.buttonInteraction,
+            buttonOnlyOnce: this.buttonOnlyOnce,
+            buttonColor2: this.buttonColor2,
             teleportalName: this.teleportalName,
             sendTo: this.sendTo,
             receiveFrom: this.receiveFrom,
@@ -1890,7 +2005,8 @@ class World {
         this.defaultSpikeColor = '#c45a3f';
         this.defaultTextColor = '#000000';
         this.defaultPortalColor = '#9b59b6';
-        this.defaultBouncerColor = '#f59e0b';
+        this.defaultBouncerColor = '#461A0C';
+        this.showCoinCounter = true;
         
         // Cloud color settings (null = auto based on background)
         this.cloudColorSky = '#ffffff';      // White for sky background
@@ -2712,6 +2828,7 @@ class World {
             defaultTextColor: this.defaultTextColor,
             defaultPortalColor: this.defaultPortalColor,
             defaultBouncerColor: this.defaultBouncerColor,
+            showCoinCounter: this.showCoinCounter,
             cloudColorSky: this.cloudColorSky,
             cloudColorGalaxy: this.cloudColorGalaxy,
             checkpointDefaultColor: this.checkpointDefaultColor,
@@ -2752,7 +2869,8 @@ class World {
         this.defaultSpikeColor = data.defaultSpikeColor || '#c45a3f';
         this.defaultTextColor = data.defaultTextColor || '#000000';
         this.defaultPortalColor = data.defaultPortalColor || '#9b59b6';
-        this.defaultBouncerColor = data.defaultBouncerColor || '#f59e0b';
+        this.defaultBouncerColor = data.defaultBouncerColor || '#461A0C';
+        this.showCoinCounter = data.showCoinCounter !== false;
         this.cloudColorSky = data.cloudColorSky || '#ffffff';
         this.cloudColorGalaxy = data.cloudColorGalaxy || '#9382a8';
         this.checkpointDefaultColor = data.checkpointDefaultColor || '#808080';
@@ -3821,8 +3939,10 @@ class GameEngine {
                     const centerX = obj.x + obj.width / 2;
                     const centerY = obj.y + obj.height / 2;
                     this.spawnCheckpointParticles(centerX, centerY, this.world.checkpointActiveColor);
+                    if (this.audioManager) this.audioManager.play('checkpoint');
                 }
             } else if (obj.actingType === 'endpoint') {
+                if (this.audioManager) this.audioManager.play('endpoint');
                 this.onGameEnd();
             }
         }
@@ -3852,6 +3972,9 @@ class GameEngine {
 
         // Check for bouncer collisions
         this.checkBouncerCollisions();
+
+        // Check for coin collisions
+        this.checkCoinCollisions();
     }
     
     checkButtonCollisions() {
@@ -3875,13 +3998,18 @@ class GameEngine {
             if (!obj._playerInside) {
                 obj._playerInside = true;
                 if (obj.buttonInteraction === 'collide') {
-                    // Immediate trigger — no popup
-                    if (window.PluginManager) {
-                        window.PluginManager.executeHook('button.pressed', {
-                            button: obj,
-                            player: this.localPlayer,
-                            world: this.world
-                        });
+                    // Only trigger if not yet spent (for onlyOnce buttons)
+                    if (!obj.buttonOnlyOnce || !obj._triggered) {
+                        if (obj.buttonOnlyOnce) obj._triggered = true;
+                        // Immediate trigger — no popup
+                        if (this.audioManager) this.audioManager.play('button');
+                        if (window.PluginManager) {
+                            window.PluginManager.executeHook('button.pressed', {
+                                button: obj,
+                                player: this.localPlayer,
+                                world: this.world
+                            });
+                        }
                     }
                 } else {
                     this.showButtonUI(obj);
@@ -3891,6 +4019,8 @@ class GameEngine {
     }
     
     showButtonUI(buttonObj) {
+        // Don't show if this is a one-time button already triggered
+        if (buttonObj.buttonOnlyOnce && buttonObj._triggered) return;
         // Don't show if one is already visible for this button
         if (document.getElementById('game-button-ui')) return;
         
@@ -3953,6 +4083,8 @@ class GameEngine {
         // Click panel (not close) = trigger
         panel.addEventListener('click', () => {
             overlay.remove();
+            if (buttonObj.buttonOnlyOnce) buttonObj._triggered = true;
+            if (this.audioManager) this.audioManager.play('button');
             // Fire button trigger via plugin hook
             if (window.PluginManager) {
                 window.PluginManager.executeHook('button.pressed', {
@@ -4027,6 +4159,41 @@ class GameEngine {
         }
     }
 
+    checkCoinCollisions() {
+        if (!this.localPlayer || this.localPlayer.isDead) return;
+        const playerBox = this.localPlayer.getGroundTouchbox();
+        const nearby = this.world.queryNear(playerBox.x, playerBox.y, playerBox.width, playerBox.height);
+        let anyCollected = false;
+        for (let ni = 0; ni < nearby.length; ni++) {
+            const obj = nearby[ni];
+            if (obj.appearanceType !== 'coin') continue;
+            if (obj._collected) continue;
+            if (!this.localPlayer.boxIntersects(playerBox, obj)) continue;
+            obj._collected = true;
+            this.coinsCollected = (this.coinsCollected || 0) + (typeof obj.coinAmount === 'number' ? obj.coinAmount : 1);
+            anyCollected = true;
+            // Play coin sound
+            if (this.audioManager) this.audioManager.play('coin');
+            // Collect sparkle particles
+            const cx = obj.x + obj.width / 2;
+            const cy = obj.y + obj.height / 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const speed = 50 + Math.random() * 50;
+                this.particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 0.5 + Math.random() * 0.3,
+                    maxLife: 0.5 + Math.random() * 0.3,
+                    size: 3 + Math.random() * 3,
+                    color: '#f5c518'
+                });
+            }
+        }
+        if (anyCollected) this.updateCoinCounterUI();
+    }
+
     checkBouncerCollisions() {
         if (!this.localPlayer || this.localPlayer.isDead) return;
 
@@ -4046,9 +4213,30 @@ class GameEngine {
             if (obj._lastBounceTime && now - obj._lastBounceTime < BOUNCER_COOLDOWN) continue;
 
             const strength = typeof obj.bouncerStrength === 'number' ? obj.bouncerStrength : 20;
-            this.localPlayer.vy = -strength;
-            this.localPlayer.isOnGround = false;
+            const bouncerDir = typeof obj.bouncerDirection === 'number' ? obj.bouncerDirection : 0;
+            if (bouncerDir === 90) { // right
+                this.localPlayer.vx = strength;
+            } else if (bouncerDir === 180) { // down
+                this.localPlayer.vy = strength;
+                this.localPlayer.isOnGround = false;
+            } else if (bouncerDir === 270) { // left
+                this.localPlayer.vx = -strength;
+            } else { // 0 = up (default)
+                this.localPlayer.vy = -strength;
+                this.localPlayer.isOnGround = false;
+            }
+
+            // Spring animation state
+            const BOUNCE_ANIM_DURATION = 700;
+            if (obj._bounceAnimStart && now - obj._bounceAnimStart < BOUNCE_ANIM_DURATION) {
+                obj._bounceIntensity = Math.min((obj._bounceIntensity || 1) + 0.6, 3.5);
+            } else {
+                obj._bounceIntensity = 1;
+            }
+            obj._bounceAnimStart = now;
+
             obj._lastBounceTime = now;
+            if (this.audioManager) this.audioManager.play('bounce');
 
             // Spawn a small burst of particles at the bounce point
             const cx = obj.x + obj.width / 2;
@@ -4262,6 +4450,61 @@ class GameEngine {
             this._hudData.yOffset = 20;
             window.PluginManager.executeHook('render.hud', this._hudData);
         }
+        this.updateCoinCounterUI();
+    }
+
+    updateCoinCounterUI() {
+        if (!this.world.showCoinCounter) {
+            const existing = document.getElementById('coin-counter-ui');
+            if (existing) existing.remove();
+            return;
+        }
+        const totalCoins = this.world.objects.filter(o => o.appearanceType === 'coin').length;
+        if (totalCoins === 0) {
+            const existing = document.getElementById('coin-counter-ui');
+            if (existing) existing.remove();
+            return;
+        }
+        let el = document.getElementById('coin-counter-ui');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'coin-counter-ui';
+            el.style.cssText = [
+                'position:fixed',
+                'left:50%',
+                'transform:translateX(-50%)',
+                'background:rgba(15,15,30,0.88)',
+                'border:1px solid rgba(245,197,24,0.6)',
+                'border-radius:20px',
+                'padding:5px 16px',
+                'display:flex',
+                'align-items:center',
+                'gap:6px',
+                'font-size:15px',
+                'font-weight:700',
+                'color:#f5c518',
+                'pointer-events:none',
+                'z-index:9990',
+                'transition:bottom 0.25s ease',
+                'white-space:nowrap'
+            ].join(';');
+            el.innerHTML = '<span style="font-size:18px;">&#9678;</span><span id="coin-counter-text"></span>';
+            document.body.appendChild(el);
+        }
+        // Position above the highest visible toolbar
+        const toolbarEls = Array.from(document.querySelectorAll(
+            '.toolbar:not(.hidden), .placement-toolbar.active, #admin-toolbar:not(.hidden)'
+        ));
+        let bottomOffset = 24;
+        for (const tb of toolbarEls) {
+            const rect = tb.getBoundingClientRect();
+            if (rect.width === 0) continue;
+            const spaceAbove = window.innerHeight - rect.top + 8;
+            if (spaceAbove > bottomOffset) bottomOffset = spaceAbove;
+        }
+        el.style.bottom = bottomOffset + 'px';
+        const collected = this.coinsCollected || 0;
+        document.getElementById('coin-counter-text').textContent = `${collected} / ${totalCoins}`;
     }
 
     startGame(playerName, playerColor) {
@@ -4270,6 +4513,12 @@ class GameEngine {
         this.lastCheckpoint = null;
         this._onCheckpointObj = null;
         this.gameStartTime = Date.now();
+        // Reset coin state
+        this.coinsCollected = 0;
+        for (const obj of this.world.objects) {
+            if (obj.appearanceType === 'coin') obj._collected = false;
+            if (obj.appearanceType === 'button') obj._triggered = false;
+        }
         
         // Regenerate clouds for new game session
         this.regenerateClouds();
@@ -4323,6 +4572,12 @@ class GameEngine {
         this.lastCheckpoint = null;
         this._onCheckpointObj = null;
         this.gameStartTime = Date.now();
+        // Reset coin state
+        this.coinsCollected = 0;
+        for (const obj of this.world.objects) {
+            if (obj.appearanceType === 'coin') obj._collected = false;
+            if (obj.appearanceType === 'button') obj._triggered = false;
+        }
         
         // Regenerate clouds for test session
         this.regenerateClouds();
@@ -4381,6 +4636,10 @@ class GameEngine {
 
         const buttonUI = document.getElementById('game-button-ui');
         if (buttonUI) buttonUI.remove();
+        const coinUI = document.getElementById('coin-counter-ui');
+        if (coinUI) coinUI.remove();
+        // Reset collected flags
+        for (const obj of this.world.objects) { if (obj.appearanceType === 'coin') obj._collected = false; }
         
         for (const obj of this.world.objects) {
             if (obj.appearanceType === 'button') obj._playerInside = false;
