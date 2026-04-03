@@ -2447,6 +2447,7 @@ a:hover {
     justify-content: space-between;
     padding: var(--spacing-lg) var(--spacing-xl);
     flex-shrink: 0;
+    position: relative;
 }
 
 .page-header-left,
@@ -2457,13 +2458,18 @@ a:hover {
 }
 
 .page-title {
-    font-family: Parkoreen Game;
-    font-size: 1.5rem;
+    font-family: 'Tektur', sans-serif;
+    font-size: 2.2rem;
     font-weight: 700;
     background: linear-gradient(135deg, var(--primary-light), var(--secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 .page-content {

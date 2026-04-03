@@ -3097,38 +3097,6 @@ class GameEngine {
         this.audioManager.loadVolumeFromStorage();
     }
     
-    // Spawn small dust particles when the player walks on the ground
-    spawnWalkParticles(player, dt) {
-        if (!player || !player.isOnGround || player.isDead) return;
-        const moving = Math.abs(player.vx) > 0.5;
-        if (!moving) {
-            this._walkParticleTimer = 0;
-            return;
-        }
-        this._walkParticleTimer += dt;
-        const interval = 0.12;
-        if (this._walkParticleTimer < interval) return;
-        this._walkParticleTimer -= interval;
-
-        // Spawn 2 dust puffs from the player's feet
-        for (let i = 0; i < 2; i++) {
-            const side = i === 0 ? -1 : 1;
-            this.particles.push({
-                x: player.x + player.width / 2 + side * (player.width * 0.25 + Math.random() * 4),
-                y: player.y + player.height + Math.random() * 2,
-                vx: -player.vx * 0.25 + (Math.random() - 0.5) * 30,
-                vy: -(10 + Math.random() * 20),
-                size: 2 + Math.random() * 2.5,
-                color: player.color,
-                alpha: 0.45,
-                life: 0.45,
-                maxAlpha: 0.45,
-                decay: 0.04 + Math.random() * 0.03,
-                shape: 'circle'
-            });
-        }
-    }
-
     // Spawn circular particles (for checkpoint touch effect)
     spawnCheckpointParticles(x, y, color = '#4CAF50') {
         const particleCount = 14;
@@ -3151,7 +3119,28 @@ class GameEngine {
             });
         }
     }
-    
+
+    spawnWalkParticles(player) {
+        if (!player.isOnGround || player.isFlying) return;
+        const moving = Math.abs(player.vx) > 0.5;
+        if (!moving) return;
+        const px = player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 0.6;
+        const py = player.y + player.height;
+        this.particles.push({
+            x: px,
+            y: py,
+            vx: (Math.random() - 0.5) * 30,
+            vy: -(10 + Math.random() * 20),
+            size: 2 + Math.random() * 2,
+            color: player.color,
+            alpha: 0.5,
+            life: 0.5 + Math.random() * 0.3,
+            decay: 0.04 + Math.random() * 0.02,
+            maxAlpha: 0.5,
+            shape: 'circle'
+        });
+    }
+
     updateParticles(dt) {
         const cam = this.camera;
         const vpL = cam.x - 200;
@@ -3965,7 +3954,15 @@ class GameEngine {
             // Particles only in play mode
             this.updateParticles(deltaTime);
             this.updatePortalParticles(deltaTime);
-            this.spawnWalkParticles(this.localPlayer, deltaTime);
+
+            // Walking particles
+            if (this.localPlayer && !this.localPlayer.isDead) {
+                this._walkParticleTimer += deltaTime;
+                if (this._walkParticleTimer >= 0.06) {
+                    this._walkParticleTimer = 0;
+                    this.spawnWalkParticles(this.localPlayer);
+                }
+            }
         } else if (this.state === GameState.EDITOR) {
             if (this.localPlayer) {
                 if (this.localPlayer.isFlying) {
