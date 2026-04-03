@@ -26,21 +26,36 @@
       <h1>&#11044; Teleportal</h1>
     </div>
 
-    <p class="subtitle">Linked portal pairs. Unchanged from v0.2.</p>
+    <p class="subtitle">Linked portals that instantly transport the player between map locations.</p>
 
     <h2>Overview</h2>
-    <p>Teleportals are placed in pairs linked by a shared <strong>Portal ID</strong>. When the player enters one portal they are transported to the partner portal.</p>
+    <p>Teleportals warp the player to a linked destination portal on contact. Each portal has a unique name and two connection lists — <strong>Send To</strong> and <strong>Receive From</strong>. A connection is active only when both sides are configured.</p>
+
+    <h2>Linking portals</h2>
+    <p>Portal A sends to B only when A lists B in its <strong>Send To</strong> <em>and</em> B lists A in its <strong>Receive From</strong>. Setting only one side creates no connection.</p>
+    <ol>
+      <li>Place portal <strong>A</strong> — give it a unique name, e.g. <code>A</code>.</li>
+      <li>Add <code>B</code> to portal A's <strong>Send To</strong> list.</li>
+      <li>Place portal <strong>B</strong> — give it a unique name, e.g. <code>B</code>.</li>
+      <li>Add <code>A</code> to portal B's <strong>Receive From</strong> list.</li>
+    </ol>
 
     <h2>Config options</h2>
     <table class="wiki-table">
       <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Portal ID</td><td>0</td><td>Links two portals with the same ID.</td></tr>
-        <tr><td>Color</td><td>#8844ff</td><td>Portal ring color.</td></tr>
+        <tr><td>Teleportal Name</td><td>(required)</td><td>Unique identifier for this portal.</td></tr>
+        <tr><td>Send To</td><td>(empty)</td><td>List of portal names this portal sends the player to on contact.</td></tr>
+        <tr><td>Receive From</td><td>(empty)</td><td>List of portal names allowed to send players here.</td></tr>
+        <tr><td>Color</td><td>#8844ff</td><td>Portal glow color.</td></tr>
         <tr><td>Opacity</td><td>100</td><td>Transparency 0&#8211;100.</td></tr>
         <tr><td>Layer</td><td>0</td><td>Draw order.</td></tr>
       </tbody>
     </table>
+
+    <div class="note warn">
+      A link requires both sides: A's <strong>Send To</strong> must contain B, and B's <strong>Receive From</strong> must contain A.
+    </div>
   </div>
   <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
 </body>

@@ -28,22 +28,26 @@
     </div>
 
     <h2>Overview</h2>
-    <p>Teleportals are portal objects that warp the player to a named destination portal when touched. They emit a particle ring effect. Portals are linked by matching their <code>teleportalName</code> identifiers in the <strong>Send To</strong> field.</p>
+    <p>Teleportals warp the player to a linked destination portal on contact. Each teleportal has a unique name and two connection lists — <strong>Send To</strong> (portals this portal sends players to) and <strong>Receive From</strong> (portals allowed to send players here).</p>
 
     <h2>Linking portals</h2>
+    <p>A link is only active when <strong>both sides are configured</strong>: portal A must list B in its <strong>Send To</strong>, and portal B must list A in its <strong>Receive From</strong>. Setting only one side creates no connection.</p>
     <ol>
-      <li>Place portal <strong>A</strong> — set name to <code>A</code>, set "Send To" to <code>B</code>.</li>
-      <li>Place portal <strong>B</strong> — set name to <code>B</code>, set "Send To" to <code>A</code> for two-way travel.</li>
+      <li>Place portal <strong>A</strong> — give it a unique name, e.g. <code>A</code>.</li>
+      <li>Add <code>B</code> to portal A's <strong>Send To</strong> list.</li>
+      <li>Place portal <strong>B</strong> — give it a unique name, e.g. <code>B</code>.</li>
+      <li>Add <code>A</code> to portal B's <strong>Receive From</strong> list.</li>
     </ol>
-    <p>Entering portal A teleports the player to portal B's position, and vice versa. You can link one portal to multiple destinations by comma-separating names in the <strong>Send To</strong> field.</p>
+    <p>The editor highlights connections in <span style="color:#4ade80">green</span> when both sides are set (valid) and <span style="color:#f87171">red</span> when only one side is set (no teleport). A portal can have multiple Send To entries to link to several destinations.</p>
 
     <h2>Config options</h2>
     <table class="wiki-table">
       <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Teleportal Name</td><td>(required)</td><td>Unique identifier used by other portals' <em>Send To</em> lists.</td></tr>
-        <tr><td>Send To</td><td>(empty)</td><td>Comma-separated teleportal names to send the player to on contact.</td></tr>
-        <tr><td>Color</td><td>#9b59b6</td><td>Portal ring / glow color.</td></tr>
+        <tr><td>Teleportal Name</td><td>(required)</td><td>Unique identifier for this portal. Used in other portals' Send To / Receive From lists.</td></tr>
+        <tr><td>Send To</td><td>(empty)</td><td>List of portal names this portal sends the player to on contact.</td></tr>
+        <tr><td>Receive From</td><td>(empty)</td><td>List of portal names allowed to send players here.</td></tr>
+        <tr><td>Color</td><td>#9b59b6</td><td>Portal glow color.</td></tr>
         <tr><td>Opacity</td><td>100</td><td>Transparency 0–100.</td></tr>
         <tr><td>Rotation</td><td>0°</td><td>Visual rotation.</td></tr>
         <tr><td>Flip Horizontal</td><td>Off</td><td>Mirrors the portal sprite.</td></tr>
@@ -52,7 +56,7 @@
     </table>
 
     <div class="note warn">
-      A portal without a <strong>Send To</strong> value will not teleport the player anywhere.
+      A link requires both sides: A's <strong>Send To</strong> must contain B, and B's <strong>Receive From</strong> must contain A. One-way entries produce no connection.
     </div>
   </div>
   <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
