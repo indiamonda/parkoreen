@@ -282,6 +282,12 @@ class Editor {
         }
     }
 
+    playTileSound() {
+        if (this.engine && this.engine.audioManager) {
+            this.engine.audioManager.play('place');
+        }
+    }
+
     setupEngineCallbacks() {
         this.engine.onKeyPress = (e) => this.handleKeyPress(e);
         this.engine.onMouseMoveCallback = (e) => this.handleMouseMove(e);
@@ -6017,6 +6023,7 @@ class Editor {
         this.updateSelectionCount();
         this.updateLayersList();
         this.triggerMapChange();
+        this.playTileSound();
         this.showToast(`Duplicated ${newSelection.size} objects`, 'success');
     }
     
@@ -6149,6 +6156,7 @@ class Editor {
                     this.endUndoTransaction();
                 }
                 this.triggerMapChange();
+                this.playTileSound();
             }
             
             this.selectionMovingObjects = null;
@@ -8020,6 +8028,7 @@ class Editor {
                     this.world.addObject(clone);
                     this.movingObject = clone;
                     this.triggerMapChange();
+                    this.playTileSound();
                 }
                 break;
             
@@ -8183,6 +8192,7 @@ class Editor {
                 this.endUndoTransaction();
             }
             this.triggerMapChange();
+            this.playTileSound();
         }
         
         // Finish rotation drag

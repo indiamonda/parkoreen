@@ -2416,6 +2416,7 @@ class World {
     _isStaticObject(obj) {
         const at = obj.appearanceType;
         if (at === 'zone' || at === 'button') return false;
+        if (at === 'coin') return false;
         if (at === 'checkpoint') return false;
         if (obj.type === 'spinner' || at === 'spinner') return false;
         if (obj.type === 'text') return false;

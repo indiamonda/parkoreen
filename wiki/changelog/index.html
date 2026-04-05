@@ -63,6 +63,7 @@
       <li><strong>Add Type expanded</strong>: <code>Add</code> / <code>Replace</code> / <code>Overlap</code> is now available for all add tools (block, obstacle/spinner, spawn/end, game item including coin/zone/bouncer, text, teleportal, and button).</li>
       <li><strong>Coin snap behavior</strong>: when coins are moved/duplicated and snapped to grid, they now snap to the center of the tile instead of the tile's top-left corner.</li>
       <li><strong>Coin flow timing</strong>: each coin now has unique bobbing timing (phase, speed, and amplitude), so coin floating animation is no longer synchronized.</li>
+      <li><strong>Coin collect visibility</strong>: collected coins now disappear immediately after pickup in gameplay.</li>
       <li><strong>Tester mode</strong>: press <strong>R</strong> to respawn at spawn / last checkpoint.</li>
       <li><strong>Host game</strong> bug fix: <code>Editor.prototype.hostGame</code> override moved inside <code>DOMContentLoaded</code> after <code>new Editor(engine)</code> so Host Game and <code>?mode=host</code> work.</li>
       <li><strong>Auto-save on unload</strong>: <code>beforeunload</code> uses <code>fetch</code> with <code>keepalive: true</code> to <code>PUT /maps/:id</code> or <code>/admin/maps/:id</code>.</li>
