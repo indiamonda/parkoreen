@@ -179,6 +179,7 @@ class Editor {
         this.textSettings = {
             content: 'Text',
             actingType: 'text',
+            fillMode: 'add',
             font: 'Parkoreen Game',
             fontSize: 24,
             color: '#000000',
@@ -225,8 +226,13 @@ class Editor {
         // Teleportal settings
         this.teleportalSettings = {
             actingType: 'portal',
+            fillMode: 'add',
             color: '#9b59b6', // Purple default for teleportals
             opacity: 1
+        };
+
+        this.buttonSettings = {
+            fillMode: 'add'
         };
         
         // Teleportal names registry (must be unique)
@@ -1503,7 +1509,7 @@ class Editor {
             </div>
             
             <div class="placement-option" id="placement-fill">
-                <span class="placement-option-label">Fill</span>
+                <span class="placement-option-label">Add Type</span>
                 <div class="placement-option-btns">
                     <button class="placement-opt-btn active" data-fill="add">Add</button>
                     <button class="placement-opt-btn" data-fill="replace">Replace</button>
@@ -2426,6 +2432,10 @@ class Editor {
         if (width < GRID_SIZE || height < GRID_SIZE) {
             return; // Too small, cancel
         }
+
+        const zoneFill = this.koreenSettings.fillMode || 'add';
+        const zoneOverlaps = this.getOverlappingObjectsInArea(x, y, width, height);
+        if (zoneFill === 'add' && zoneOverlaps.length > 0) return;
         
         // Create the zone object
         const zone = new WorldObject({
@@ -2442,6 +2452,7 @@ class Editor {
             name: 'New Zone',
             zoneName: '' // Will be set by naming popup
         });
+        zone._replaceIds = zoneFill === 'replace' ? zoneOverlaps.map((o) => o.id) : [];
         
         // Show naming popup
         this.pendingZone = zone;
@@ -2461,6 +2472,9 @@ class Editor {
         const minSize = GRID_SIZE * 2;
         const finalWidth = Math.max(width, minSize);
         const finalHeight = Math.max(height, minSize);
+
+        const spinnerFill = this.obstacleSettings.fillMode || 'add';
+        if (!this.applyFillModeToArea(spinnerFill, x, y, finalWidth, finalHeight)) return;
 
         // Create the spinner object
         const spinner = new WorldObject({
@@ -2494,6 +2508,9 @@ class Editor {
         const height = Math.abs(endY - startY) + GRID_SIZE;
         
         if (width < GRID_SIZE || height < GRID_SIZE) return;
+
+        const buttonFill = this.buttonSettings.fillMode || 'add';
+        if (!this.applyFillModeToArea(buttonFill, x, y, width, height)) return;
         
         const button = new WorldObject({
             x, y, width, height,
@@ -2611,6 +2628,12 @@ class Editor {
         // Set the zone name and add to world
         this.pendingZone.zoneName = name;
         this.pendingZone.name = 'Zone: ' + name;
+        if (Array.isArray(this.pendingZone._replaceIds)) {
+            for (const id of this.pendingZone._replaceIds) {
+                this.world.removeObject(id);
+            }
+            delete this.pendingZone._replaceIds;
+        }
         this.world.addObject(this.pendingZone);
         this.updateLayersList();
         this.triggerMapChange();
@@ -2621,6 +2644,10 @@ class Editor {
     
     // Teleportal placement
     placeTeleportal(x, y) {
+        const teleportalFill = this.teleportalSettings.fillMode || 'add';
+        const teleportalOverlaps = this.getOverlappingObjectsInArea(x, y, GRID_SIZE, GRID_SIZE);
+        if (teleportalFill === 'add' && teleportalOverlaps.length > 0) return;
+
         // Create the teleportal object
         const teleportal = new WorldObject({
             x: x,
@@ -2634,6 +2661,7 @@ class Editor {
             name: 'New Teleportal',
             teleportalName: '' // Will be set by naming popup
         });
+        teleportal._replaceIds = teleportalFill === 'replace' ? teleportalOverlaps.map((o) => o.id) : [];
         
         // Show naming popup
         this.pendingTeleportal = teleportal;
@@ -2731,6 +2759,12 @@ class Editor {
         // Set the teleportal name and add to world
         this.pendingTeleportal.teleportalName = name;
         this.pendingTeleportal.name = 'Teleportal: ' + name;
+        if (Array.isArray(this.pendingTeleportal._replaceIds)) {
+            for (const id of this.pendingTeleportal._replaceIds) {
+                this.world.removeObject(id);
+            }
+            delete this.pendingTeleportal._replaceIds;
+        }
         this.world.addObject(this.pendingTeleportal);
         this.updateLayersList();
         this.triggerMapChange();
@@ -4213,12 +4247,18 @@ class Editor {
                 const fillMode = btn.dataset.fill;
                 if (this.placementMode === PlacementMode.BLOCK) {
                     this.placementSettings.fillMode = fillMode;
-                } else if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spike') {
+                } else if (this.placementMode === PlacementMode.OBSTACLE) {
                     this.obstacleSettings.fillMode = fillMode;
                 } else if (this.placementMode === PlacementMode.KOREEN) {
                     this.koreenSettings.fillMode = fillMode;
                 } else if (this.placementMode === PlacementMode.SPAWN_END) {
                     this.spawnEndSettings.fillMode = fillMode;
+                } else if (this.placementMode === PlacementMode.TEXT) {
+                    this.textSettings.fillMode = fillMode;
+                } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+                    this.teleportalSettings.fillMode = fillMode;
+                } else if (this.placementMode === PlacementMode.BUTTON) {
+                    this.buttonSettings.fillMode = fillMode;
                 }
             });
         });
@@ -5797,9 +5837,34 @@ class Editor {
         const worldPos = this.engine.getMouseWorldPos();
         const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
         if (obj) {
-            obj.rotation = (obj.rotation + degrees + 360) % 360;
+            this.rotateObjectWithBouncerSync(obj, degrees);
             this.triggerMapChange();
         }
+    }
+
+    isBouncerObject(obj) {
+        return !!obj && (obj.appearanceType === 'bouncer' || obj.actingType === 'bouncer');
+    }
+
+    rotateObjectWithBouncerSync(obj, degrees) {
+        if (!obj) return;
+        const normalized = ((degrees % 360) + 360) % 360;
+        if (this.isBouncerObject(obj)) {
+            const baseDir = typeof obj.bouncerDirection === 'number' ? obj.bouncerDirection : 0;
+            const baseAppear = typeof obj.bouncerAppearanceDirection === 'number' ? obj.bouncerAppearanceDirection : baseDir;
+            obj.bouncerDirection = (baseDir + normalized) % 360;
+            obj.bouncerAppearanceDirection = (baseAppear + normalized) % 360;
+            obj.rotation = 0;
+            return;
+        }
+        obj.rotation = (obj.rotation + normalized) % 360;
+    }
+
+    setBouncerDirectionFromAbsoluteRotation(obj, rotation) {
+        const snapped = ((Math.round(rotation / 90) * 90) % 360 + 360) % 360;
+        obj.bouncerDirection = snapped;
+        obj.bouncerAppearanceDirection = snapped;
+        obj.rotation = 0;
     }
 
     // ========================================
@@ -5957,7 +6022,7 @@ class Editor {
     
     rotateSelectedObjects(degrees) {
         for (const obj of this.selectedObjects) {
-            obj.rotation = (obj.rotation + degrees + 360) % 360;
+            this.rotateObjectWithBouncerSync(obj, degrees);
         }
         this.triggerMapChange();
     }
@@ -6473,7 +6538,7 @@ class Editor {
                 touchedFields.add('rotation');
                 const deg = parseInt(btn.dataset.multiRotate);
                 for (const obj of objects) {
-                    obj.rotation = (obj.rotation + deg + 360) % 360;
+                    this.rotateObjectWithBouncerSync(obj, deg);
                 }
                 // Update label
                 const label = popup.querySelector('[data-multi-rotation-label]');
@@ -6716,12 +6781,12 @@ class Editor {
             // Obstacle mode - appearance selection (spike or saw blade)
             options.appearance.classList.remove('hidden');
             options.acting.classList.remove('hidden');
+            options.fill.classList.remove('hidden');
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
             
-            // Show fill and collision options only for spike appearance
+            // Show collision only for spike appearance
             if (this.obstacleSettings.appearanceType === 'spike') {
-                options.fill.classList.remove('hidden');
                 options.collision.classList.remove('hidden');
             }
 
@@ -6857,6 +6922,7 @@ class Editor {
             }
             this.reattachActingListeners();
         } else if (this.placementMode === PlacementMode.TEXT) {
+            options.fill.classList.remove('hidden');
             options.content.classList.remove('hidden');
             options.acting.classList.remove('hidden');
             options.font.classList.remove('hidden');
@@ -6911,6 +6977,7 @@ class Editor {
             }
         } else if (this.placementMode === PlacementMode.TELEPORTAL) {
             // Teleportal options - acting type, color, and opacity
+            options.fill.classList.remove('hidden');
             options.acting.classList.remove('hidden');
             options.color.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
@@ -6939,11 +7006,63 @@ class Editor {
             document.getElementById('placement-opacity-input').value = teleportalOpacity;
         } else if (this.placementMode === PlacementMode.BUTTON) {
             // Button mode - only opacity, drag-to-place like zones
+            options.fill.classList.remove('hidden');
             options.opacity.classList.remove('hidden');
             
             const opacity = Math.round((this.koreenSettings.opacity || 1) * 100);
             document.getElementById('placement-opacity-input').value = opacity;
         }
+
+        this.syncFillModeUI();
+    }
+
+    syncFillModeUI() {
+        let fillMode = 'add';
+        if (this.placementMode === PlacementMode.BLOCK) {
+            fillMode = this.placementSettings.fillMode || 'add';
+        } else if (this.placementMode === PlacementMode.OBSTACLE) {
+            fillMode = this.obstacleSettings.fillMode || 'add';
+        } else if (this.placementMode === PlacementMode.KOREEN) {
+            fillMode = this.koreenSettings.fillMode || 'add';
+        } else if (this.placementMode === PlacementMode.SPAWN_END) {
+            fillMode = this.spawnEndSettings.fillMode || 'add';
+        } else if (this.placementMode === PlacementMode.TEXT) {
+            fillMode = this.textSettings.fillMode || 'add';
+        } else if (this.placementMode === PlacementMode.TELEPORTAL) {
+            fillMode = this.teleportalSettings.fillMode || 'add';
+        } else if (this.placementMode === PlacementMode.BUTTON) {
+            fillMode = this.buttonSettings.fillMode || 'add';
+        }
+
+        document.querySelectorAll('[data-fill]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.fill === fillMode);
+        });
+    }
+
+    getOverlappingObjectsInArea(x, y, w, h) {
+        return this.world.objects.filter((obj) =>
+            x < obj.x + obj.width &&
+            x + w > obj.x &&
+            y < obj.y + obj.height &&
+            y + h > obj.y
+        );
+    }
+
+    applyFillModeToArea(fillMode, x, y, w, h) {
+        const mode = fillMode || 'add';
+        const overlaps = this.getOverlappingObjectsInArea(x, y, w, h);
+
+        if (mode === 'add' && overlaps.length > 0) {
+            return false;
+        }
+
+        if (mode === 'replace' && overlaps.length > 0) {
+            for (const existing of overlaps) {
+                this.world.removeObject(existing.id);
+            }
+        }
+
+        return true;
     }
 
     updatePlacementFontPreview() {
@@ -7758,7 +7877,11 @@ class Editor {
             // Game uses: 0 = default (up), 90 = right, 180 = down, 270 = left
             let rotation = (angle + 90 + 360) % 360;
             
-            if (this.rotatingObject.rotation !== rotation) {
+            if (this.isBouncerObject(this.rotatingObject)) {
+                if (this.rotatingObject.bouncerDirection !== rotation || this.rotatingObject.bouncerAppearanceDirection !== rotation || this.rotatingObject.rotation !== 0) {
+                    this.setBouncerDirectionFromAbsoluteRotation(this.rotatingObject, rotation);
+                }
+            } else if (this.rotatingObject.rotation !== rotation) {
                 this.rotatingObject.rotation = rotation;
             }
         }
@@ -7914,7 +8037,7 @@ class Editor {
                 const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (obj) {
                     this._pushUndoSnapshot();
-                    obj.rotation = (obj.rotation - 90 + 360) % 360;
+                    this.rotateObjectWithBouncerSync(obj, -90);
                     this.triggerMapChange();
                 }
                 break;
@@ -7924,7 +8047,7 @@ class Editor {
                 const obj = this.world.getObjectAt(worldPos.x, worldPos.y);
                 if (obj) {
                     this._pushUndoSnapshot();
-                    obj.rotation = (obj.rotation + 90) % 360;
+                    this.rotateObjectWithBouncerSync(obj, 90);
                     this.triggerMapChange();
                 }
                 break;
@@ -8178,9 +8301,13 @@ class Editor {
             if (settings.appearanceType === 'coin') {
                 // Coin: single-click place, fixed 24x24 size, centered on click
                 const coinSize = Math.round(GRID_SIZE * 0.75);
+                const coinX = x + (GRID_SIZE - coinSize) / 2;
+                const coinY = y + (GRID_SIZE - coinSize) / 2;
+                const coinFill = settings.fillMode || 'add';
+                if (!this.applyFillModeToArea(coinFill, coinX, coinY, coinSize, coinSize)) return;
                 const coin = new WorldObject({
-                    x: x + (GRID_SIZE - coinSize) / 2,
-                    y: y + (GRID_SIZE - coinSize) / 2,
+                    x: coinX,
+                    y: coinY,
                     width: coinSize,
                     height: coinSize,
                     type: 'koreen',
@@ -8209,23 +8336,6 @@ class Editor {
             return;
         }
 
-        // Check fill mode
-        // 'add' - Only place if nothing exists
-        // 'replace' - Remove existing and place new
-        // 'overlap' - Place on top without removing existing
-        const fillMode = settings.fillMode || 'add';
-        const existingObj = this.world.getObjectAt(x + GRID_SIZE / 2, y + GRID_SIZE / 2);
-
-        if (fillMode === 'add' && existingObj) {
-            return; // Don't place if something exists
-        }
-
-        if (fillMode === 'replace' && existingObj) {
-            this.world.removeObject(existingObj.id);
-        }
-        
-        // 'overlap' mode - no checks, just place on top
-
         // Determine object dimensions (Soul Statue is 3x10 blocks)
         let objWidth = GRID_SIZE;
         let objHeight = GRID_SIZE;
@@ -8237,6 +8347,9 @@ class Editor {
             objX = x - GRID_SIZE; // Center horizontally on click
             objY = y - GRID_SIZE * 9; // Place with click point at bottom
         }
+
+        const fillMode = settings.fillMode || 'add';
+        if (!this.applyFillModeToArea(fillMode, objX, objY, objWidth, objHeight)) return;
 
         // Create object
         const obj = new WorldObject({

@@ -907,6 +907,28 @@ const SpinnerImage = {
     }
 };
 
+const CoinImage = {
+    image: null,
+    loaded: false,
+    load() {
+        if (this.image) return;
+        this.image = new Image();
+        this.image.onload = () => { this.loaded = true; };
+        this.image.src = '/parkoreen/assets/svg/coin.svg';
+    }
+};
+
+const BouncerImage = {
+    image: null,
+    loaded: false,
+    load() {
+        if (this.image) return;
+        this.image = new Image();
+        this.image.onload = () => { this.loaded = true; };
+        this.image.src = '/parkoreen/assets/svg/bouncer.svg';
+    }
+};
+
 // Block Textures
 const BlockTextures = {
     brick: {
@@ -967,6 +989,8 @@ const CloudImages = {
 SpikeImage.load();
 PortalImage.load();
 SpinnerImage.load();
+CoinImage.load();
+BouncerImage.load();
 BlockTextures.brick.load();
 CloudImages.load();
 
@@ -1014,9 +1038,21 @@ class WorldObject {
 
         // Bouncer-specific properties
         this.bouncerStrength = config.bouncerStrength !== undefined ? config.bouncerStrength : 20;
-        this.bouncerDirection = config.bouncerDirection !== undefined ? config.bouncerDirection : 0; // 0=up, 90=right, 180=down, 270=left
+        const legacyBouncerRotation = ((config.rotation || 0) % 360 + 360) % 360;
+        const hasBouncerDirection = config.bouncerDirection !== undefined;
+        const hasBouncerAppearanceDirection = config.bouncerAppearanceDirection !== undefined;
+        this.bouncerDirection = hasBouncerDirection
+            ? config.bouncerDirection
+            : (config.appearanceType === 'bouncer' ? legacyBouncerRotation : 0); // 0=up, 90=right, 180=down, 270=left
         this.bouncerMatchAppearance = config.bouncerMatchAppearance !== undefined ? config.bouncerMatchAppearance : true;
-        this.bouncerAppearanceDirection = config.bouncerAppearanceDirection !== undefined ? config.bouncerAppearanceDirection : 0;
+        this.bouncerAppearanceDirection = hasBouncerAppearanceDirection
+            ? config.bouncerAppearanceDirection
+            : (config.appearanceType === 'bouncer' ? legacyBouncerRotation : this.bouncerDirection);
+
+        // Legacy maps may store bouncer orientation in generic rotation only.
+        if (config.appearanceType === 'bouncer' && !hasBouncerDirection && !hasBouncerAppearanceDirection && legacyBouncerRotation !== 0) {
+            this.rotation = 0;
+        }
 
         // Coin-specific properties
         this.coinAmount = config.coinAmount !== undefined ? config.coinAmount : 1;
@@ -1099,7 +1135,8 @@ class WorldObject {
             return;
         }
 
-        const needsTransform = this.rotation !== 0 || this.flipHorizontal;
+        const isBouncer = at === 'bouncer';
+        const needsTransform = !isBouncer && (this.rotation !== 0 || this.flipHorizontal);
         const needsAlpha = this.opacity !== 1;
         
         // Only save/restore when we actually change state
@@ -1488,32 +1525,23 @@ class WorldObject {
         ctx.fillStyle = grd;
         ctx.fill();
 
-        // Coin body
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = this.color || '#FFDD00';
-        ctx.fill();
-
-        // Shine highlight
-        ctx.beginPath();
-        ctx.arc(cx - r * 0.22, cy - r * 0.28, r * 0.42, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 220, 0.55)';
-        ctx.fill();
-
-        // Rim
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = '#c8960c';
-        ctx.lineWidth = Math.max(1.5, r * 0.12);
-        ctx.stroke();
-
-        // $ symbol
-        const fs = Math.max(8, Math.round(r * 0.95));
-        ctx.font = `bold ${fs}px "Parkoreen Game", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#7a5500';
-        ctx.fillText('$', cx, cy + 1);
+        if (CoinImage.loaded && CoinImage.image) {
+            const drawSize = Math.min(w, h) * 1.02;
+            const drawX = cx - drawSize / 2;
+            const drawY = cy - drawSize / 2;
+            ctx.drawImage(CoinImage.image, drawX, drawY, drawSize, drawSize);
+        } else {
+            // Fallback if SVG is not ready yet.
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = this.color || '#FFDD00';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = '#c8960c';
+            ctx.lineWidth = Math.max(1.5, r * 0.12);
+            ctx.stroke();
+        }
     }
 
     renderBouncer(ctx, x, y, w, h) {
@@ -1524,17 +1552,7 @@ class WorldObject {
             ? (this.bouncerDirection || 0)
             : (this.bouncerAppearanceDirection || 0);
 
-        // If not pointing up, rotate the whole render around the object center
-        const needsRotation = appearDir !== 0;
-        if (needsRotation) {
-            ctx.save();
-            ctx.translate(x + w / 2, y + h / 2);
-            ctx.rotate(appearDir * Math.PI / 180);
-            ctx.translate(-(x + w / 2), -(y + h / 2));
-        }
-
-        // Spring animation: damped oscillation offset on the pad
-        // Positive offset = pad moves DOWN (compress), negative = pad moves UP (extend)
+        // Spring animation: damped oscillation offset.
         let padOffset = 0;
         if (this._bounceAnimStart) {
             const ANIM_DURATION = 700;
@@ -1542,8 +1560,6 @@ class WorldObject {
             if (elapsed < ANIM_DURATION) {
                 const t = elapsed / 1000; // seconds
                 const A = Math.min(h * 0.35, 14) * (this._bounceIntensity || 1);
-                // Negative: pad shoots UP first, then down (hard), then small up/down
-                // sin(ωt)*e^(-dt): starts 0, goes positive → pad would go up, but we negate for "extend up"
                 padOffset = -A * Math.exp(-5 * t) * Math.sin(18 * t);
             } else {
                 this._bounceAnimStart = null;
@@ -1551,64 +1567,30 @@ class WorldObject {
             }
         }
 
-        // Clamp offset so pad stays within reasonable bounds
-        const maxUp = h * 0.45;  // how far pad can go up
-        const maxDown = h * 0.25; // how far pad can compress down
+        const maxUp = h * 0.45;
+        const maxDown = h * 0.25;
         padOffset = Math.max(-maxUp, Math.min(maxDown, padOffset));
 
-        // Pad (top surface)
-        const padH = Math.max(5, h * 0.22);
-        const padY = y + padOffset;  // moves with animation
+        const drawOffset = padOffset * 0.3;
+        const cx = x + w / 2;
+        const cy = y + h / 2;
 
-        // Base fills from padBottom down to the bottom of the zone
-        const baseY = padY + padH;
-        const baseH = Math.max(0, (y + h) - baseY);
-
-        // Base (slightly darkened)
-        ctx.save();
-        ctx.globalAlpha *= 0.7;
-        ctx.fillStyle = color;
-        if (baseH > 0) ctx.fillRect(x + w * 0.12, baseY, w * 0.76, baseH);
-        ctx.restore();
-
-        // Spring coils — squash/stretch with animation
-        if (baseH > 4) {
-            const coils = Math.max(2, Math.floor(baseH / 12));
-            const coilH = baseH / coils;
-            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-            ctx.lineWidth = 1.5;
-            for (let i = 0; i < coils; i++) {
-                const cy = baseY + i * coilH + coilH / 2;
-                ctx.beginPath();
-                ctx.moveTo(x + w * 0.18, cy);
-                ctx.lineTo(x + w * 0.82, cy);
-                ctx.stroke();
-            }
-        }
-
-        // Pad surface (top)
-        ctx.fillStyle = color;
-        ctx.fillRect(x, padY, w, padH);
-
-        // Shine strip on pad
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.fillRect(x + w * 0.05, padY + padH * 0.12, w * 0.9, padH * 0.28);
-
-        // Up-arrow — moves with pad
-        const arrowCx = x + w / 2;
-        const arrowTipY = padY - Math.min(h * 0.22, 10);
-        const arrowHalfW = w * 0.16;
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.beginPath();
-        ctx.moveTo(arrowCx, arrowTipY);
-        ctx.lineTo(arrowCx - arrowHalfW, padY);
-        ctx.lineTo(arrowCx + arrowHalfW, padY);
-        ctx.closePath();
-        ctx.fill();
-
-        if (needsRotation) {
+        if (BouncerImage.loaded && BouncerImage.image) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(appearDir * Math.PI / 180);
+            ctx.drawImage(BouncerImage.image, -w / 2, -h / 2 + drawOffset, w, h);
             ctx.restore();
+            return;
         }
+
+        // Fallback: simple rect if SVG is not ready yet.
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(appearDir * Math.PI / 180);
+        ctx.fillStyle = color;
+        ctx.fillRect(-w / 2, -h / 2 + drawOffset, w, h);
+        ctx.restore();
     }
 
     renderTeleportal(ctx, x, y, w, h) {
@@ -1850,6 +1832,14 @@ class WorldObject {
     }
 
     snapToGrid() {
+        if (this.appearanceType === 'coin') {
+            // Coins are smaller than a tile; snap them to tile center instead of tile top-left.
+            const gx = Math.round(this.x / GRID_SIZE) * GRID_SIZE;
+            const gy = Math.round(this.y / GRID_SIZE) * GRID_SIZE;
+            this.x = gx + (GRID_SIZE - this.width) / 2;
+            this.y = gy + (GRID_SIZE - this.height) / 2;
+            return;
+        }
         this.x = Math.round(this.x / GRID_SIZE) * GRID_SIZE;
         this.y = Math.round(this.y / GRID_SIZE) * GRID_SIZE;
     }
@@ -4294,11 +4284,15 @@ class GameEngine {
             const bouncerDir = typeof obj.bouncerDirection === 'number' ? obj.bouncerDirection : 0;
             if (bouncerDir === 90) { // right
                 this.localPlayer.vx = strength;
+                this.localPlayer.vy = 0;
+                this.localPlayer.isOnGround = false;
             } else if (bouncerDir === 180) { // down
                 this.localPlayer.vy = strength;
                 this.localPlayer.isOnGround = false;
             } else if (bouncerDir === 270) { // left
                 this.localPlayer.vx = -strength;
+                this.localPlayer.vy = 0;
+                this.localPlayer.isOnGround = false;
             } else { // 0 = up (default)
                 this.localPlayer.vy = -strength;
                 this.localPlayer.isOnGround = false;

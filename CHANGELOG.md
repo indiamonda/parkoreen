@@ -5,3 +5,10 @@ The full **Parkoreen** changelog lives in the wiki:
 **[wiki/changelog/index.html](wiki/changelog/index.html)** — open in a browser from the repo, or from the deployed site at `wiki/changelog/`.
 
 For line-by-line history, use `git log` and `git show <commit>`.
+
+Latest highlights (see wiki changelog for full details):
+- Coin and bouncer now render using `coin.svg` / `bouncer.svg`.
+- Bouncer rotate-tool updates now sync bouncer direction/appearance direction.
+- Sideways bouncers now launch players sideways reliably.
+- Add type (`Add` / `Replace` / `Overlap`) is now available across all add modes (including teleportal, coin, text, zone, spinner, and button).
+- Coin snapping: moving/duplicating coins now snaps to the center of the grid block (not top-left).

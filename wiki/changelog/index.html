@@ -59,6 +59,9 @@
       <li><strong>Button interaction types</strong>: <strong>Click</strong> vs <strong>Collide</strong>; <code>buttonInteraction</code>.</li>
       <li><strong>Default portal / bouncer colors</strong> in map config: <code>defaultPortalColor</code>, <code>defaultBouncerColor</code>.</li>
       <li><strong>Bouncer</strong> game item: launch strength 5–50; spring-pad visual; gravity-based arc; 200ms cooldown.</li>
+      <li><strong>Coin / bouncer sprites</strong>: coin and bouncer now render from <code>coin.svg</code> and <code>bouncer.svg</code>. Rotating a bouncer with editor rotate tools now updates bouncer direction/appearance direction together, fixing sideways shading inconsistency and ensuring sideways bouncers launch sideways.</li>
+      <li><strong>Add Type expanded</strong>: <code>Add</code> / <code>Replace</code> / <code>Overlap</code> is now available for all add tools (block, obstacle/spinner, spawn/end, game item including coin/zone/bouncer, text, teleportal, and button).</li>
+      <li><strong>Coin snap behavior</strong>: when coins are moved/duplicated and snapped to grid, they now snap to the center of the tile instead of the tile's top-left corner.</li>
       <li><strong>Tester mode</strong>: press <strong>R</strong> to respawn at spawn / last checkpoint.</li>
       <li><strong>Host game</strong> bug fix: <code>Editor.prototype.hostGame</code> override moved inside <code>DOMContentLoaded</code> after <code>new Editor(engine)</code> so Host Game and <code>?mode=host</code> work.</li>
       <li><strong>Auto-save on unload</strong>: <code>beforeunload</code> uses <code>fetch</code> with <code>keepalive: true</code> to <code>PUT /maps/:id</code> or <code>/admin/maps/:id</code>.</li>
