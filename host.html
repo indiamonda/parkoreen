@@ -1707,6 +1707,15 @@
                 });
             });
 
+            mp.on('titleMessage', (data) => {
+                showCenterTitle((data && data.text) ? data.text : '');
+            });
+
+            mp.on('adminTitleResult', (data) => {
+                const delivered = Number(data?.delivered || 0);
+                addCommandFeedback('Title sent to ' + delivered + ' player' + (delivered === 1 ? '' : 's'));
+            });
+
             // Kicked
             mp.on('kicked', async () => {
                 await ModalManager.alert('You Are Kicked!', "Looks like the host doesn't want you to be in here anymore :(");
@@ -1850,6 +1859,55 @@
             document.body.appendChild(t);
             setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; }, 1200);
             setTimeout(() => { if (t.parentNode) t.remove(); }, 1600);
+        }
+
+        function showCenterTitle(text) {
+            const trimmed = String(text || '').trim();
+            if (!trimmed) return;
+
+            let overlay = document.getElementById('admin-title-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'admin-title-overlay';
+                overlay.style.cssText = [
+                    'position:fixed',
+                    'left:50%',
+                    'top:50%',
+                    'transform:translate(-50%, -50%) scale(0.96)',
+                    'max-width:min(92vw, 1100px)',
+                    'padding:10px 20px',
+                    'font-size:clamp(2rem, 7vw, 5.5rem)',
+                    'font-weight:900',
+                    'line-height:1.08',
+                    'letter-spacing:0.02em',
+                    'text-align:center',
+                    'color:#FFFFFF',
+                    'text-shadow:0 3px 0 rgba(0,0,0,0.35), 0 0 18px rgba(0,0,0,0.45)',
+                    'z-index:100001',
+                    'pointer-events:none',
+                    'opacity:0',
+                    'white-space:pre-wrap',
+                    'word-break:break-word',
+                    'transition:opacity 0.16s ease, transform 0.16s ease'
+                ].join(';') + ';';
+                document.body.appendChild(overlay);
+            }
+
+            overlay.textContent = trimmed;
+            overlay.style.opacity = '1';
+            overlay.style.transform = 'translate(-50%, -50%) scale(1)';
+
+            clearTimeout(showCenterTitle._fadeTimer);
+            clearTimeout(showCenterTitle._removeTimer);
+
+            showCenterTitle._fadeTimer = setTimeout(() => {
+                overlay.style.opacity = '0';
+                overlay.style.transform = 'translate(-50%, -50%) scale(1.02)';
+            }, 2800);
+
+            showCenterTitle._removeTimer = setTimeout(() => {
+                if (overlay.parentNode) overlay.remove();
+            }, 3300);
         }
 
         // ========================================
@@ -2057,6 +2115,31 @@
                     addBoldChatMessage(user.name, text, user.color);
                     if (user.username === 'jimmyqrg') {
                         addBoldChatMessage('Parkoreen', text, '#4CAF50');
+                    }
+                    break;
+                }
+
+                case '/title': {
+                    const selector = parts[1];
+                    const text = raw.slice((parts[0] + ' ' + (selector || '')).trim().length).trim();
+                    if (!selector || !text) {
+                        addCommandFeedback('Usage: /title {player} {text}');
+                        return;
+                    }
+
+                    let targets = resolveSelector(selector);
+                    if (selector === '@a') {
+                        targets = [{ id: '__self__', name: Auth.getUser()?.name || 'You' }, ...targets];
+                    }
+
+                    if (targets.length === 0) {
+                        addCommandFeedback('No player found for: ' + selector);
+                        return;
+                    }
+
+                    const targetIds = [...new Set(targets.map(t => t.id))];
+                    if (window.MultiplayerManager?.sendAdminTitle) {
+                        window.MultiplayerManager.sendAdminTitle(targetIds, text);
                     }
                     break;
                 }

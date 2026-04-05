@@ -780,6 +780,9 @@ class GameRoom {
             case 'chat':
                 this.handleChat(session, data);
                 break;
+            case 'admin_title':
+                this.handleAdminTitle(session, data);
+                break;
         }
     }
 
@@ -1093,6 +1096,44 @@ class GameRoom {
             playerColor: session.playerColor,
             message: data.message.slice(0, 200) // Limit message length
         });
+    }
+
+    handleAdminTitle(session, data) {
+        if (!session.isHost || !session.roomCode) return;
+
+        const titleText = typeof data.text === 'string' ? data.text.trim() : '';
+        if (!titleText) {
+            this.send(session, { type: 'error', message: 'Title text cannot be empty' });
+            return;
+        }
+
+        const rawIds = Array.isArray(data.playerIds) ? data.playerIds : [];
+        const uniqueIds = [...new Set(rawIds.map((id) => String(id)))];
+
+        let delivered = 0;
+        for (const targetId of uniqueIds) {
+            if (targetId === '__self__') {
+                this.send(session, {
+                    type: 'title_message',
+                    text: titleText.slice(0, 200),
+                    from: session.user?.name || 'Host'
+                });
+                delivered++;
+                continue;
+            }
+
+            const targetSession = this.sessions.get(targetId);
+            if (!targetSession || targetSession.roomCode !== session.roomCode) continue;
+
+            this.send(targetSession, {
+                type: 'title_message',
+                text: titleText.slice(0, 200),
+                from: session.user?.name || 'Host'
+            });
+            delivered++;
+        }
+
+        this.send(session, { type: 'admin_title_result', delivered });
     }
 
     async handleDisconnect(session) {

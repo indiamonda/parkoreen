@@ -27,7 +27,8 @@ async function fetchWithTimeout(url, options = {}, timeout = API_TIMEOUT) {
         });
         clearTimeout(timeoutId);
 
-        if (response.status === 401 && window.Auth) {
+        const isAuthRequest = /\/auth\/(login|signup)(\?|$)/.test(url);
+        if (response.status === 401 && window.Auth && !isAuthRequest) {
             window.Auth.logout();
             const currentPath = window.location.pathname + window.location.search;
             window.location.href = '/parkoreen/login/?redirect=' + encodeURIComponent(currentPath);
@@ -764,6 +765,14 @@ class MultiplayerManager {
             case 'chat_message':
                 this.emit('chatMessage', data);
                 break;
+
+            case 'title_message':
+                this.emit('titleMessage', data);
+                break;
+
+            case 'admin_title_result':
+                this.emit('adminTitleResult', data);
+                break;
                 
             case 'error':
                 this.emit('error', data);
@@ -859,6 +868,15 @@ class MultiplayerManager {
         this.send({
             type: 'chat',
             message
+        });
+    }
+
+    sendAdminTitle(playerIds, text) {
+        if (!this.isHost) return;
+        this.send({
+            type: 'admin_title',
+            playerIds,
+            text
         });
     }
 
