@@ -51,7 +51,7 @@ Build parkour courses in the editor, test them locally, then host a real-time mu
 | `/mails/` | In-app mail / notifications |
 | `/admin/` | Admin panel (role-gated) |
 | `/wiki/` | Game wiki (offline-first HTML) |
-| `/changelog/` | Version history |
+| `/wiki/changelog/` | Version history (wiki) |
 | `/howtoplay/` | New-player tutorial |
 | `host.html` | Host game runtime (opened by editor) |
 
@@ -405,7 +405,7 @@ See [`cloudflare-worker/README.md`](cloudflare-worker/README.md) for setup and d
 ## Resources
 
 - **Wiki** — `/wiki/` — per-object and per-version documentation
-- **Changelog** — `/changelog/` — full version history
+- **Changelog** — `/wiki/changelog/` — full version history (wiki HTML)
 - **How to Play** — `/howtoplay/` — new-player guide
 
 ---

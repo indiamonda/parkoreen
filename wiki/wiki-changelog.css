@@ -1,0 +1,46 @@
+/* Changelog page — extends wiki.css */
+.changelog-intro {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  line-height: 1.65;
+  max-width: 720px;
+}
+.changelog-meta {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin: -8px 0 20px;
+}
+.changelog-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 36px 0;
+}
+.changelog-git {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 16px 0 24px;
+}
+.changelog-git code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--code-text);
+  display: block;
+  white-space: pre;
+  font-family: 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+}
+.changelog-footer {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}

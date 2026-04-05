@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — Parkoreen Wiki</title>
+  <link rel="stylesheet" href="../wiki.css">
+  <link rel="stylesheet" href="../wiki-changelog.css">
+  <script>(function(){var t=localStorage.getItem('wiki-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+  <div class="topbar">
+    <a class="topbar-logo" href="../../">Parkoreen</a>
+    <span class="topbar-sep">/</span>
+    <a class="topbar-logo topbar-wiki" href="../">Wiki</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-crumb">Changelog</span>
+    <a class="topbar-home" href="../..">← Parkoreen</a>
+    <button id="theme-toggle" onclick="(function(){var d=document.documentElement,cur=d.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'),t=cur==='light'?'dark':'light';d.setAttribute('data-theme',t);localStorage.setItem('wiki-theme',t);document.getElementById('theme-toggle').textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})()">&#9728; Light</button>
+  </div>
+
+  <div class="page-wrap changelog">
+    <a class="back-link" href="..">← Wiki Home</a>
+
+    <div class="page-header">
+      <h1>Changelog</h1>
+      <p class="subtitle">Notable changes to <strong>Parkoreen</strong>. <strong>Current</strong> is the moving tip on <code>next</code> / v0.4-Indev. Numbered <strong>v0.x</strong> sections align with historical branch milestones (see reference at the bottom).</p>
+    </div>
+
+    <p class="changelog-intro">Entries are grouped from <code>git log</code> (newest first within each section).</p>
+
+    <h2>Current — Unreleased</h2>
+    <p class="changelog-meta">Development on <code>origin/next</code> (after the v0.3 merge); not yet cut as a numbered v1.x release.</p>
+
+    <h3>Admin &amp; moderation</h3>
+    <ul>
+      <li><strong>Admin Drag Player</strong> shortcut: press <strong>M</strong> to toggle the Quick Drag Player tool (joins <strong>G</strong> for Fly and <strong>K</strong> for Quick Kill).</li>
+      <li>Admin panel: users, rooms, <strong>maps</strong> tab; scrolling; fixes for access and layout.</li>
+      <li><strong>Parkoreen</strong> admin welcome flow; admin chat commands in-game.</li>
+      <li><strong>Maps</strong>: list/detail, rename/delete, room↔map linkage; admin edit/host flows.</li>
+      <li><strong>Reserved official names</strong> handling; role-based admin powers.</li>
+    </ul>
+
+    <h3>Audio</h3>
+    <ul>
+      <li><strong>New sounds wired up</strong>: <code>bounce.ogg</code> on bouncer trigger; <code>button.ogg</code> on button activation (click and collide); <code>checkpoint.ogg</code> on first touch of a new checkpoint; <code>endpoint.ogg</code> on reaching the end.</li>
+      <li><strong>Jump sound</strong>: switched from <code>mp3/jump.mp3</code> to <code>ogg/jump.ogg</code>.</li>
+      <li><strong>Place &amp; erase sounds</strong>: <code>place.ogg</code> when any object is placed in the editor; <code>erase.ogg</code> when one or more objects are erased.</li>
+    </ul>
+
+    <h3>Editor &amp; maps</h3>
+    <ul>
+      <li><strong>Coin config</strong>: <strong>Amount</strong> field; <strong>Activity Scope</strong> (<code>Global</code> / <code>Player</code>); color picker (default <code>#FFDD00</code>).</li>
+      <li><strong>Bouncer config</strong>: direction picker; <strong>Match Appearance</strong> toggle; <code>bouncerDirection</code> / <code>bouncerAppearanceDirection</code>; default <code>#461A0C</code>.</li>
+      <li><strong>Button config</strong>: <strong>One-Time Trigger</strong>; face / base color pickers; coins and bouncers use dedicated edit popups.</li>
+      <li><strong>Default colors</strong> updated to match SVG assets (bouncer, button, coin).</li>
+      <li><strong>Bouncer spring animation</strong>: damped spring curve; amplitude ramps on repeat bounces (max ×3.5×).</li>
+      <li><strong>Coins</strong>: collectible koreen item; <code>coin.ogg</code>; editor coin counter in tester/host; <strong>Show Coin Counter</strong> in map config.</li>
+      <li><strong>Button interaction types</strong>: <strong>Click</strong> vs <strong>Collide</strong>; <code>buttonInteraction</code>.</li>
+      <li><strong>Default portal / bouncer colors</strong> in map config: <code>defaultPortalColor</code>, <code>defaultBouncerColor</code>.</li>
+      <li><strong>Bouncer</strong> game item: launch strength 5–50; spring-pad visual; gravity-based arc; 200ms cooldown.</li>
+      <li><strong>Tester mode</strong>: press <strong>R</strong> to respawn at spawn / last checkpoint.</li>
+      <li><strong>Host game</strong> bug fix: <code>Editor.prototype.hostGame</code> override moved inside <code>DOMContentLoaded</code> after <code>new Editor(engine)</code> so Host Game and <code>?mode=host</code> work.</li>
+      <li><strong>Auto-save on unload</strong>: <code>beforeunload</code> uses <code>fetch</code> with <code>keepalive: true</code> to <code>PUT /maps/:id</code> or <code>/admin/maps/:id</code>.</li>
+      <li><strong>Bouncer</strong> (<code>host.html</code>): <code>checkBouncerCollisions()</code> each frame; <code>player.vy</code> set to <code>-bouncerStrength</code>; particle burst on bounce.</li>
+      <li><strong>Test mode</strong>: fixed editor chrome reappearing after starting a test (<code>stopPlacement</code>, UI order, non-fly tools ignored in <code>GameState.TESTING</code>).</li>
+      <li><strong>Host game</strong> (<code>host.html</code>): <code>create_room</code> sends <strong>mapId</strong> and <strong>mapName</strong> with map data.</li>
+      <li><strong>Undo / redo</strong> for editor actions.</li>
+      <li><strong>Spawn &amp; end</strong> markers; “Koreen” add-menu label → <strong>Game Item</strong>.</li>
+      <li><strong>Saw blade drag-resize</strong>: drag handles like zones; <strong>Adjust Size</strong> in inspector.</li>
+      <li><strong>Saw blades</strong>: size units, <strong>spin direction</strong>, damage; artwork updates.</li>
+      <li><strong>Damage amount</strong> on spikes/saw blades; touchbox tuning.</li>
+      <li><strong>Plugin logic</strong> fixes; <strong>three-dots</strong> / HUD menu fixes.</li>
+      <li>Sample map updates; <strong>download map</strong> from dashboard; default value tweaks.</li>
+      <li><strong>Brick texture</strong>: repeating pattern anchored to the block (translate + clip fill) so it moves with the block.</li>
+    </ul>
+
+    <h3>Gameplay &amp; plugins</h3>
+    <ul>
+      <li><strong>All Spike</strong> touchbox mode: flat base also damages (no safe standing zone).</li>
+      <li><strong>Bouncer in editor mode</strong>: launch applies in edit mode, not only test/play.</li>
+      <li><strong>FPS counter</strong> only in tester mode.</li>
+      <li><strong>Touchbox memory</strong>: exiting tester hides touchboxes in editor but remembers for next tester session.</li>
+      <li><strong>Hollow Knight</strong> plugin: attack range/speed, jump, keyboard, <strong>CJ</strong> plugin.</li>
+      <li><strong>Teleportals</strong>: particles, collision/touch fixes.</li>
+      <li>HP bar; <strong>pogo</strong> / movement fixes.</li>
+      <li><strong>Performance</strong>: SpatialHash stamp; batched circle particles; portal particle alpha skip; off-screen particle cull; batched block highlight/shadow.</li>
+      <li><strong>Fly movement</strong> and performance improvements.</li>
+      <li>Lower max fall speed; text position and color-picker fixes.</li>
+    </ul>
+
+    <h3>Clouds &amp; backgrounds</h3>
+    <ul>
+      <li>More <strong>cloud SVG</strong> variants and loader updates.</li>
+      <li>Grid + cloud rendering fixes.</li>
+    </ul>
+
+    <h3>Account &amp; UI</h3>
+    <ul>
+      <li><strong>Auto log-out</strong> when unauthorized.</li>
+      <li><strong>Keyboard</strong> settings in Parkoreen settings; dashboard scrolling.</li>
+      <li>Editor (<code>editor.js</code>) updates.</li>
+    </ul>
+
+    <hr class="changelog-divider">
+
+    <h2>v0.3</h2>
+    <p class="changelog-meta">Git range: <code>origin/v0.2</code> → <code>origin/v0.3</code>.</p>
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Saw blade</strong> obstacle (in spike workflow); <strong>Variable</strong> mechanic block type.</li>
+      <li><strong>Block textures</strong> (brick etc.) with texture preview in UI.</li>
+      <li><strong>Buttons</strong> (interactive).</li>
+      <li><strong>Multi-selection</strong>; <strong>object inspector</strong>; <strong>rotate left</strong> control.</li>
+      <li><strong>Heal at checkpoints</strong> option.</li>
+      <li><strong>Cloud</strong> placement tweaks and <strong>sky / galaxy cloud color</strong> settings.</li>
+      <li><strong>UI transitions</strong>; stacking fixes.</li>
+    </ul>
+    <h3>Fixed</h3>
+    <ul>
+      <li>Cloud rendering (several passes).</li>
+      <li>Spike-related issues; downward movement; dash distance experiment.</li>
+      <li>Index / entry page update.</li>
+    </ul>
+
+    <hr class="changelog-divider">
+
+    <h2>v0.2</h2>
+    <p class="changelog-meta">Git range: <code>origin/V0.1</code> → <code>origin/v0.2</code>.</p>
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Plugin system</strong>: Hollow Knight–style plugin, <strong>HP</strong> plugin assets, <strong>Code</strong> plugin (BETA) with loader/inject tooling.</li>
+      <li><strong>Load bar</strong> for asset loading; improved portals and spike visuals; <strong>cover</strong> art / icons.</li>
+      <li><strong>Mobile-friendly</strong> adjustments; touchscreen support for HK plugin.</li>
+      <li><strong>Soul statue</strong> improvements; <strong>Mantis Claw</strong>–style ability; attack fixes.</li>
+      <li>Plugin <strong>gravity</strong> and jump-height tuning; <code>color.js</code> and globals/inject scripts.</li>
+      <li>Asset layout: HK/HP/Code plugin folders (SVG, PNG, TTF renames).</li>
+    </ul>
+    <h3>Changed / fixed</h3>
+    <ul>
+      <li>Camera fluency reduced (performance); lag fixes; HK injector fixes.</li>
+      <li><strong>GOBOY</strong> hint reference; better hint copy.</li>
+      <li>Various HK plugin stability fixes.</li>
+    </ul>
+
+    <hr class="changelog-divider">
+
+    <h2>v0.1</h2>
+    <p class="changelog-meta">Git range: <code>origin/V0.0</code> → <code>origin/V0.1</code>. (Historical tip: “finish V1.1.0”.)</p>
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Zones</strong>, <strong>teleportals</strong>, <strong>checkpoint</strong> animation.</li>
+      <li><strong>Portals</strong> (major milestone).</li>
+      <li><strong>Font size</strong> settings; <strong>horizontal flip</strong>; larger position values; show position.</li>
+      <li>Stronger <strong>touchscreen</strong> support and scrolling fixes.</li>
+    </ul>
+    <h3>Fixed</h3>
+    <ul>
+      <li>Large “huge fix” passes; TypeError fixes; font chooser position.</li>
+    </ul>
+
+    <hr class="changelog-divider">
+
+    <h2>v0.0</h2>
+    <p class="changelog-meta">Git range: initial commit → <code>origin/V0.0</code>.</p>
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Core game</strong>: blocks, physics, fly mode, editor, hosting, <strong>multiplayer</strong> rooms.</li>
+      <li><strong>Authentication</strong>: signup/login flows (many iterative fixes).</li>
+      <li><strong>Map persistence</strong>: save cadence, save on close/leave.</li>
+      <li><strong>Spikes</strong>, collision, touchbox options; <strong>layers</strong>; <strong>eraser</strong> options.</li>
+      <li><strong>End game</strong> flow; smooth positions; username rules; room player list fixes.</li>
+      <li><strong>Icons</strong>; Parkoreen / Tektur → <strong>Parkoreen Game</strong> font branding.</li>
+      <li><strong>README</strong>, <strong>LICENSE</strong>; layer/fly documentation.</li>
+    </ul>
+    <h3>Fixed</h3>
+    <ul>
+      <li>Editor/host/join issues; jump issues; font selection; rotate key.</li>
+      <li>Layers preview; color picking; accidental keyboard capture in inputs.</li>
+    </ul>
+
+    <h2>Regenerating detail</h2>
+    <pre class="changelog-git"><code>git log --oneline origin/v0.2..origin/v0.3    # v0.3
+git log --oneline origin/V0.1..origin/v0.2    # v0.2
+git log --oneline origin/V0.0..origin/V0.1    # v0.1
+git log --oneline &lt;initial&gt;..origin/V0.0      # V0.0
+git log --oneline origin/v0.3..origin/next  # Current</code></pre>
+
+    <p class="changelog-footer">Changelog assembled from <code>git log</code> across <code>origin</code> branches. For exact file-level diffs, use <code>git show &lt;commit&gt;</code>.</p>
+  </div>
+  <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'&#9790; Dark':'&#9728; Light';})();</script>
+</body>
+</html>
