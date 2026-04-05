@@ -51,7 +51,7 @@ class AudioManager {
         this.sounds.checkpoint.volume = this.volume;
         this.sounds.endpoint = new Audio('/parkoreen/assets/ogg/endpoint.ogg');
         this.sounds.endpoint.volume = this.volume;
-        this.sounds.place = new Audio('/parkoreen/assets/ogg/place.ogg');
+        this.sounds.place = new Audio('/parkoreen/assets/ogg/tile.ogg');
         this.sounds.place.volume = this.volume;
         this.sounds.erase = new Audio('/parkoreen/assets/ogg/erase.ogg');
         this.sounds.erase.volume = this.volume;
@@ -1057,6 +1057,12 @@ class WorldObject {
         // Coin-specific properties
         this.coinAmount = config.coinAmount !== undefined ? config.coinAmount : 1;
         this.coinActivityScope = config.coinActivityScope || 'global'; // 'global' | 'player'
+        if (this.appearanceType === 'coin') {
+            const coinSeed = this._stableSeedFromString(this.id || `${this.x},${this.y}`);
+            this._bobOffset = (coinSeed % 6283) / 1000; // 0..~2PI
+            this._bobFlowDiv = 320 + (coinSeed % 240); // lower = faster bob
+            this._bobAmplitude = 3 + ((coinSeed >> 6) % 21) / 10; // 3.0..5.0
+        }
 
         // Damage amount (for spikes and spinners)
         this.damageAmount = config.damageAmount !== undefined ? config.damageAmount : 1;
@@ -1091,6 +1097,16 @@ class WorldObject {
 
     generateId() {
         return 'obj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    _stableSeedFromString(str) {
+        const text = String(str || 'coin');
+        let hash = 2166136261;
+        for (let i = 0; i < text.length; i++) {
+            hash ^= text.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return hash >>> 0;
     }
 
     getDefaultName() {
@@ -1511,7 +1527,9 @@ class WorldObject {
 
     renderCoin(ctx, x, y, w, h) {
         const now = Date.now();
-        const bob = Math.sin(now / 400 + (this._bobOffset || 0)) * 4; // gentle float
+        const bobDiv = this._bobFlowDiv || 400;
+        const bobAmp = this._bobAmplitude || 4;
+        const bob = Math.sin(now / bobDiv + (this._bobOffset || 0)) * bobAmp;
         const cx = x + w / 2;
         const cy = y + h / 2 + bob;
         const r = Math.min(w, h) * 0.42;

@@ -12,3 +12,4 @@ Latest highlights (see wiki changelog for full details):
 - Sideways bouncers now launch players sideways reliably.
 - Add type (`Add` / `Replace` / `Overlap`) is now available across all add modes (including teleportal, coin, text, zone, spinner, and button).
 - Coin snapping: moving/duplicating coins now snaps to the center of the grid block (not top-left).
+- Coin bobbing flow: each coin now animates with different timing/phase so they do not move in sync.

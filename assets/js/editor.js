@@ -8318,7 +8318,6 @@ class Editor {
                     opacity: this.koreenSettings.opacity || 1,
                     name: 'Coin'
                 });
-                coin._bobOffset = Math.random() * Math.PI * 2; // randomize bob phase
                 coin.layer = 2;
                 this.world.addObject(coin);
                 this.triggerMapChange();
