@@ -1920,6 +1920,22 @@ class Editor {
                         </div>
                     </div>
 
+                    <div class="form-group" id="object-edit-endpoint-group" style="display: none;">
+                        <hr style="border-color: var(--surface-light); margin: 8px 0;">
+                        <label class="form-label">Require Coins</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="object-edit-endpoint-require-coins">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <div id="object-edit-endpoint-amount-wrap" style="margin-top: 10px; display: none;">
+                            <label class="form-label">Amount</label>
+                            <input type="number" class="form-input form-input-sm" id="object-edit-endpoint-amount" min="0" step="1" value="0" style="width: 96px;">
+                            <div style="margin-top: 6px; font-size: 11px; color: #aaa; line-height: 1.4;">
+                                Default is the total number of coins in the map.
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-light);">
                         <button class="btn btn-danger" id="object-edit-delete" style="width: 100%;">
                             <span class="material-symbols-outlined">delete</span>
@@ -2195,6 +2211,34 @@ class Editor {
                 const val = parseInt(e.target.value) || 20;
                 this.editingObject.bouncerStrength = val;
                 document.getElementById('object-edit-bouncer-strength-label').textContent = val;
+                this.triggerMapChange();
+            }
+        });
+
+        // Endpoint require coins toggle
+        document.getElementById('object-edit-endpoint-require-coins').addEventListener('change', (e) => {
+            if (this.editingObject && this.editingObject.actingType === 'endpoint') {
+                const enabled = !!e.target.checked;
+                this.editingObject.endpointRequireCoins = enabled;
+                const amountWrap = document.getElementById('object-edit-endpoint-amount-wrap');
+                if (amountWrap) amountWrap.style.display = enabled ? 'block' : 'none';
+
+                if (enabled && !Number.isFinite(this.editingObject.endpointRequiredCoins)) {
+                    const totalCoins = this.world.objects.filter(o => o.appearanceType === 'coin').length;
+                    this.editingObject.endpointRequiredCoins = totalCoins;
+                    document.getElementById('object-edit-endpoint-amount').value = totalCoins;
+                }
+                this.triggerMapChange();
+            }
+        });
+
+        // Endpoint required coin amount
+        document.getElementById('object-edit-endpoint-amount').addEventListener('change', (e) => {
+            if (this.editingObject && this.editingObject.actingType === 'endpoint') {
+                const raw = parseInt(e.target.value, 10);
+                const amount = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                this.editingObject.endpointRequiredCoins = amount;
+                e.target.value = amount;
                 this.triggerMapChange();
             }
         });
@@ -2925,6 +2969,21 @@ class Editor {
             document.getElementById('object-edit-bouncer-strength-label').textContent = strength;
         } else {
             bouncerGroup.style.display = 'none';
+        }
+
+        // Show/hide endpoint options
+        const endpointGroup = document.getElementById('object-edit-endpoint-group');
+        if (obj.actingType === 'endpoint') {
+            endpointGroup.style.display = 'block';
+            if (!Number.isFinite(obj.endpointRequiredCoins)) {
+                obj.endpointRequiredCoins = this.world.objects.filter(o => o.appearanceType === 'coin').length;
+            }
+            const requireCoins = !!obj.endpointRequireCoins;
+            document.getElementById('object-edit-endpoint-require-coins').checked = requireCoins;
+            document.getElementById('object-edit-endpoint-amount-wrap').style.display = requireCoins ? 'block' : 'none';
+            document.getElementById('object-edit-endpoint-amount').value = Math.max(0, parseInt(obj.endpointRequiredCoins, 10) || 0);
+        } else {
+            endpointGroup.style.display = 'none';
         }
 
         // Show popup

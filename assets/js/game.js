@@ -1057,6 +1057,8 @@ class WorldObject {
         // Coin-specific properties
         this.coinAmount = config.coinAmount !== undefined ? config.coinAmount : 1;
         this.coinActivityScope = config.coinActivityScope || 'global'; // 'global' | 'player'
+        this.endpointRequireCoins = config.endpointRequireCoins !== undefined ? config.endpointRequireCoins : false;
+        this.endpointRequiredCoins = config.endpointRequiredCoins;
         if (this.appearanceType === 'coin') {
             const coinSeed = this._stableSeedFromString(this.id || `${this.x},${this.y}`);
             this._bobOffset = (coinSeed % 6283) / 1000; // 0..~2PI
@@ -1903,6 +1905,8 @@ class WorldObject {
             bouncerAppearanceDirection: this.bouncerAppearanceDirection,
             coinAmount: this.coinAmount,
             coinActivityScope: this.coinActivityScope,
+            endpointRequireCoins: this.endpointRequireCoins,
+            endpointRequiredCoins: this.endpointRequiredCoins,
             spinSpeed: this.spinSpeed,
             displayName: this.displayName,
             displayDescription: this.displayDescription,
@@ -4028,6 +4032,18 @@ class GameEngine {
                     if (this.audioManager) this.audioManager.play('checkpoint');
                 }
             } else if (obj.actingType === 'endpoint') {
+                const requireCoins = !!obj.endpointRequireCoins;
+                if (requireCoins) {
+                    const totalCoins = this.world.objects.filter(o => o.appearanceType === 'coin').length;
+                    let requiredCoins = Number.isFinite(obj.endpointRequiredCoins)
+                        ? Math.max(0, Math.floor(obj.endpointRequiredCoins))
+                        : totalCoins;
+                    requiredCoins = Math.min(requiredCoins, totalCoins);
+                    const collectedCoins = this.world.objects.filter(o => o.appearanceType === 'coin' && o._collected).length;
+                    if (collectedCoins < requiredCoins) {
+                        continue;
+                    }
+                }
                 if (this.audioManager) this.audioManager.play('endpoint');
                 this.onGameEnd();
             }
