@@ -1550,6 +1550,12 @@
                     showCopyToast('Copied message');
                 }
             });
+
+            document.querySelectorAll('input[name="chat-name-display"]').forEach((input) => {
+                input.addEventListener('change', () => {
+                    refreshChatMessageNameDisplay();
+                });
+            });
         }
 
         function sendChatMessage() {
@@ -1597,16 +1603,40 @@
             return result;
         }
 
+        function getChatNameDisplayMode() {
+            return document.querySelector('input[name="chat-name-display"]:checked')?.value || 'displayName';
+        }
+
+        function getDisplayedChatAuthor(displayName, username) {
+            if (getChatNameDisplayMode() === 'username' && username) {
+                return username;
+            }
+            return displayName || username || '';
+        }
+
+        function refreshChatMessageNameDisplay() {
+            document.querySelectorAll('#chat-messages .chat-message:not(.chat-notice)').forEach((msg) => {
+                const nameEl = msg.querySelector('.chat-message-name');
+                if (!nameEl) return;
+                const displayName = msg.dataset.senderName || '';
+                const username = msg.dataset.senderUsername || '';
+                const visibleName = getDisplayedChatAuthor(displayName, username);
+                if (visibleName) {
+                    nameEl.textContent = visibleName + ':';
+                }
+            });
+        }
+
         function addChatMessage(name, message, color, extra) {
             const container = document.getElementById('chat-messages');
             const messageEl = document.createElement('div');
             messageEl.className = 'chat-message';
-            if (extra) {
-                messageEl.dataset.senderName = extra.displayName || '';
-                messageEl.dataset.senderUsername = extra.username || '';
-            }
+            const displayName = extra?.displayName || name || '';
+            const username = extra?.username || '';
+            messageEl.dataset.senderName = displayName;
+            messageEl.dataset.senderUsername = username;
             messageEl.innerHTML = `
-                <span class="chat-message-name" style="color: ${color || '#fff'};">${escapeHtml(name)}:</span>
+                <span class="chat-message-name" style="color: ${color || '#fff'};">${escapeHtml(getDisplayedChatAuthor(displayName, username))}:</span>
                 <span class="chat-message-text">${formatChatColors(message)}</span>
             `;
             container.appendChild(messageEl);
@@ -2112,7 +2142,10 @@
                     if (window.MultiplayerManager?.sendChatMessage) {
                         window.MultiplayerManager.sendChatMessage(text);
                     }
-                    addBoldChatMessage(user.name, text, user.color);
+                    addChatMessage(user.name, text, user.color, {
+                        displayName: user.name,
+                        username: user.username || ''
+                    });
                     if (user.username === 'jimmyqrg') {
                         addBoldChatMessage('Parkoreen', text, '#4CAF50');
                     }
@@ -2153,8 +2186,10 @@
             const container = document.getElementById('chat-messages');
             const messageEl = document.createElement('div');
             messageEl.className = 'chat-message';
+            messageEl.dataset.senderName = name || '';
+            messageEl.dataset.senderUsername = '';
             messageEl.innerHTML = `
-                <span class="chat-message-name" style="color: ${color || '#fff'}; font-weight: 700;">${escapeHtml(name)}:</span>
+                <span class="chat-message-name" style="color: ${color || '#fff'}; font-weight: 700;">${escapeHtml(getDisplayedChatAuthor(name || '', ''))}:</span>
                 <span class="chat-message-text" style="font-weight: 700;">${formatChatColors(message)}</span>
             `;
             container.appendChild(messageEl);
