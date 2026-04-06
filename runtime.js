@@ -744,8 +744,13 @@ class MultiplayerManager {
                 break;
                 
             case 'player_left':
+                const leavingPlayer = this.players.get(data.playerId);
                 this.players.delete(data.playerId);
-                this.emit('playerLeft', data);
+                this.emit('playerLeft', {
+                    ...data,
+                    playerName: data.playerName || leavingPlayer?.name,
+                    playerUsername: data.playerUsername || leavingPlayer?.username
+                });
                 break;
                 
             case 'player_position':

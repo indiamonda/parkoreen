@@ -1704,7 +1704,9 @@
                 }
                 const joinName = sanitizeRemoteName(data.playerName);
                 engine.addRemotePlayer(data.playerId, joinName, data.playerColor, 0, 0);
-                addSystemNotice(`${joinName} joined the room`);
+                if (!isParkoreenAdminUsername(data.playerUsername)) {
+                    addSystemNotice(`${joinName} joined the room`);
+                }
                 updatePlayersList();
             });
 
@@ -1712,8 +1714,12 @@
             mp.on('playerLeft', (data) => {
                 const rp = engine.remotePlayers.get(data.playerId);
                 const leftName = rp ? rp.name : sanitizeRemoteName(data.playerName);
+                const leftPlayerRecord = window.MultiplayerManager?.players?.get(data.playerId);
                 engine.removeRemotePlayer(data.playerId);
-                addSystemNotice(`${leftName} left the room`);
+                const leftUsername = leftPlayerRecord?.username || data.playerUsername || '';
+                if (!isParkoreenAdminUsername(leftUsername)) {
+                    addSystemNotice(`${leftName} left the room`);
+                }
                 updatePlayersList();
             });
 
@@ -2200,6 +2206,20 @@
                     if (window.MultiplayerManager?.sendAdminTitle) {
                         window.MultiplayerManager.sendAdminTitle(targetIds, color, text);
                     }
+                    break;
+                }
+
+                case '/fakejoin': {
+                    const fallbackName = Auth.getUser()?.name || 'Someone';
+                    const name = parts.slice(1).join(' ').trim() || fallbackName;
+                    addSystemNotice(`${name} joined the room`);
+                    break;
+                }
+
+                case '/fakeleave': {
+                    const fallbackName = Auth.getUser()?.name || 'Someone';
+                    const name = parts.slice(1).join(' ').trim() || fallbackName;
+                    addSystemNotice(`${name} left the room`);
                     break;
                 }
 

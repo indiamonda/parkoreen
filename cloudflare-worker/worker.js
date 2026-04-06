@@ -1031,11 +1031,13 @@ class GameRoom {
             this.broadcastToRoom(roomCode, {
                 type: 'player_left',
                 playerId: session.id,
-                playerName: session.user?.name
+                playerName: session.user?.name,
+                playerUsername: session.user?.username
             });
         }
     }
-
+                playerName: session.user?.name,
+                playerUsername: session.user?.username
     handlePosition(session, data) {
         if (!session.roomCode) return;
 
@@ -1085,6 +1087,7 @@ class GameRoom {
                 type: 'player_left',
                 playerId: targetSession.id,
                 playerName: targetSession.user?.name,
+                playerUsername: targetSession.user?.username,
                 kicked: true
             });
         }
