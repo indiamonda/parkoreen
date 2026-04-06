@@ -119,7 +119,8 @@ class Editor {
             collision: false, // Koreens don't have collision by default
             fillMode: 'add',
             opacity: 1,
-            bouncerStrength: 20
+            bouncerStrength: 20,
+            coinSnapToGrid: true
         };
 
         // Spawn / end markers (dedicated tool — places koreen-type markers, same as former Koreen spawn/end)
@@ -435,6 +436,7 @@ class Editor {
         if (this.placementMode === PlacementMode.TELEPORTAL) return false;
         if (this.placementMode === PlacementMode.BUTTON) return false;
         if (this.placementMode === PlacementMode.KOREEN && this.koreenSettings.appearanceType === 'zone') return false;
+        if (this.placementMode === PlacementMode.KOREEN && this.koreenSettings.appearanceType === 'coin' && this.koreenSettings.coinSnapToGrid === false) return false;
         if (this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spinner') return false;
         return true;
     }
@@ -1520,6 +1522,14 @@ class Editor {
                     <button class="placement-opt-btn active" data-fill="add">Add</button>
                     <button class="placement-opt-btn" data-fill="replace">Replace</button>
                     <button class="placement-opt-btn" data-fill="overlap">Overlap</button>
+                </div>
+            </div>
+
+            <div class="placement-option hidden" id="placement-coin-snap">
+                <span class="placement-option-label">Snap to Grid</span>
+                <div class="placement-option-btns">
+                    <button class="placement-opt-btn active" data-coin-snap="true">True</button>
+                    <button class="placement-opt-btn" data-coin-snap="false">False</button>
                 </div>
             </div>
             
@@ -4328,6 +4338,14 @@ class Editor {
             });
         });
 
+        document.querySelectorAll('[data-coin-snap]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-coin-snap]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.koreenSettings.coinSnapToGrid = btn.dataset.coinSnap === 'true';
+            });
+        });
+
         // Color preview click
         document.getElementById('placement-color-preview').addEventListener('click', () => {
             this.openColorPicker('placement');
@@ -6791,6 +6809,7 @@ class Editor {
             acting: document.getElementById('placement-acting'),
             collision: document.getElementById('placement-collision'),
             fill: document.getElementById('placement-fill'),
+            coinSnap: document.getElementById('placement-coin-snap'),
             color: document.getElementById('placement-color'),
             opacity: document.getElementById('placement-opacity'),
             content: document.getElementById('placement-content'),
@@ -6975,6 +6994,10 @@ class Editor {
                 actingBtns.innerHTML = `<button class="placement-opt-btn active" data-acting="coin">Coin</button>`;
                 this.koreenSettings.actingType = 'coin';
                 this.koreenSettings.collision = false;
+                options.coinSnap.classList.remove('hidden');
+                document.querySelectorAll('[data-coin-snap]').forEach(btn => {
+                    btn.classList.toggle('active', (btn.dataset.coinSnap === 'true') === (this.koreenSettings.coinSnapToGrid !== false));
+                });
             } else {
                 let koreenActingHtml = `
                 <button class="placement-opt-btn ${this.koreenSettings.actingType === 'checkpoint' ? 'active' : ''}" data-acting="checkpoint">Check</button>
@@ -7912,7 +7935,7 @@ class Editor {
 
         // Brush-like placement - continue placing while mouse is held (except for teleportal, button, and obstacle with spinner appearance)
         const isSpinnerMode = this.placementMode === PlacementMode.OBSTACLE && this.obstacleSettings.appearanceType === 'spinner';
-        if (this.isPlacing && this.engine.mouse.down && this.placementMode !== PlacementMode.NONE && this.placementMode !== PlacementMode.TELEPORTAL && this.placementMode !== PlacementMode.BUTTON && !isSpinnerMode && !this.isOverUI(e)) {
+        if (this.isPlacing && this.engine.mouse.down && this._placementUsesBrushStroke() && this.placementMode !== PlacementMode.TELEPORTAL && this.placementMode !== PlacementMode.BUTTON && !isSpinnerMode && !this.isOverUI(e)) {
             this.placeObject(gridPos.x, gridPos.y);
         }
 
@@ -8065,7 +8088,8 @@ class Editor {
                 this._brushUndoActive = true;
             }
             this.isPlacing = true;
-            this.placeObject(gridPos.x, gridPos.y);
+            const usesFreeCoinPlacement = this.placementMode === PlacementMode.KOREEN && this.koreenSettings.appearanceType === 'coin' && this.koreenSettings.coinSnapToGrid === false;
+            this.placeObject(usesFreeCoinPlacement ? worldPos.x : gridPos.x, usesFreeCoinPlacement ? worldPos.y : gridPos.y);
             return;
         }
 
@@ -8368,10 +8392,11 @@ class Editor {
             settings = this.koreenSettings;
             type = 'koreen';
             if (settings.appearanceType === 'coin') {
-                // Coin: single-click place, fixed 24x24 size, centered on click
+                // Coin: fixed size; either center in grid cell or place freely at cursor.
                 const coinSize = Math.round(GRID_SIZE * 0.75);
-                const coinX = x + (GRID_SIZE - coinSize) / 2;
-                const coinY = y + (GRID_SIZE - coinSize) / 2;
+                const snapToGrid = settings.coinSnapToGrid !== false;
+                const coinX = snapToGrid ? x + (GRID_SIZE - coinSize) / 2 : x - coinSize / 2;
+                const coinY = snapToGrid ? y + (GRID_SIZE - coinSize) / 2 : y - coinSize / 2;
                 const coinFill = settings.fillMode || 'add';
                 if (!this.applyFillModeToArea(coinFill, coinX, coinY, coinSize, coinSize)) return;
                 const coin = new WorldObject({
@@ -10101,17 +10126,51 @@ if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#461A0
                 ctx.setLineDash([]);
             } else {
                 // Normal placement preview
-            const worldPos = this.engine.getMouseWorldPos();
-            const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
-                const screenX = gridPos.x - camera.x;
-                const screenY = gridPos.y - camera.y;
-                const size = GRID_SIZE;
+                const worldPos = this.engine.getMouseWorldPos();
+                const gridPos = this.engine.getGridAlignedPos(worldPos.x, worldPos.y);
 
-            ctx.fillStyle = 'rgba(45, 90, 39, 0.5)';
-            ctx.fillRect(screenX, screenY, size, size);
-            ctx.strokeStyle = '#4a8c3f';
+                if (this.placementMode === PlacementMode.KOREEN && this.koreenSettings.appearanceType === 'coin' && this.koreenSettings.coinSnapToGrid === false) {
+                    const coinSize = Math.round(GRID_SIZE * 0.75);
+                    const screenX = worldPos.x - coinSize / 2 - camera.x;
+                    const screenY = worldPos.y - coinSize / 2 - camera.y;
+
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    if (typeof WorldObject !== 'undefined') {
+                        if (!this._coinPreviewObject) {
+                            this._coinPreviewObject = new WorldObject({
+                                type: 'koreen',
+                                appearanceType: 'coin',
+                                actingType: 'coin',
+                                collision: false,
+                                color: '#FFDD00',
+                                opacity: 1,
+                                width: coinSize,
+                                height: coinSize,
+                                name: 'Coin'
+                            });
+                        }
+                        this._coinPreviewObject.width = coinSize;
+                        this._coinPreviewObject.height = coinSize;
+                        this._coinPreviewObject.renderCoin(ctx, screenX, screenY, coinSize, coinSize);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(screenX + coinSize / 2, screenY + coinSize / 2, coinSize * 0.42, 0, Math.PI * 2);
+                        ctx.fillStyle = '#FFDD00';
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                } else {
+                    const screenX = gridPos.x - camera.x;
+                    const screenY = gridPos.y - camera.y;
+                    const size = GRID_SIZE;
+
+                    ctx.fillStyle = 'rgba(45, 90, 39, 0.5)';
+                    ctx.fillRect(screenX, screenY, size, size);
+                    ctx.strokeStyle = '#4a8c3f';
                 ctx.lineWidth = 2 / camera.zoom;
-            ctx.strokeRect(screenX, screenY, size, size);
+                    ctx.strokeRect(screenX, screenY, size, size);
+                }
             }
         }
         
