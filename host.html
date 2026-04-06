@@ -1738,7 +1738,10 @@
             });
 
             mp.on('titleMessage', (data) => {
-                showCenterTitle((data && data.text) ? data.text : '');
+                showCenterTitle(
+                    (data && data.text) ? data.text : '',
+                    (data && data.color) ? data.color : '#FFFFFF'
+                );
             });
 
             mp.on('adminTitleResult', (data) => {
@@ -1891,9 +1894,10 @@
             setTimeout(() => { if (t.parentNode) t.remove(); }, 1600);
         }
 
-        function showCenterTitle(text) {
+        function showCenterTitle(text, color) {
             const trimmed = String(text || '').trim();
             if (!trimmed) return;
+            const resolvedColor = isValidTitleColor(color) ? String(color).trim() : '#FFFFFF';
 
             let overlay = document.getElementById('admin-title-overlay');
             if (!overlay) {
@@ -1903,10 +1907,11 @@
                     'position:fixed',
                     'left:50%',
                     'top:50%',
-                    'transform:translate(-50%, -50%) scale(0.96)',
+                    'transform:translate(-50%, -50%) scale(0.92)',
                     'max-width:min(92vw, 1100px)',
                     'padding:10px 20px',
                     'font-size:clamp(2rem, 7vw, 5.5rem)',
+                    'font-family:"Parkoreen Game", "Jersey 10", monospace',
                     'font-weight:900',
                     'line-height:1.08',
                     'letter-spacing:0.02em',
@@ -1918,12 +1923,13 @@
                     'opacity:0',
                     'white-space:pre-wrap',
                     'word-break:break-word',
-                    'transition:opacity 0.16s ease, transform 0.16s ease'
+                    'transition:opacity 0.22s ease, transform 0.22s ease'
                 ].join(';') + ';';
                 document.body.appendChild(overlay);
             }
 
             overlay.textContent = trimmed;
+            overlay.style.color = resolvedColor;
             overlay.style.opacity = '1';
             overlay.style.transform = 'translate(-50%, -50%) scale(1)';
 
@@ -1933,11 +1939,11 @@
             showCenterTitle._fadeTimer = setTimeout(() => {
                 overlay.style.opacity = '0';
                 overlay.style.transform = 'translate(-50%, -50%) scale(1.02)';
-            }, 2800);
+            }, 2600);
 
             showCenterTitle._removeTimer = setTimeout(() => {
                 if (overlay.parentNode) overlay.remove();
-            }, 3300);
+            }, 3000);
         }
 
         // ========================================
@@ -1999,7 +2005,7 @@
             if (selector === '@a') return [...players];
             if (selector === '@s') {
                 const user = Auth.getUser();
-                return [{ id: '__self__', name: user.name, color: user.color }];
+                return [{ id: '__self__', name: user.name, color: user.color, username: user.username }];
             }
             if (selector === '@r') {
                 if (players.length === 0) return [];
@@ -2018,8 +2024,22 @@
                 }
                 return nearest ? [nearest] : [];
             }
-            const match = players.find(p => p.name.toLowerCase() === selector.toLowerCase());
+            const lowered = selector.toLowerCase();
+            const match = players.find(p =>
+                (p.name && p.name.toLowerCase() === lowered) ||
+                (p.username && p.username.toLowerCase() === lowered)
+            );
             return match ? [match] : [];
+        }
+
+        function isValidTitleColor(color) {
+            const value = String(color || '').trim();
+            if (!value) return false;
+            if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(value)) return true;
+            if (window.CSS && typeof window.CSS.supports === 'function') {
+                return window.CSS.supports('color', value);
+            }
+            return /^[a-zA-Z]+$/.test(value);
         }
 
         let _echoSuppressNext = null;
@@ -2154,15 +2174,21 @@
 
                 case '/title': {
                     const selector = parts[1];
-                    const text = raw.slice((parts[0] + ' ' + (selector || '')).trim().length).trim();
-                    if (!selector || !text) {
-                        addCommandFeedback('Usage: /title {player} {text}');
+                    const color = parts[2];
+                    const text = parts.slice(3).join(' ').trim();
+                    if (!selector || !color || !text) {
+                        addCommandFeedback('Usage: /title {player} {color} {text}');
+                        return;
+                    }
+                    if (!isValidTitleColor(color)) {
+                        addCommandFeedback('Invalid color: ' + color);
                         return;
                     }
 
                     let targets = resolveSelector(selector);
                     if (selector === '@a') {
-                        targets = [{ id: '__self__', name: Auth.getUser()?.name || 'You' }, ...targets];
+                        const user = Auth.getUser();
+                        targets = [{ id: '__self__', name: user?.name || 'You', username: user?.username || '' }, ...targets];
                     }
 
                     if (targets.length === 0) {
@@ -2172,7 +2198,7 @@
 
                     const targetIds = [...new Set(targets.map(t => t.id))];
                     if (window.MultiplayerManager?.sendAdminTitle) {
-                        window.MultiplayerManager.sendAdminTitle(targetIds, text);
+                        window.MultiplayerManager.sendAdminTitle(targetIds, color, text);
                     }
                     break;
                 }

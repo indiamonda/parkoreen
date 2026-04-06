@@ -936,6 +936,7 @@ class GameRoom {
             type: 'player_joined',
             playerId: session.id,
             playerName: session.user.name,
+            playerUsername: session.user.username,
             playerColor: session.playerColor
         }, session.id);
 
@@ -947,6 +948,7 @@ class GameRoom {
             players: playersInRoom.map(p => ({
                 id: p.id,
                 name: p.user.name,
+                username: p.user.username,
                 color: p.playerColor
             }))
         });
@@ -981,6 +983,7 @@ class GameRoom {
             type: 'player_joined',
             playerId: session.id,
             playerName: session.user.name,
+            playerUsername: session.user.username,
             playerColor: session.playerColor
         }, session.id);
 
@@ -992,6 +995,7 @@ class GameRoom {
             players: playersInRoom.map(p => ({
                 id: p.id,
                 name: p.user.name,
+                username: p.user.username,
                 color: p.playerColor
             }))
         });
@@ -1093,6 +1097,7 @@ class GameRoom {
             type: 'chat_message',
             playerId: session.id,
             playerName: session.user?.name,
+            playerUsername: session.user?.username,
             playerColor: session.playerColor,
             message: data.message.slice(0, 200) // Limit message length
         });
@@ -1107,6 +1112,7 @@ class GameRoom {
             return;
         }
 
+        const titleColor = typeof data.color === 'string' ? data.color.trim() : '';
         const rawIds = Array.isArray(data.playerIds) ? data.playerIds : [];
         const uniqueIds = [...new Set(rawIds.map((id) => String(id)))];
 
@@ -1116,6 +1122,7 @@ class GameRoom {
                 this.send(session, {
                     type: 'title_message',
                     text: titleText.slice(0, 200),
+                    color: titleColor.slice(0, 32),
                     from: session.user?.name || 'Host'
                 });
                 delivered++;
@@ -1128,6 +1135,7 @@ class GameRoom {
             this.send(targetSession, {
                 type: 'title_message',
                 text: titleText.slice(0, 200),
+                color: titleColor.slice(0, 32),
                 from: session.user?.name || 'Host'
             });
             delivered++;

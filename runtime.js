@@ -713,6 +713,11 @@ class MultiplayerManager {
             case 'room_joined':
                 this.roomCode = data.roomCode;
                 this.isHost = false;
+                if (data.players) {
+                    data.players.forEach(p => {
+                        this.players.set(p.id, { id: p.id, name: p.name, username: p.username, color: p.color });
+                    });
+                }
                 this.emit('roomJoined', data);
                 break;
                 
@@ -722,7 +727,7 @@ class MultiplayerManager {
                 // Add existing players
                 if (data.players) {
                     data.players.forEach(p => {
-                        this.players.set(p.id, { id: p.id, name: p.name, color: p.color });
+                        this.players.set(p.id, { id: p.id, name: p.name, username: p.username, color: p.color });
                     });
                 }
                 this.emit('roomRejoined', data);
@@ -732,6 +737,7 @@ class MultiplayerManager {
                 this.players.set(data.playerId, {
                     id: data.playerId,
                     name: data.playerName,
+                    username: data.playerUsername,
                     color: data.playerColor
                 });
                 this.emit('playerJoined', data);
@@ -871,11 +877,12 @@ class MultiplayerManager {
         });
     }
 
-    sendAdminTitle(playerIds, text) {
+    sendAdminTitle(playerIds, color, text) {
         if (!this.isHost) return;
         this.send({
             type: 'admin_title',
             playerIds,
+            color,
             text
         });
     }
