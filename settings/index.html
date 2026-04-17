@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
 </head>
 <body>
-    <div class="settings-container">
+    <div id="spa-content" class="settings-container">
         <button class="btn btn-icon btn-secondary settings-back" id="btn-back">
             <span class="material-symbols-outlined">home</span>
         </button>
@@ -185,9 +185,10 @@
 
     <script src="/parkoreen/runtime.js?v=19"></script>
     <script src="/parkoreen/assets/js/style.js?v=11"></script>
+    <script src="/parkoreen/assets/js/spa-router.js"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        function initSettingsPage() {
             if (!Auth.requireAuth()) return;
 
             var user = Auth.getUser();
@@ -335,7 +336,13 @@
                     window.location.href = '/parkoreen/login/';
                 }
             };
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSettingsPage);
+        } else {
+            initSettingsPage();
+        }
     </script>
 </body>
 </html>

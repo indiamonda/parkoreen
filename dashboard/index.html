@@ -131,8 +131,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
-    <div class="page-container">
-        <header class="page-header">
+    <div id="spa-content">
+        <div class="page-container">
+            <header class="page-header">
             <div class="page-header-left">
                 <button class="btn btn-secondary" id="btn-join">
                     <span class="material-symbols-outlined">play_arrow</span>
@@ -205,6 +206,7 @@
             </button>
         </div>
     </aside>
+    </div>
 
     <script>
         // Inline toast fallback (no browser alerts)
@@ -312,6 +314,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="../runtime.js?v=19"></script>
     <script src="../assets/js/style.js?v=11"></script>
+    <script src="../assets/js/spa-router.js"></script>
     <script src="../assets/js/exportImport.js?v=12"></script>
     
     <script>
@@ -335,7 +338,7 @@
         var emptyState = document.getElementById('empty-state');
         var mapGrid = document.getElementById('map-grid');
 
-        document.addEventListener('DOMContentLoaded', async function() {
+        async function initDashboardPage() {
             if (!Auth.requireAuth()) return;
             await loadMaps();
 
@@ -375,11 +378,11 @@
             };
             document.getElementById('dash-menu-mails').onclick = function() {
                 closeDashMenu();
-                window.open('../mails/', '_blank');
+                Navigation.toMails();
             };
             document.getElementById('dash-menu-admin').onclick = function() {
                 closeDashMenu();
-                window.open('../admin/', '_blank');
+                Navigation.toAdmin();
             };
             document.addEventListener('keydown', function(ev) {
                 if (ev.key === 'Escape' && dashPanel.classList.contains('active')) closeDashMenu();
@@ -412,7 +415,13 @@
             setInterval(pollDashMail, 30000);
             document.getElementById('btn-new-map').onclick = createNewMap;
             document.getElementById('btn-create-first').onclick = createNewMap;
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDashboardPage);
+        } else {
+            initDashboardPage();
+        }
 
         async function loadMaps() {
             try {
