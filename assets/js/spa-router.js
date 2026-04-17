@@ -58,11 +58,12 @@
         document.head.appendChild(style);
     }
 
-    async function executeScripts(doc) {
+    async function executeScripts(doc, basePath) {
+        const baseUrl = new URL(basePath, window.location.origin);
         const scripts = Array.from(doc.querySelectorAll('script'));
         for (const script of scripts) {
             if (script.src) {
-                const src = new URL(script.getAttribute('src'), window.location.origin).toString();
+                const src = new URL(script.getAttribute('src'), baseUrl).toString();
                 const alreadyLoaded = Array.from(document.scripts).some(existing => {
                     return existing.src && existing.src === src;
                 });
@@ -176,7 +177,7 @@
                 document.body.className = doc.body.className || document.body.className;
 
                 syncHeadStyles(doc);
-                await executeScripts(doc);
+                await executeScripts(doc, normalized);
                 syncPageFooter(doc);
                 applyStaggeredUiTransitions(newContent);
                 if (replaceState) {
