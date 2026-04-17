@@ -50,6 +50,10 @@
                 0% { opacity: 1; transform: translateY(0) scale(1); }
                 100% { opacity: 0; transform: translateY(-10px) scale(0.98); }
             }
+            @keyframes spaItemEnter {
+                0% { opacity: 0; transform: translateY(12px); }
+                100% { opacity: 1; transform: translateY(0); }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -65,27 +69,37 @@
         });
     }
 
+    function applyStaggeredUiTransitions(container) {
+        if (!container) return;
+        const selector = 'header, footer, main, section, article, nav, div, button, input, select, textarea, label, table, ul, ol, .mail-card, .room-card, .map-card, .settings-card, .user-table, .tab-panel, .admin-tabs, .users-toolbar, .mail-card-header, .mail-card-body, .settings-section';
+        const elements = Array.from(container.querySelectorAll(selector)).filter(el => {
+            if (!(el instanceof HTMLElement)) return false;
+            if (el.closest('script, style, link')) return false;
+            return getComputedStyle(el).display !== 'none';
+        });
+
+        let delay = 0;
+        elements.forEach(el => {
+            el.style.opacity = '0';
+            el.style.animation = `spaItemEnter 0.35s ease-out forwards ${delay.toFixed(2)}s`;
+            delay += 0.03;
+        });
+    }
+
     function syncHeadStyles(doc) {
-        const existingStyles = new Set(Array.from(document.head.querySelectorAll('style[data-spa-managed]')).map(el => el.textContent.trim()));
-        const existingLinks = new Set(Array.from(document.head.querySelectorAll('link[rel="stylesheet"][href]')).map(el => el.href));
+        Array.from(document.head.querySelectorAll('link[data-spa-managed], style[data-spa-managed]')).forEach(el => el.remove());
 
         Array.from(doc.head.querySelectorAll('link[rel="stylesheet"][href]')).forEach(link => {
-            if (!existingLinks.has(link.href)) {
-                const clone = link.cloneNode(true);
-                clone.setAttribute('data-spa-managed', '1');
-                document.head.appendChild(clone);
-                existingLinks.add(link.href);
-            }
+            const clone = link.cloneNode(true);
+            clone.setAttribute('data-spa-managed', '1');
+            document.head.appendChild(clone);
         });
 
         Array.from(doc.head.querySelectorAll('style')).forEach(style => {
-            const content = style.textContent.trim();
-            if (!content || existingStyles.has(content)) return;
             const clone = document.createElement('style');
             clone.setAttribute('data-spa-managed', '1');
-            clone.textContent = content;
+            clone.textContent = style.textContent;
             document.head.appendChild(clone);
-            existingStyles.add(content);
         });
     }
 
@@ -142,6 +156,7 @@
                 syncHeadStyles(doc);
                 executeInlineScripts(doc);
                 syncPageFooter(doc);
+                applyStaggeredUiTransitions(newContent);
                 if (replaceState) {
                     history.replaceState({ spa: true, path: normalized }, '', normalized);
                 } else {
@@ -195,8 +210,13 @@
     }
 
     function onPopState(event) {
+        const currentPath = normalizePath(window.location.pathname);
         if (event.state && event.state.spa && event.state.path) {
             navigateSpa(event.state.path, true);
+            return;
+        }
+        if (isSpaRoute(currentPath)) {
+            navigateSpa(currentPath, true);
         }
     }
 
@@ -209,6 +229,11 @@
         patchNavigation();
         document.body.addEventListener('click', linkHandler);
         window.addEventListener('popstate', onPopState);
+
+        const currentContent = document.querySelector('#spa-content');
+        if (currentContent) {
+            applyStaggeredUiTransitions(currentContent);
+        }
     }
 
     if (document.readyState === 'loading') {
