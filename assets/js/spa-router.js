@@ -58,15 +58,37 @@
         document.head.appendChild(style);
     }
 
-    function executeInlineScripts(doc) {
-        const scripts = Array.from(doc.querySelectorAll('script')).filter(script => !script.src);
-        scripts.forEach(script => {
-            const injected = document.createElement('script');
-            if (script.type) injected.type = script.type;
-            injected.textContent = script.textContent;
-            document.body.appendChild(injected);
-            document.body.removeChild(injected);
-        });
+    async function executeScripts(doc) {
+        const scripts = Array.from(doc.querySelectorAll('script'));
+        for (const script of scripts) {
+            if (script.src) {
+                const src = new URL(script.getAttribute('src'), window.location.origin).toString();
+                const alreadyLoaded = Array.from(document.scripts).some(existing => {
+                    return existing.src && existing.src === src;
+                });
+                if (alreadyLoaded) continue;
+
+                await new Promise(resolve => {
+                    const injected = document.createElement('script');
+                    if (script.type) injected.type = script.type;
+                    if (script.async) injected.async = true;
+                    if (script.defer) injected.defer = true;
+                    injected.src = src;
+                    injected.onload = resolve;
+                    injected.onerror = function() {
+                        console.warn('[SPA Router] failed loading script', src);
+                        resolve();
+                    };
+                    document.body.appendChild(injected);
+                });
+            } else {
+                const injected = document.createElement('script');
+                if (script.type) injected.type = script.type;
+                injected.textContent = script.textContent;
+                document.body.appendChild(injected);
+                document.body.removeChild(injected);
+            }
+        }
     }
 
     function applyStaggeredUiTransitions(container) {
@@ -146,7 +168,7 @@
             }
 
             currentContent.classList.add('spa-exit');
-            currentContent.addEventListener('animationend', function onExit() {
+            currentContent.addEventListener('animationend', async function onExit() {
                 currentContent.removeEventListener('animationend', onExit);
                 currentContent.replaceWith(newContent);
                 newContent.classList.add('spa-enter');
@@ -154,7 +176,7 @@
                 document.body.className = doc.body.className || document.body.className;
 
                 syncHeadStyles(doc);
-                executeInlineScripts(doc);
+                await executeScripts(doc);
                 syncPageFooter(doc);
                 applyStaggeredUiTransitions(newContent);
                 if (replaceState) {
