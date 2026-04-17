@@ -291,11 +291,7 @@
         }
 
         document.getElementById('btn-back').onclick = function() {
-            if (document.referrer && document.referrer.includes('/parkoreen/')) {
-                history.back();
-            } else {
-                Navigation.toDashboard();
-            }
+            Navigation.toDashboard();
         };
 
         loadMails();

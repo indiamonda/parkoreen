@@ -243,7 +243,11 @@
 
             // Back button
             document.getElementById('btn-back').onclick = function() {
-                Navigation.toDashboard();
+                if (window.Navigation && typeof window.Navigation.toDashboard === 'function') {
+                    window.Navigation.toDashboard();
+                } else {
+                    window.location.href = '/parkoreen/dashboard/';
+                }
             };
             
             // How To Play button

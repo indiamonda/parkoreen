@@ -65,6 +65,45 @@
         });
     }
 
+    function syncHeadStyles(doc) {
+        const existingStyles = new Set(Array.from(document.head.querySelectorAll('style[data-spa-managed]')).map(el => el.textContent.trim()));
+        const existingLinks = new Set(Array.from(document.head.querySelectorAll('link[rel="stylesheet"][href]')).map(el => el.href));
+
+        Array.from(doc.head.querySelectorAll('link[rel="stylesheet"][href]')).forEach(link => {
+            if (!existingLinks.has(link.href)) {
+                const clone = link.cloneNode(true);
+                clone.setAttribute('data-spa-managed', '1');
+                document.head.appendChild(clone);
+                existingLinks.add(link.href);
+            }
+        });
+
+        Array.from(doc.head.querySelectorAll('style')).forEach(style => {
+            const content = style.textContent.trim();
+            if (!content || existingStyles.has(content)) return;
+            const clone = document.createElement('style');
+            clone.setAttribute('data-spa-managed', '1');
+            clone.textContent = content;
+            document.head.appendChild(clone);
+            existingStyles.add(content);
+        });
+    }
+
+    function syncPageFooter(doc) {
+        const newFooter = doc.body.querySelector('.page-footer');
+        const currentFooter = document.querySelector('.page-footer');
+        if (newFooter) {
+            const footerNode = newFooter.cloneNode(true);
+            if (currentFooter) {
+                currentFooter.replaceWith(footerNode);
+            } else {
+                document.body.appendChild(footerNode);
+            }
+        } else if (currentFooter) {
+            currentFooter.remove();
+        }
+    }
+
     async function navigateSpa(path, replaceState = false) {
         try {
             injectSpaStyles();
@@ -100,7 +139,9 @@
                 document.title = doc.title || document.title;
                 document.body.className = doc.body.className || document.body.className;
 
+                syncHeadStyles(doc);
                 executeInlineScripts(doc);
+                syncPageFooter(doc);
                 if (replaceState) {
                     history.replaceState({ spa: true, path: normalized }, '', normalized);
                 } else {
