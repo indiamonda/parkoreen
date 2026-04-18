@@ -57,6 +57,8 @@
         player.superDashDirection = 1;
         player._playedCharge2 = false;
         player._superDashKeyReady = true;
+        player.isSuperDashFrozen = false;
+        player.superDashFreezeUntil = 0;
         
         // Heal
         player.isHealing = false;
@@ -121,9 +123,25 @@
         player.hasSuperDash = config.superDash || false;
         player.hasMantisClaw = config.mantisClaw || false;
         
-        // Update facing based on movement
-        if (player.input?.left && !player.input?.right) player.facingDirection = -1;
-        if (player.input?.right && !player.input?.left) player.facingDirection = 1;
+        // Update facing based on movement, but lock direction while dashing/super dashing
+        if (!player.isDashing && !player.isSuperDashing) {
+            if (player.input?.left && !player.input?.right) player.facingDirection = -1;
+            if (player.input?.right && !player.input?.left) player.facingDirection = 1;
+        }
+        
+        // Super dash wall-hit freeze: stay frozen until 1 second passes or player takes control
+        if (player.isSuperDashFrozen) {
+            const controlInput = player.input?.left || player.input?.right || player.input?.up || player.input?.down || player.input?.jump || player.input?.attack || player.input?.dash || player.input?.heal;
+            if (now >= player.superDashFreezeUntil || controlInput) {
+                player.isSuperDashFrozen = false;
+                player.superDashFreezeUntil = 0;
+            } else {
+                player.vx = 0;
+                player.vy = 0;
+                data.skipPhysics = true;
+                return data;
+            }
+        }
         
         // ===== MANTIS CLAW (Wall Cling) =====
         if (player.hasMantisClaw && !player.isOnGround && !player.isDashing && !player.isSuperDashing) {
@@ -214,8 +232,8 @@
                 // Horizontal push away from wall (30% of player speed for gentle repel)
                 player.vx = player.wallBounceDirection * playerSpeed * 0.3;
                 
-                // Wall jump is 50% of normal jump (no gravity scaling - consistent height)
-                player.vy = worldJumpForce * 0.5;
+                // Wall jump matches normal jump height (no gravity scaling - consistent height)
+                player.vy = worldJumpForce;
                 
                 player.facingDirection = player.wallBounceDirection;
                 
@@ -328,6 +346,9 @@
             player.isDashing = true;
             player.dashStartTime = now;
             player.dashDirection = player.facingDirection;
+            player.facingDirection = player.dashDirection; // Lock facing to dash direction
+            player.vx = player.dashDirection * 12;
+            player.vy = 0;
             pluginManager.playSound(pluginId, 'dash');
         }
         
@@ -543,6 +564,8 @@
         player.superDashCharging = false;
         player._playedCharge2 = false;
         player._superDashKeyReady = true;
+        player.isSuperDashFrozen = false;
+        player.superDashFreezeUntil = 0;
         player.isHealing = false;
         player.monarchWingsUsed = 0;
         player.isWallClinging = false;
@@ -771,7 +794,7 @@
         for (let i = 0; i < nearby.length; i++) {
             const obj = nearby[i];
             if (!obj.collision) continue;
-            if (obj.actingType === 'text' || obj.actingType === 'teleportal') continue;
+            if (obj.actingType === 'text' || obj.actingType === 'teleportal' || obj.actingType === 'bouncer' || obj.appearanceType === 'coin') continue;
             if (boxIntersects(_wallBox, obj)) return direction;
         }
         return 0;
@@ -806,6 +829,8 @@
         pluginManager.stopSound(pluginId, 'superdashFlying');
         
         if (reason === 'wall') {
+            player.isSuperDashFrozen = true;
+            player.superDashFreezeUntil = Date.now() + 1000;
             pluginManager.playSound(pluginId, 'superdashHitwallstop');
         } else if (reason === 'manual') {
             pluginManager.playSound(pluginId, 'superdashTriggerstop');

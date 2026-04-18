@@ -1130,7 +1130,7 @@ class WorldObject {
         return typeNames[this.appearanceType] || 'Object';
     }
 
-    render(ctx, camera, checkpointColors = null) {
+    render(ctx, camera, checkpointColors = null, world = null) {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
         const width = this.width;
@@ -1178,7 +1178,7 @@ class WorldObject {
         } else if (at === 'spawnpoint') {
             this.renderSpawnpoint(ctx, screenX, screenY, width, height);
         } else if (at === 'endpoint') {
-            this.renderEndpoint(ctx, screenX, screenY, width, height);
+            this.renderEndpoint(ctx, screenX, screenY, width, height, world);
         } else if (at === 'zone') {
             this.renderZone(ctx, screenX, screenY, width, height);
         } else if (at === 'button') {
@@ -1323,9 +1323,25 @@ class WorldObject {
         ctx.fill();
     }
 
-    renderEndpoint(ctx, x, y, w, h) {
+    renderEndpoint(ctx, x, y, w, h, world = null) {
+        const requireCoins = !!this.endpointRequireCoins;
+        let isLocked = false;
+        if (requireCoins && world) {
+            const totalCoins = world.objects.filter(o => o.appearanceType === 'coin').length;
+            let requiredCoins = Number.isFinite(this.endpointRequiredCoins)
+                ? Math.max(0, Math.floor(this.endpointRequiredCoins))
+                : totalCoins;
+            requiredCoins = Math.min(requiredCoins, totalCoins);
+            const collectedCoins = world.objects.filter(o => o.appearanceType === 'coin' && o._collected).length;
+            isLocked = collectedCoins < requiredCoins;
+        }
+
+        const baseColor = isLocked ? '#717171' : '#FFD700';
+        const cupColor = isLocked ? '#8A8A8A' : '#FFD700';
+        const starColor = isLocked ? '#D2D2D2' : '#FFF';
+
         // Trophy base
-        ctx.fillStyle = '#FFD700';
+        ctx.fillStyle = baseColor;
         ctx.fillRect(x + w * 0.25, y + h * 0.7, w * 0.5, h * 0.2);
         
         // Trophy cup
@@ -1337,10 +1353,11 @@ class WorldObject {
         ctx.lineTo(x + w * 0.65, y + h * 0.6);
         ctx.quadraticCurveTo(x + w * 0.85, y + h * 0.55, x + w * 0.85, y + h * 0.15);
         ctx.closePath();
+        ctx.fillStyle = cupColor;
         ctx.fill();
         
         // Star
-        ctx.fillStyle = '#FFF';
+        ctx.fillStyle = starColor;
         const cx = x + w / 2;
         const cy = y + h * 0.35;
         const spikes = 5;
@@ -2567,7 +2584,7 @@ class World {
             if (!match) continue;
             if (obj.x + obj.width < vLeft || obj.x > vRight ||
                 obj.y + obj.height < vTop || obj.y > vBottom) continue;
-            obj.render(ctx, camera, checkpointColors);
+            obj.render(ctx, camera, checkpointColors, this);
         }
     }
 
@@ -2650,7 +2667,7 @@ class World {
         for (let i = 0; i < nonMerged.length; i++) {
             const obj = nonMerged[i];
             if (obj.x + obj.width < vL || obj.x > vR || obj.y + obj.height < vT || obj.y > vB) continue;
-            obj.render(ctx, camera, checkpointColors);
+            obj.render(ctx, camera, checkpointColors, this);
         }
     }
 
@@ -2672,7 +2689,7 @@ class World {
         for (let i = 0; i < list.length; i++) {
             const obj = list[i];
             if (obj.x + obj.width < vL || obj.x > vR || obj.y + obj.height < vT || obj.y > vB) continue;
-            obj.render(ctx, camera, checkpointColors);
+            obj.render(ctx, camera, checkpointColors, this);
         }
     }
     
@@ -2694,7 +2711,7 @@ class World {
             const obj = zones[i];
             if (obj.x + obj.width < vLeft || obj.x > vRight ||
                 obj.y + obj.height < vTop || obj.y > vBottom) continue;
-            obj.render(ctx, camera);
+            obj.render(ctx, camera, null, this);
         }
     }
     
@@ -4317,6 +4334,12 @@ class GameEngine {
 
             const strength = typeof obj.bouncerStrength === 'number' ? obj.bouncerStrength : 20;
             const bouncerDir = typeof obj.bouncerDirection === 'number' ? obj.bouncerDirection : 0;
+
+            // Reset any previous pogo/hit upward state when a bouncer redirects motion.
+            // This ensures controlled jump logic can re-evaluate the new upward velocity.
+            this.localPlayer._pogoJumping = false;
+            this.localPlayer._hitUpward = false;
+
             if (bouncerDir === 90) { // right
                 this.localPlayer.vx = strength;
                 this.localPlayer.vy = 0;

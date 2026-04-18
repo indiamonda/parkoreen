@@ -51,6 +51,14 @@
                     </label>
                 </div>
 
+                <div class="settings-row">
+                    <span class="settings-row-label">Controllable Jump</span>
+                    <label class="toggle">
+                        <input type="checkbox" id="controllable-jump-toggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
                 <div class="settings-row hidden" id="role-mode-row">
                     <span class="settings-row-label">Role Mode</span>
                     <select class="form-select" id="role-mode" style="width: 140px;">
@@ -210,6 +218,8 @@
             fontsizeNumber.value = savedFontSize;
             
             touchscreenToggle.checked = Settings.get('touchscreenMode');
+            var controllableJumpToggle = document.getElementById('controllable-jump-toggle');
+            controllableJumpToggle.checked = Settings.get('controllableJumpEnabled');
 
             // Role mode (only for designated admin accounts)
             if (typeof isParkoreenAdminUsername === 'function' && isParkoreenAdminUsername(user.username)) {
@@ -284,6 +294,11 @@
             // Touchscreen toggle
             touchscreenToggle.onchange = function(e) {
                 Settings.set('touchscreenMode', e.target.checked);
+            };
+
+            // Controllable Jump toggle
+            controllableJumpToggle.onchange = function(e) {
+                Settings.set('controllableJumpEnabled', e.target.checked);
             };
 
             // Update display name

@@ -1234,6 +1234,11 @@
                 editor.clearUndoHistory();
                 engine.world.mapName = prefetchedData?.name || 'Untitled Map';
                 
+                // Enable controllable jump globally if user settings want it
+                if (typeof Settings !== 'undefined' && Settings.get('controllableJumpEnabled') && window.PluginManager && !engine.world.hasPlugin('cj')) {
+                    await window.PluginManager.enablePlugin('cj', engine.world);
+                }
+                
                 // Initialize plugins from world data (scripts already loaded in preload)
                 if (window.PluginManager) {
                     await window.PluginManager.initFromWorld(engine.world);
@@ -1338,9 +1343,11 @@
                     // Update background based on map theme
                     editor.updateBackground();
                     
-                    // Initialize plugins from world data (scripts already loaded in preload phase)
-                    if (window.PluginManager) {
-                        await window.PluginManager.initFromWorld(engine.world);
+                        // Enable controllable jump globally if user settings want it
+                        if (typeof Settings !== 'undefined' && Settings.get('controllableJumpEnabled') && window.PluginManager && !engine.world.hasPlugin('cj')) {
+                            await window.PluginManager.enablePlugin('cj', engine.world);
+                        }
+                        
                     }
                 }
                 isHost = data.isHost || false;

@@ -1315,7 +1315,8 @@ class SettingsManager {
             touchscreenMode: false,
             fontSize: 100, // percentage (50-150)
             keyboardLayout: 'jimmyqrg',
-            roleMode: 'normal'
+            roleMode: 'normal',
+            controllableJumpEnabled: false
         };
         this.settings = { ...this.defaults };
         this.load();

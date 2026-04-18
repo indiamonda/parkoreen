@@ -16,3 +16,5 @@ Latest highlights (see wiki changelog for full details):
 - Coin bobbing flow: each coin now animates with different timing/phase so they do not move in sync.
 - Move & Duplicate tools now also play `tile.ogg` when objects are duplicated or a move is finalized.
 - Collected coins now disappear immediately during gameplay (coins are rendered dynamically, not tile-cached).
+- HK plugin updates: wall jump height now matches normal jump height, super dash wall collisions freeze the player briefly, and Mantis Claw no longer clings to teleportal, coin, or bouncer objects.
+- End points now appear gray only when a coin requirement exists and is unmet.

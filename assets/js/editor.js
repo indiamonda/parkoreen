@@ -1228,24 +1228,6 @@ class Editor {
                             <small style="color: #888; font-size: 11px;">1.14 = 70% jump height (HK-style)</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">HK Camera Horizontal</label>
-                            <input type="range" class="form-range" id="config-hk-camera-x" min="0.02" max="0.5" step="0.01" value="0.04" style="width: 100%;">
-                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
-                                <span>Smooth</span>
-                                <span id="config-hk-camera-x-value">0.04</span>
-                                <span>Snappy</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">HK Camera Vertical</label>
-                            <input type="range" class="form-range" id="config-hk-camera-y" min="0.02" max="0.5" step="0.01" value="0.15" style="width: 100%;">
-                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666;">
-                                <span>Smooth</span>
-                                <span id="config-hk-camera-y-value">0.15</span>
-                                <span>Snappy</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Max Soul</label>
                             <input type="number" class="form-input" id="config-hk-maxsoul" min="33" max="198" value="99">
                             <small style="color: #888; font-size: 11px;">33 = one heal, 99 = three heals</small>
@@ -4809,35 +4791,7 @@ class Editor {
             this.triggerMapChange();
         });
         
-        document.getElementById('config-hk-camera-x')?.addEventListener('input', (e) => {
-            this.ensureHKConfig();
-            const value = parseFloat(e.target.value) || 0.04;
-            this.world.plugins.hk.defaultCameraLerpX = Math.max(0.02, Math.min(0.5, value));
-            // Also apply to world camera
-            this.world.cameraLerpX = this.world.plugins.hk.defaultCameraLerpX;
-            document.getElementById('config-hk-camera-x-value').textContent = this.world.cameraLerpX.toFixed(2);
-            // Update the physics camera input too
-            const cameraInput = document.getElementById('config-camera-lerp-x');
-            const cameraValue = document.getElementById('config-camera-lerp-x-value');
-            if (cameraInput) cameraInput.value = this.world.cameraLerpX;
-            if (cameraValue) cameraValue.textContent = this.world.cameraLerpX.toFixed(2);
-            this.triggerMapChange();
-        });
-        
-        document.getElementById('config-hk-camera-y')?.addEventListener('input', (e) => {
-            this.ensureHKConfig();
-            const value = parseFloat(e.target.value) || 0.15;
-            this.world.plugins.hk.defaultCameraLerpY = Math.max(0.02, Math.min(0.5, value));
-            // Also apply to world camera
-            this.world.cameraLerpY = this.world.plugins.hk.defaultCameraLerpY;
-            document.getElementById('config-hk-camera-y-value').textContent = this.world.cameraLerpY.toFixed(2);
-            // Update the physics camera input too
-            const cameraInput = document.getElementById('config-camera-lerp-y');
-            const cameraValue = document.getElementById('config-camera-lerp-y-value');
-            if (cameraInput) cameraInput.value = this.world.cameraLerpY;
-            if (cameraValue) cameraValue.textContent = this.world.cameraLerpY.toFixed(2);
-            this.triggerMapChange();
-        });
+
         
         document.getElementById('config-hk-maxsoul')?.addEventListener('change', (e) => {
             this.ensureHKConfig();
@@ -4958,30 +4912,15 @@ class Editor {
             
             await this.world.enablePlugin(pluginId);
             
-            // When enabling HK plugin, apply default gravity and camera settings
+            // When enabling HK plugin, apply default gravity settings
             if (pluginId === 'hk') {
                 this.ensureHKConfig();
                 const hkGravity = this.world.plugins.hk.defaultGravity ?? 1.14;
-                const hkCameraLerpX = this.world.plugins.hk.defaultCameraLerpX ?? 0.04;
-                const hkCameraLerpY = this.world.plugins.hk.defaultCameraLerpY ?? 0.15;
-                
                 this.world.gravity = hkGravity;
-                this.world.cameraLerpX = hkCameraLerpX;
-                this.world.cameraLerpY = hkCameraLerpY;
                 
                 // Update UI
                 const gravityInput = document.getElementById('config-gravity');
                 if (gravityInput) gravityInput.value = this.world.gravity;
-                
-                const cameraLerpXInput = document.getElementById('config-camera-lerp-x');
-                const cameraLerpXValue = document.getElementById('config-camera-lerp-x-value');
-                if (cameraLerpXInput) cameraLerpXInput.value = this.world.cameraLerpX;
-                if (cameraLerpXValue) cameraLerpXValue.textContent = this.world.cameraLerpX.toFixed(2);
-                
-                const cameraLerpYInput = document.getElementById('config-camera-lerp-y');
-                const cameraLerpYValue = document.getElementById('config-camera-lerp-y-value');
-                if (cameraLerpYInput) cameraLerpYInput.value = this.world.cameraLerpY;
-                if (cameraLerpYValue) cameraLerpYValue.textContent = this.world.cameraLerpY.toFixed(2);
             }
         }
         
@@ -5028,8 +4967,6 @@ class Editor {
         if (!this.world.plugins.hk) {
             this.world.plugins.hk = {
                 defaultGravity: 0.71,
-                defaultCameraLerpX: 0.15,  // Very smooth horizontal
-                defaultCameraLerpY: 0.04,  // Slightly above default vertical
                 maxSoul: 99,
                 monarchWing: false,
                 monarchWingAmount: 1,
@@ -9228,16 +9165,6 @@ if (bouncerColor) bouncerColor.value = this.world.defaultBouncerColor || '#461A0
         if (hkDash) hkDash.checked = hk?.dash ?? false;
         if (hkSuperDash) hkSuperDash.checked = hk?.superDash ?? false;
         if (hkMantisClaw) hkMantisClaw.checked = hk?.mantisClaw ?? false;
-        
-        // HK Camera settings
-        const hkCameraX = document.getElementById('config-hk-camera-x');
-        const hkCameraXValue = document.getElementById('config-hk-camera-x-value');
-        const hkCameraY = document.getElementById('config-hk-camera-y');
-        const hkCameraYValue = document.getElementById('config-hk-camera-y-value');
-        if (hkCameraX) hkCameraX.value = hk?.defaultCameraLerpX ?? 0.04;
-        if (hkCameraXValue) hkCameraXValue.textContent = (hk?.defaultCameraLerpX ?? 0.04).toFixed(2);
-        if (hkCameraY) hkCameraY.value = hk?.defaultCameraLerpY ?? 0.15;
-        if (hkCameraYValue) hkCameraYValue.textContent = (hk?.defaultCameraLerpY ?? 0.15).toFixed(2);
         
         // Code plugin settings
         const codeAutoRespawn = document.getElementById('config-code-autorespawn');
