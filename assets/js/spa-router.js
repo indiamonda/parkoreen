@@ -92,6 +92,24 @@
         }
     }
 
+    function waitForAnimationEnd(element, timeout = 400) {
+        return new Promise(resolve => {
+            let finished = false;
+            function done() {
+                if (finished) return;
+                finished = true;
+                element.removeEventListener('animationend', onAnimEnd);
+                clearTimeout(timer);
+                resolve();
+            }
+            function onAnimEnd(event) {
+                if (event.target === element) done();
+            }
+            const timer = setTimeout(done, timeout);
+            element.addEventListener('animationend', onAnimEnd);
+        });
+    }
+
     function applyStaggeredUiTransitions(container) {
         if (!container) return;
         const selector = 'header, footer, main, section, article, nav, div, button, input, select, textarea, label, table, ul, ol, .mail-card, .room-card, .map-card, .settings-card, .user-table, .tab-panel, .admin-tabs, .users-toolbar, .mail-card-header, .mail-card-body, .settings-section';
@@ -102,11 +120,24 @@
         });
 
         let delay = 0;
+        const animated = [];
         elements.forEach(el => {
             el.style.opacity = '0';
             el.style.animation = `spaItemEnter 0.35s ease-out forwards ${delay.toFixed(2)}s`;
+            animated.push(el);
             delay += 0.03;
         });
+
+        setTimeout(() => {
+            animated.forEach(el => {
+                if (el.style.opacity === '0') {
+                    el.style.opacity = '';
+                }
+                if (el.style.animation && el.style.animation.includes('spaItemEnter')) {
+                    el.style.animation = '';
+                }
+            });
+        }, 900);
     }
 
     function syncHeadStyles(doc) {
@@ -169,28 +200,23 @@
             }
 
             currentContent.classList.add('spa-exit');
-            currentContent.addEventListener('animationend', async function onExit() {
-                currentContent.removeEventListener('animationend', onExit);
-                currentContent.replaceWith(newContent);
-                newContent.classList.add('spa-enter');
-                document.title = doc.title || document.title;
-                document.body.className = doc.body.className || document.body.className;
+            await waitForAnimationEnd(currentContent);
+            currentContent.replaceWith(newContent);
+            newContent.classList.add('spa-enter');
+                newContent.style.opacity = '1';
 
-                syncHeadStyles(doc);
-                await executeScripts(doc, normalized);
-                syncPageFooter(doc);
-                applyStaggeredUiTransitions(newContent);
-                if (replaceState) {
-                    history.replaceState({ spa: true, path: normalized }, '', normalized);
-                } else {
-                    history.pushState({ spa: true, path: normalized }, '', normalized);
-                }
+            syncHeadStyles(doc);
+            await executeScripts(doc, normalized);
+            syncPageFooter(doc);
+            applyStaggeredUiTransitions(newContent);
+            if (replaceState) {
+                history.replaceState({ spa: true, path: normalized }, '', normalized);
+            } else {
+                history.pushState({ spa: true, path: normalized }, '', normalized);
+            }
 
-                newContent.addEventListener('animationend', function onEnter() {
-                    newContent.removeEventListener('animationend', onEnter);
-                    newContent.classList.remove('spa-enter');
-                });
-            });
+            await waitForAnimationEnd(newContent);
+            newContent.classList.remove('spa-enter');
         } catch (error) {
             console.error('[SPA Router] navigation failed', error);
             window.location.href = path;
