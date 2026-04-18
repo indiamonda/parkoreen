@@ -359,9 +359,13 @@
     <script src="/parkoreen/assets/js/style.js"></script>
     <script src="/parkoreen/assets/js/spa-router.js"></script>
     <script>
-        const Auth = window.Auth;
+        const Auth = window.Auth || {
+            getToken() { return null; },
+            getUser() { return null; },
+            logout() {}
+        };
         // API_URL is already declared in runtime.js — do not redeclare
-        const Settings = window.Settings;
+        const Settings = window.Settings || { get() { return undefined; } };
 
         function isAdminGateUsername(username) {
             if (typeof window.isParkoreenAdminUsername === 'function') {
@@ -423,14 +427,18 @@
                 document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
                 tab.classList.add('active');
-                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+                const panel = document.getElementById('tab-' + tab.dataset.tab);
+                if (panel) panel.classList.add('active');
                 if (tab.dataset.tab === 'maps') loadMaps();
             });
         });
 
-        document.getElementById('btn-back').onclick = function() {
-            Navigation.toDashboard();
-        };
+        const backBtn = document.getElementById('btn-back');
+        if (backBtn) {
+            backBtn.onclick = function() {
+                Navigation.toDashboard();
+            };
+        }
 
         // ============================================
         // ROOMS
@@ -561,9 +569,12 @@
             });
         }
 
-        document.getElementById('users-search').addEventListener('input', (e) => {
-            renderUsers(e.target.value);
-        });
+        const usersSearchEl = document.getElementById('users-search');
+        if (usersSearchEl) {
+            usersSearchEl.addEventListener('input', (e) => {
+                renderUsers(e.target.value);
+            });
+        }
 
         // ============================================
         // MAPS
@@ -664,9 +675,12 @@
             });
         }
 
-        document.getElementById('maps-search').addEventListener('input', (e) => {
-            renderMapsList(e.target.value);
-        });
+        const mapsSearchEl = document.getElementById('maps-search');
+        if (mapsSearchEl) {
+            mapsSearchEl.addEventListener('input', (e) => {
+                renderMapsList(e.target.value);
+            });
+        }
 
         // ============================================
         // ACTIONS
