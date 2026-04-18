@@ -6089,19 +6089,39 @@ class Editor {
         if (this.selectedObjects.size === 0) return;
         
         const newSelection = new Set();
+        let teleportalClones = [];
         for (const obj of this.selectedObjects) {
             const clone = obj.clone();
             clone.x += GRID_SIZE;
             clone.y += GRID_SIZE;
-            this.world.addObject(clone);
-            newSelection.add(clone);
+            if (clone.type === 'teleportal') {
+                clone.teleportalName = '';
+                teleportalClones.push(clone);
+            } else {
+                this.world.addObject(clone);
+                newSelection.add(clone);
+            }
         }
+        
+        // Handle teleportal clones
+        if (teleportalClones.length > 0) {
+            // For now, handle the first one (or last, since loop)
+            this.pendingTeleportal = teleportalClones[teleportalClones.length - 1];
+            this.showTeleportalNamePopup();
+            // Add the others with default name or something, but for simplicity, add them with empty name
+            for (const clone of teleportalClones.slice(0, -1)) {
+                clone.teleportalName = 'Unnamed Copy';
+                this.world.addObject(clone);
+                newSelection.add(clone);
+            }
+        }
+        
         this.selectedObjects = newSelection;
         this.updateSelectionCount();
         this.updateLayersList();
         this.triggerMapChange();
         this.playTileSound();
-        this.showToast(`Duplicated ${newSelection.size} objects`, 'success');
+        this.showToast(`Duplicated ${newSelection.size + teleportalClones.length} objects`, 'success');
     }
     
     rotateSelectedObjects(degrees) {

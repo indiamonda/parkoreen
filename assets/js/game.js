@@ -4029,7 +4029,7 @@ class GameEngine {
                     const centerX = obj.x + obj.width / 2;
                     const centerY = obj.y + obj.height / 2;
                     this.spawnCheckpointParticles(centerX, centerY, this.world.checkpointActiveColor);
-                    if (wasUntouched && this.audioManager) this.audioManager.play('checkpoint');
+                    if (this.audioManager) this.audioManager.play('checkpoint');
                 }
             } else if (obj.actingType === 'endpoint') {
                 const requireCoins = !!obj.endpointRequireCoins;
@@ -4397,10 +4397,6 @@ class GameEngine {
         if (this.lastCheckpoint) {
             spawnX = this.lastCheckpoint.x + this.lastCheckpoint.width / 2 - PLAYER_SIZE / 2;
             spawnY = this.lastCheckpoint.y - PLAYER_SIZE;
-            // Spawn particles when respawning at checkpoint
-            const centerX = this.lastCheckpoint.x + this.lastCheckpoint.width / 2;
-            const centerY = this.lastCheckpoint.y + this.lastCheckpoint.height / 2;
-            this.spawnCheckpointParticles(centerX, centerY, this.world.checkpointActiveColor);
         } else if (this.world.spawnPoint) {
             spawnX = this.world.spawnPoint.x + this.world.spawnPoint.width / 2 - PLAYER_SIZE / 2;
             spawnY = this.world.spawnPoint.y - PLAYER_SIZE;
