@@ -7,6 +7,7 @@ The full **Parkoreen** changelog lives in the wiki:
 For line-by-line history, use `git log` and `git show <commit>`.
 
 Latest highlights (see wiki changelog for full details):
+- Added SPA routing for dashboard, mails, settings, howtoplay, and admin pages with bouncy transitions.
 - Coin and bouncer now render using `coin.svg` / `bouncer.svg`.
 - Bouncer rotate-tool updates now sync bouncer direction/appearance direction.
 - Sideways bouncers now launch players sideways reliably.
