@@ -1343,11 +1343,9 @@
                     // Update background based on map theme
                     editor.updateBackground();
                     
-                        // Enable controllable jump globally if user settings want it
-                        if (typeof Settings !== 'undefined' && Settings.get('controllableJumpEnabled') && window.PluginManager && !engine.world.hasPlugin('cj')) {
-                            await window.PluginManager.enablePlugin('cj', engine.world);
-                        }
-                        
+                    // Enable controllable jump globally if user settings want it
+                    if (typeof Settings !== 'undefined' && Settings.get('controllableJumpEnabled') && window.PluginManager && !engine.world.hasPlugin('cj')) {
+                        await window.PluginManager.enablePlugin('cj', engine.world);
                     }
                 }
                 isHost = data.isHost || false;

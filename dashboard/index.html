@@ -334,6 +334,15 @@
     </script>
     
     <script>
+        var isIframed = (window !== window.top);
+        function navigateTo(url) {
+            if (isIframed) {
+                location.href = url;
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+
         var loading = document.getElementById('loading');
         var emptyState = document.getElementById('empty-state');
         var mapGrid = document.getElementById('map-grid');
@@ -342,7 +351,7 @@
             if (!Auth.requireAuth()) return;
             await loadMaps();
 
-            document.getElementById('btn-join').onclick = function() { window.open('../join.html', '_blank'); };
+            document.getElementById('btn-join').onclick = function() { navigateTo('../join.html'); };
 
             var dashBackdrop = document.getElementById('dash-menu-backdrop');
             var dashPanel = document.getElementById('dash-menu-panel');
@@ -540,7 +549,7 @@
                         await saveFn.call(window.MapManager, result.id, { data: data });
                         
                         toastSuccess('Map imported!');
-                        window.open('../host.html?map=' + result.id, '_blank');
+                        navigateTo('../host.html?map=' + result.id);
                         await loadMaps();
                     } catch (err) {
                         toastError('Failed to import: ' + err.message);
@@ -555,7 +564,7 @@
                     var createFn = window.MapManager.createMap;
                     var result = await createFn.call(window.MapManager, name.trim());
                     toastSuccess('Map created!');
-                    window.open('../host.html?map=' + result.id, '_blank');
+                    navigateTo('../host.html?map=' + result.id);
                 } catch (e) {
                     toastError('Failed to create map: ' + e.message);
                 }
@@ -631,11 +640,11 @@
         }
 
         function hostMap(id) {
-            window.open('../host.html?map=' + id + '&mode=host', '_blank');
+            navigateTo('../host.html?map=' + id + '&mode=host');
         }
 
         function editMap(id) {
-            window.open('../host.html?map=' + id, '_blank');
+            navigateTo('../host.html?map=' + id);
         }
 
         async function duplicateMap(id, name) {
