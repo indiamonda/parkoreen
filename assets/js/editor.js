@@ -6344,9 +6344,21 @@ class Editor {
             fields.push({ key: 'damageAmount', label: 'Damage Amount', type: 'number', min: 0, step: 1, defaultValue: 1 });
         }
 
-        // Spin direction/speed — only if ALL objects are spinners (saw blades)
+        // Width / Height / Spin direction / speed — only if ALL objects are spinners (saw blades)
         const allSpinners = objects.every(o => o.type === 'spinner' || o.appearanceType === 'spinner');
         if (allSpinners) {
+            fields.push({
+                key: 'width', label: 'Width (blocks)', type: 'number',
+                min: 1, step: 0.5, float: true, defaultValue: 2,
+                toValue: v => Math.round((v / GRID_SIZE) * 10) / 10,
+                fromValue: v => Math.max(GRID_SIZE, Math.round(v * GRID_SIZE))
+            });
+            fields.push({
+                key: 'height', label: 'Height (blocks)', type: 'number',
+                min: 1, step: 0.5, float: true, defaultValue: 2,
+                toValue: v => Math.round((v / GRID_SIZE) * 10) / 10,
+                fromValue: v => Math.max(GRID_SIZE, Math.round(v * GRID_SIZE))
+            });
             fields.push({ key: 'spinDirection', label: 'Spin Direction', type: 'select', castInt: true, options: [
                 { value: '1', label: 'Clockwise' },
                 { value: '-1', label: 'Counter-CW' }
@@ -6514,6 +6526,7 @@ class Editor {
                     const _parsed = field.float ? parseFloat(val) : parseInt(val);
                     val = Math.max(field.min ?? -Infinity, isNaN(_parsed) ? (field.defaultValue ?? 0) : _parsed);
                     input.value = val;
+                    if (field.fromValue) val = field.fromValue(val);
                 }
 
                 if (field.type === 'range') {
