@@ -27,6 +27,11 @@
 
     <h2>What's new in Current</h2>
     <ul>
+      <li>Saw blade multi-select now exposes <strong>Width</strong>, <strong>Height</strong>, and <strong>Damage Amount</strong> in the bulk edit popup, alongside Spin Direction and Spin Speed</li>
+      <li>Mechanics editor: the <strong>Action</strong> block type has been renamed to <strong>Event</strong>; existing maps are auto-migrated. Trigger linking field is now <code>eventId</code></li>
+      <li>Mechanics editor: fixed a crash when picking the <strong>Player Action Input</strong> trigger type so its sub-options render correctly</li>
+      <li>Hosting / editing a map no longer fails to load due to a syntax error in <code>host.html</code></li>
+      <li>Dashboard navigation now detects iframes and uses <code>location.href</code> instead of opening new tabs, avoiding popup blocks</li>
       <li>Coins — collectable currency with global/player scope</li>
       <li>Bouncers — spring pads that launch the player in any direction</li>
       <li>Coins and bouncers now use dedicated SVG sprites; bouncer rotate now syncs launch/appearance direction</li>

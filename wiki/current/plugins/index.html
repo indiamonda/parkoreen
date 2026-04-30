@@ -54,12 +54,38 @@
       </tbody>
     </table>
 
-    <h2>Code plugin</h2>
-    <p>Adds Python scripting via <strong>Skulpt</strong> — an in-browser Python interpreter. Allows custom game logic to run inside a map.</p>
+    <h2>Code plugin (Mechanics editor)</h2>
+    <p>Adds the <strong>Mechanics Editor</strong> — a visual block system plus Python scripting via <strong>Skulpt</strong> (an in-browser Python interpreter). Open it from the editor to build interactive logic without leaving the map.</p>
+
+    <h3>Mechanic block types</h3>
+    <table class="wiki-table">
+      <thead><tr><th>Block</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Trigger</strong></td><td>Detects something happening in the world (game start, repeat timer, player input/action, zone enter/leave, button press, player stats, key combos). Each trigger can link to one event by id.</td></tr>
+        <tr><td><strong>Event</strong></td><td>The reaction that runs when a trigger fires. Holds Python code to execute. <em>(Previously called "Action" — existing maps using <code>codeData.actions</code> and <code>type: 'action'</code> are auto-migrated to <code>codeData.events</code> / <code>type: 'event'</code> on load.)</em></td></tr>
+        <tr><td><strong>Variable</strong></td><td>Single value or list value usable by Python code. Supports <code>string</code>, <code>integer</code>, <code>float</code>, <code>boolean</code>, and variable references.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Trigger types</h3>
+    <table class="wiki-table">
+      <thead><tr><th>Trigger</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Game Starts</td><td>Fires once when the game begins.</td></tr>
+        <tr><td>Repeat</td><td>Fires repeatedly on an interval (ticks / seconds / minutes).</td></tr>
+        <tr><td>Player Action Input</td><td>Fires when the player performs a movement action (jump, fall, move, teleport, send message, …). Some actions accept an extra value (e.g. <em>Fall for [time]</em>).</td></tr>
+        <tr><td>Player Key Input</td><td>Fires on a multi-key combination (alphabet / number / mouse / arrow / modifier / custom captured keys).</td></tr>
+        <tr><td>Player Enter Zone / Leave Zone</td><td>Fires when the player crosses a named <a href="../zone/">Zone</a>.</td></tr>
+        <tr><td>Player Press Button</td><td>Fires when the player activates a <a href="../button/">Button</a>.</td></tr>
+        <tr><td>Player Stats</td><td>Fires when a player stat (username, display name, host/guest, color, tag) matches a value.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Other features</h3>
     <table class="wiki-table">
       <thead><tr><th>Feature</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Python scripts</td><td>Write Python code that executes each game tick or in response to events.</td></tr>
+        <tr><td>Python scripts</td><td>Each Event can hold Python code that runs when its linked trigger fires.</td></tr>
         <tr><td>Custom fonts</td><td>Register custom <code>.ttf</code> fonts for use by <a href="../text/">Text</a> objects.</td></tr>
         <tr><td>Zone events</td><td>Detect when the player enters or exits a named <a href="../zone/">Zone</a>.</td></tr>
         <tr><td>Button events</td><td>Respond to <code>button.pressed</code> events from <a href="../button/">Buttons</a>.</td></tr>
@@ -67,7 +93,7 @@
     </table>
 
     <div class="note">
-      The Code plugin API is considered <strong>stable</strong> in the current version. Custom fonts and zone/button event hooks are the primary integration points.
+      The Code plugin API is considered <strong>stable</strong> in the current version. Custom fonts, mechanic blocks, and zone/button event hooks are the primary integration points.
     </div>
   </div>
   <script>(function(){var b=document.getElementById('theme-toggle');var t=document.documentElement.getAttribute('data-theme')||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');b.textContent=t==='light'?'☾ Dark':'☀ Light';})();</script>

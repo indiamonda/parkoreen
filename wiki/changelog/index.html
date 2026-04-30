@@ -50,6 +50,8 @@
 
     <h3>Editor &amp; maps</h3>
     <ul>
+      <li><strong>Saw blade multi-select</strong>: bulk-edit popup now includes <strong>Width (blocks)</strong>, <strong>Height (blocks)</strong>, and <strong>Damage Amount</strong> alongside Spin Direction and Spin Speed, so multiple blades can be resized and configured together.</li>
+      <li><strong>Host / edit map fix</strong>: <code>initializePlayMode</code> in <code>host.html</code> had mismatched braces that closed the function early, producing <code>SyntaxError: await is only valid in async functions</code> on load. The <code>if (gameData)</code> / <code>if (data.mapData)</code> / Controllable Jump branch is now nested correctly so the page initialises.</li>
       <li><strong>Coin config</strong>: <strong>Amount</strong> field; <strong>Activity Scope</strong> (<code>Global</code> / <code>Player</code>); color picker (default <code>#FFDD00</code>).</li>
       <li><strong>Bouncer config</strong>: direction picker; <strong>Match Appearance</strong> toggle; <code>bouncerDirection</code> / <code>bouncerAppearanceDirection</code>; default <code>#461A0C</code>.</li>
       <li><strong>Button config</strong>: <strong>One-Time Trigger</strong>; face / base color pickers; coins and bouncers use dedicated edit popups.</li>
@@ -80,6 +82,13 @@
       <li><strong>Brick texture</strong>: repeating pattern anchored to the block (translate + clip fill) so it moves with the block.</li>
     </ul>
 
+    <h3>Mechanics editor (Code plugin)</h3>
+    <ul>
+      <li><strong>Block type rename</strong>: the <strong>Action</strong> mechanic block type is now called <strong>Event</strong>. Affects the New Mechanic dialog, dashboard sections, edit screen, default block name (<code>New Event</code>), default template (<code>CODE_DEFAULT_EVENT</code>), and the runtime <code>codeData.events</code> array. Existing maps using <code>codeData.actions</code> and <code>type: 'action'</code> are auto-migrated on load.</li>
+      <li><strong>Trigger linking</strong>: trigger config now links to events via <code>eventId</code> (was <code>actionId</code>); <code>inject.js</code> falls back to the old <code>actionId</code> for backward compatibility.</li>
+      <li><strong>Player Action Input fix</strong>: choosing the <strong>Player Action Input</strong> trigger type now reliably renders its action picker and per-action value field. <code>switch</code>-case <code>const</code> declarations are now block-scoped (<code>{ ... }</code>) and <code>attachTriggerConfigListeners</code> looks up <code>#trigger-config-area</code> locally so a missing reference no longer aborts the function before the change tracker attaches.</li>
+    </ul>
+
     <h3>Gameplay &amp; plugins</h3>
     <ul>
       <li><strong>All Spike</strong> touchbox mode: flat base also damages (no safe standing zone).</li>
@@ -104,6 +113,7 @@
 
     <h3>Account &amp; UI</h3>
     <ul>
+      <li><strong>Iframe-aware dashboard navigation</strong>: when the dashboard is embedded in an iframe (<code>window !== window.top</code>), all map open / host / edit / join links use <code>location.href</code> instead of <code>window.open(_, '_blank')</code>, so popup blockers and embedded contexts no longer break navigation.</li>
       <li>Added SPA routing for dashboard, mails, settings, howtoplay, and admin pages with bouncy transitions.</li>
       <li><strong>Auto log-out</strong> when unauthorized.</li>
       <li><strong>Keyboard</strong> settings in Parkoreen settings; dashboard scrolling.</li>
