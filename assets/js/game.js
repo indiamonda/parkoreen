@@ -2109,10 +2109,10 @@ class World {
             // Plugin configs are added dynamically: this.plugins[pluginId] = {...}
         };
         
-        // Code plugin data (triggers and actions)
+        // Code plugin data (triggers and events)
         this.codeData = {
             triggers: [],
-            actions: []
+            events: []
         };
     }
 
@@ -3018,10 +3018,10 @@ class World {
         if (data.codeData && typeof data.codeData === 'object') {
             this.codeData = {
                 triggers: Array.isArray(data.codeData.triggers) ? data.codeData.triggers : [],
-                actions: Array.isArray(data.codeData.actions) ? data.codeData.actions : []
+                events: Array.isArray(data.codeData.events) ? data.codeData.events : (Array.isArray(data.codeData.actions) ? data.codeData.actions : [])
             };
         } else {
-            this.codeData = { triggers: [], actions: [] };
+            this.codeData = { triggers: [], events: [] };
         }
         
         if (data.objects) {

@@ -62,7 +62,7 @@ const PKRN_DEFAULTS = {
     },
     codeData: {
         triggers: [],
-        actions: []
+        events: []
     }
 };
 
@@ -433,7 +433,7 @@ class ExportManager {
             },
             // Plugins configuration
             plugins: world.plugins,
-            // Code plugin data (triggers & actions)
+            // Code plugin data (triggers & events)
             codeData: world.codeData,
             // Objects
             objects: world.objects.map(obj => this.serializeObject(obj))
@@ -746,7 +746,7 @@ class ImportManager {
             music: this.deserializeMusic(settings.music),
             // Plugins configuration
             plugins: this.deserializePlugins(data.plugins),
-            // Code plugin data (triggers & actions)
+            // Code plugin data (triggers & events)
             codeData: this.deserializeCodeData(data.codeData),
             // Objects
             objects: (data.objects || []).map(obj => this.deserializeObject(obj))
@@ -778,18 +778,18 @@ class ImportManager {
     }
     
     /**
-     * Deserialize code plugin data (triggers & actions)
+     * Deserialize code plugin data (triggers & events)
      * @param {Object} codeData - Code data
      * @returns {Object} Validated code data
      */
     deserializeCodeData(codeData) {
         if (!codeData || typeof codeData !== 'object') {
-            return { triggers: [], actions: [] };
+            return { triggers: [], events: [] };
         }
         
         return {
             triggers: Array.isArray(codeData.triggers) ? codeData.triggers : [],
-            actions: Array.isArray(codeData.actions) ? codeData.actions : []
+            events: Array.isArray(codeData.events) ? codeData.events : (Array.isArray(codeData.actions) ? codeData.actions : [])
         };
     }
     

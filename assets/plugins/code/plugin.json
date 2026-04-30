@@ -3,7 +3,7 @@
     "hideInPluginLibrary": true,
     "name": "Code",
     "version": "0.1.0-beta",
-    "description": "Add triggers and actions to your map. Create interactive experiences with player events, zones, and custom logic.",
+    "description": "Add triggers and events to your map. Create interactive experiences with player events, zones, and custom logic.",
     "author": "Parkoreen",
     "color": "#3b82f6",
     "coverHeight": 120,

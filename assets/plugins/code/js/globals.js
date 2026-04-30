@@ -183,7 +183,7 @@ const CODE_TIME_UNITS = [
 // Code Block Types
 const CODE_BLOCK_TYPES = {
     TRIGGER: 'trigger',
-    ACTION: 'action',
+    EVENT: 'event',
     VARIABLE: 'variable'
 };
 
@@ -212,11 +212,11 @@ const CODE_DEFAULT_TRIGGER = {
     config: {}
 };
 
-// Default action template
-const CODE_DEFAULT_ACTION = {
+// Default event template
+const CODE_DEFAULT_EVENT = {
     id: '',
-    name: 'New Action',
-    type: CODE_BLOCK_TYPES.ACTION,
+    name: 'New Event',
+    type: CODE_BLOCK_TYPES.EVENT,
     enabled: true,
     code: ''
 };
@@ -254,7 +254,7 @@ if (typeof window !== 'undefined') {
     window.CODE_VARIABLE_TYPES = CODE_VARIABLE_TYPES;
     window.CODE_VALUE_TYPES = CODE_VALUE_TYPES;
     window.CODE_DEFAULT_TRIGGER = CODE_DEFAULT_TRIGGER;
-    window.CODE_DEFAULT_ACTION = CODE_DEFAULT_ACTION;
+    window.CODE_DEFAULT_EVENT = CODE_DEFAULT_EVENT;
     window.CODE_DEFAULT_VARIABLE = CODE_DEFAULT_VARIABLE;
     window.CODE_STATE = CODE_STATE;
 }

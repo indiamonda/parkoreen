@@ -1,6 +1,6 @@
 /**
  * Code Plugin - Inject Script
- * Handles runtime trigger evaluation and action execution
+ * Handles runtime trigger evaluation and event execution
  */
 
 (function() {
@@ -16,9 +16,21 @@
     
     // Get world's code data safely
     const getCodeData = (world) => {
-        if (!world) return { triggers: [], actions: [] };
+        if (!world) return { triggers: [], events: [] };
         if (!world.codeData) {
-            world.codeData = { triggers: [], actions: [] };
+            world.codeData = { triggers: [], events: [] };
+        }
+        // Migrate old 'actions' array to 'events' (backward compatibility)
+        if (!world.codeData.events && world.codeData.actions) {
+            world.codeData.events = world.codeData.actions;
+            delete world.codeData.actions;
+        }
+        if (!world.codeData.events) {
+            world.codeData.events = [];
+        }
+        // Migrate old block type 'action' → 'event'
+        for (const block of world.codeData.events) {
+            if (block.type === 'action') block.type = 'event';
         }
         return world.codeData;
     };
@@ -89,19 +101,19 @@
         return globalState.playerStates.get(player.id);
     };
     
-    // Execute an action by ID
-    const executeAction = (actionId, world, player, context = {}) => {
-        if (!actionId) return;
+    // Execute an event by ID
+    const executeEvent = (eventId, world, player, context = {}) => {
+        if (!eventId) return;
         
         const codeData = getCodeData(world);
-        const action = codeData.actions.find(a => a.id === actionId);
+        const event = codeData.events.find(a => a.id === eventId);
         
-        if (!action || !action.enabled) {
+        if (!event || !event.enabled) {
             return;
         }
         
         // Execute Python code (if available)
-        if (action.code && typeof runPython === 'function') {
+        if (event.code && typeof runPython === 'function') {
             try {
                 // Provide context to the Python code
                 const pythonContext = {
@@ -114,13 +126,13 @@
                     ...context
                 };
                 
-                runPython(action.code, {
+                runPython(event.code, {
                     onError: (err) => {
-                        console.warn(`[Code Plugin] Action "${action.name}" error:`, err);
+                        console.warn(`[Code Plugin] Event "${event.name}" error:`, err);
                     }
                 });
             } catch (e) {
-                console.warn(`[Code Plugin] Action "${action.name}" failed:`, e);
+                console.warn(`[Code Plugin] Event "${event.name}" failed:`, e);
             }
         }
     };
@@ -386,9 +398,10 @@
             for (const trigger of codeData.triggers || []) {
                 try {
                     if (evaluateTrigger(trigger, world, player, data)) {
-                        // Execute linked action if any
-                        if (trigger.config?.actionId) {
-                            executeAction(trigger.config.actionId, world, player, {
+                        // Execute linked event if any (fall back to old actionId for backward compatibility)
+                        const linkedEventId = trigger.config?.eventId || trigger.config?.actionId;
+                        if (linkedEventId) {
+                            executeEvent(linkedEventId, world, player, {
                                 trigger: trigger.name,
                                 triggerType: trigger.triggerType
                             });
@@ -441,8 +454,9 @@
             
             for (const trigger of triggers) {
                 if (trigger.config?.buttonName === button.name) {
-                    if (trigger.config?.actionId) {
-                        executeAction(trigger.config.actionId, world, player, {
+                    const linkedEventId = trigger.config?.eventId || trigger.config?.actionId;
+                    if (linkedEventId) {
+                        executeEvent(linkedEventId, world, player, {
                             trigger: trigger.name,
                             triggerType: trigger.triggerType,
                             buttonName: button.name

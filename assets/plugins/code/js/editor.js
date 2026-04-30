@@ -1,6 +1,6 @@
 /**
  * Code Plugin - Editor UI
- * Full-page code editor dashboard for managing triggers and actions
+ * Full-page code editor dashboard for managing triggers and events
  */
 
 (function() {
@@ -10,7 +10,7 @@
     
     // Editor state
     let codeEditorOverlay = null;
-    let currentView = 'dashboard'; // 'dashboard', 'editTrigger', 'editAction', 'editVariable'
+    let currentView = 'dashboard'; // 'dashboard', 'editTrigger', 'editEvent', 'editVariable'
     let editingBlock = null;
     let hasUnsavedChanges = false;
     let keyCapturingElement = null; // For "Other" key capture
@@ -23,7 +23,19 @@
         const w = getWorld();
         if (w) {
             if (!w.codeData) {
-                w.codeData = { triggers: [], actions: [], variables: [] };
+                w.codeData = { triggers: [], events: [], variables: [] };
+            }
+            // Migrate old 'actions' array to 'events' (backward compatibility)
+            if (!w.codeData.events && w.codeData.actions) {
+                w.codeData.events = w.codeData.actions;
+                delete w.codeData.actions;
+            }
+            if (!w.codeData.events) {
+                w.codeData.events = [];
+            }
+            // Migrate old block type 'action' → 'event'
+            for (const block of w.codeData.events) {
+                if (block.type === 'action') block.type = 'event';
             }
             // Ensure variables array exists (backward compatibility)
             if (!w.codeData.variables) {
@@ -31,7 +43,7 @@
             }
             return w.codeData;
         }
-        return { triggers: [], actions: [], variables: [] };
+        return { triggers: [], events: [], variables: [] };
     };
     
     // Save code data to world and notify editor
@@ -214,8 +226,8 @@
             e.preventDefault();
             if (currentView === 'editTrigger') {
                 saveTrigger();
-            } else if (currentView === 'editAction') {
-                // Save action when implemented
+            } else if (currentView === 'editEvent') {
+                // Save event when implemented
             } else if (currentView === 'editVariable') {
                 saveVariable();
             }
@@ -358,7 +370,7 @@
                 background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
             }
 
-            .code-block-icon.action {
+            .code-block-icon.event {
                 background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             }
 
@@ -812,9 +824,9 @@
         
         const codeData = getCodeData();
         const triggers = codeData.triggers || [];
-        const actions = codeData.actions || [];
+        const events = codeData.events || [];
         const variables = codeData.variables || [];
-        const allBlocks = [...triggers, ...actions, ...variables];
+        const allBlocks = [...triggers, ...events, ...variables];
         
         // Update header
         const backBtn = document.getElementById('code-editor-back');
@@ -840,7 +852,7 @@
                 <div class="code-empty-state">
                     <span class="material-symbols-outlined">code_off</span>
                     <p>No mechanic blocks yet</p>
-                    <small>Click "New Mechanic" to create your first trigger or action</small>
+                    <small>Click "New Mechanic" to create your first trigger or event</small>
                 </div>
             `;
             return;
@@ -870,12 +882,12 @@
             `;
         }
 
-        if (actions.length > 0) {
+        if (events.length > 0) {
             html += `
                 <div class="code-section">
-                    <div class="code-section-title">Actions (${actions.length})</div>
+                    <div class="code-section-title">Events (${events.length})</div>
                     <div class="code-blocks-grid">
-                        ${actions.map(a => renderBlockCard(a)).join('')}
+                        ${events.map(a => renderBlockCard(a)).join('')}
                     </div>
                 </div>
             `;
@@ -929,7 +941,7 @@
             iconClass = 'variable';
         } else {
             icon = 'code_blocks';
-            iconClass = 'action';
+            iconClass = 'event';
         }
         
         const error = isTrigger ? getTriggerError(block) : null;
@@ -959,24 +971,27 @@
                         typeDescription = `Keys: ${keyLabels.join(' + ')}`;
                     }
                     break;
-                case CODE_TRIGGER_TYPES.REPEAT:
+                case CODE_TRIGGER_TYPES.REPEAT: {
                     const unit = block.config?.unit || 'seconds';
                     const interval = block.config?.interval || 1;
                     const unitInfo = CODE_TIME_UNITS.find(u => u.id === unit);
                     const unitLabel = interval === 1 ? unitInfo?.labelSingular : unitInfo?.label;
                     typeDescription = `Every ${interval} ${unitLabel || unit}`;
                     break;
-                case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT:
+                }
+                case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT: {
                     const actionObj = CODE_PLAYER_ACTIONS.find(a => a.id === block.config?.action);
                     typeDescription = actionObj ? `Player: ${actionObj.label}` : 'Player action';
                     break;
+                }
                 case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
                     typeDescription = error ? `⚠ ${error}` : `When player presses "${block.config?.buttonName}"`;
                     break;
-                case CODE_TRIGGER_TYPES.PLAYER_STATS:
+                case CODE_TRIGGER_TYPES.PLAYER_STATS: {
                     const statObj = CODE_PLAYER_STATS.find(s => s.id === block.config?.stat);
                     typeDescription = statObj ? `${statObj.label} = "${block.config?.statValue || ''}"` : 'Player stat';
                     break;
+                }
                 default:
                     typeDescription = triggerInfo?.label || 'Trigger';
             }
@@ -989,7 +1004,7 @@
                 typeDescription = `${valueType}: ${block.defaultValue !== undefined ? block.defaultValue : 'undefined'}`;
             }
         } else {
-            typeDescription = 'Action (coming soon)';
+            typeDescription = 'Event (coming soon)';
         }
         
         return `
@@ -1060,7 +1075,7 @@
             btn.addEventListener('click', async (e) => {
                 const blockId = e.currentTarget.dataset.blockId;
                 const codeData = getCodeData();
-                const block = [...codeData.triggers, ...codeData.actions].find(b => b.id === blockId);
+                const block = [...codeData.triggers, ...codeData.events].find(b => b.id === blockId);
                 const confirmed = await showConfirm('Delete Block', `Are you sure you want to delete "${block?.name || 'this block'}"?`);
                 if (confirmed) {
                     deleteBlock(blockId);
@@ -1086,7 +1101,7 @@
         }
         
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions].find(b => b.id === blockId);
+        const block = [...codeData.triggers, ...codeData.events].find(b => b.id === blockId);
         if (block && block.name !== newName) {
             block.name = newName;
             saveCodeData(codeData);
@@ -1097,7 +1112,7 @@
     // Edit a block
     const editBlock = (blockId) => {
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions, ...codeData.variables].find(b => b.id === blockId);
+        const block = [...codeData.triggers, ...codeData.events, ...codeData.variables].find(b => b.id === blockId);
 
         if (!block) return;
 
@@ -1108,14 +1123,14 @@
         } else if (block.type === CODE_BLOCK_TYPES.VARIABLE) {
             showVariableEditor(block);
         } else {
-            showActionEditor(block);
+            showEventEditor(block);
         }
     };
     
     // Toggle block enabled/disabled
     const toggleBlock = (blockId) => {
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions, ...codeData.variables].find(b => b.id === blockId);
+        const block = [...codeData.triggers, ...codeData.events, ...codeData.variables].find(b => b.id === blockId);
 
         if (block) {
             block.enabled = !block.enabled;
@@ -1128,7 +1143,7 @@
     // Duplicate a block
     const duplicateBlock = (blockId) => {
         const codeData = getCodeData();
-        const block = [...codeData.triggers, ...codeData.actions, ...codeData.variables].find(b => b.id === blockId);
+        const block = [...codeData.triggers, ...codeData.events, ...codeData.variables].find(b => b.id === blockId);
         
         if (!block) return;
         
@@ -1141,7 +1156,7 @@
         } else if (block.type === CODE_BLOCK_TYPES.VARIABLE) {
             codeData.variables.push(newBlock);
         } else {
-            codeData.actions.push(newBlock);
+            codeData.events.push(newBlock);
         }
 
         saveCodeData(codeData);
@@ -1154,7 +1169,7 @@
         const codeData = getCodeData();
 
         codeData.triggers = codeData.triggers.filter(t => t.id !== blockId);
-        codeData.actions = codeData.actions.filter(a => a.id !== blockId);
+        codeData.events = codeData.events.filter(a => a.id !== blockId);
         codeData.variables = codeData.variables.filter(v => v.id !== blockId);
 
         saveCodeData(codeData);
@@ -1178,9 +1193,9 @@
                         <span class="material-symbols-outlined">data_object</span>
                         <span>Variable</span>
                     </button>
-                    <button class="code-type-btn" data-type="action">
+                    <button class="code-type-btn" data-type="event">
                         <span class="material-symbols-outlined">code_blocks</span>
-                        <span>Action</span>
+                        <span>Event</span>
                     </button>
                 </div>
                 <div class="form-group">
@@ -1263,15 +1278,15 @@
                 dialog.remove();
                 showVariableEditor(newVariable);
             } else {
-                const newAction = {
-                    ...JSON.parse(JSON.stringify(CODE_DEFAULT_ACTION)),
+                const newEvent = {
+                    ...JSON.parse(JSON.stringify(CODE_DEFAULT_EVENT)),
                     id: generateId(),
-                    name: name || 'New Action'
+                    name: name || 'New Event'
                 };
-                codeData.actions.push(newAction);
+                codeData.events.push(newEvent);
                 saveCodeData(codeData);
                 dialog.remove();
-                showActionEditor(newAction);
+                showEventEditor(newEvent);
             }
         };
         
@@ -1389,7 +1404,7 @@
         
         switch (triggerType) {
             case CODE_TRIGGER_TYPES.PLAYER_ENTER_ZONE:
-            case CODE_TRIGGER_TYPES.PLAYER_LEAVE_ZONE:
+            case CODE_TRIGGER_TYPES.PLAYER_LEAVE_ZONE: {
                 const hasZones = zones.length > 0;
                 html = `
                     <div class="trigger-form-group">
@@ -1402,8 +1417,9 @@
                     </div>
                 `;
                 break;
+            }
                 
-            case CODE_TRIGGER_TYPES.PLAYER_KEY_INPUT:
+            case CODE_TRIGGER_TYPES.PLAYER_KEY_INPUT: {
                 const keys = config.keys || [];
                 html = `
                     <div class="trigger-form-group">
@@ -1433,8 +1449,9 @@
                     </div>
                 `;
                 break;
+            }
                 
-            case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT:
+            case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT: {
                 const sortedActions = [...CODE_PLAYER_ACTIONS].sort((a, b) => a.label.localeCompare(b.label));
                 html = `
                     <div class="trigger-form-group">
@@ -1446,8 +1463,9 @@
                     <div id="trigger-action-value-area"></div>
                 `;
                 break;
+            }
                 
-            case CODE_TRIGGER_TYPES.PLAYER_STATS:
+            case CODE_TRIGGER_TYPES.PLAYER_STATS: {
                 const sortedStats = [...CODE_PLAYER_STATS].sort((a, b) => a.label.localeCompare(b.label));
                 html = `
                     <div class="trigger-form-group">
@@ -1462,6 +1480,7 @@
                     </div>
                 `;
                 break;
+            }
                 
             case CODE_TRIGGER_TYPES.REPEAT:
                 html = `
@@ -1478,7 +1497,7 @@
                 `;
                 break;
                 
-            case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON:
+            case CODE_TRIGGER_TYPES.PLAYER_PRESS_BUTTON: {
                 const buttons = getButtons();
                 const hasButtons = buttons.length > 0;
                 html = `
@@ -1492,6 +1511,7 @@
                     </div>
                 `;
                 break;
+            }
 
             case CODE_TRIGGER_TYPES.GAME_STARTS:
             default:
@@ -1507,6 +1527,7 @@
     
     // Attach event listeners for trigger config
     const attachTriggerConfigListeners = (triggerType, config) => {
+        const area = document.getElementById('trigger-config-area');
         // Key input handling
         if (triggerType === CODE_TRIGGER_TYPES.PLAYER_KEY_INPUT) {
             const addKeyBtn = document.getElementById('trigger-add-key-btn');
@@ -1659,19 +1680,21 @@
                 config.zoneName = document.getElementById('trigger-config-zone')?.value || '';
                 break;
                 
-            case CODE_TRIGGER_TYPES.PLAYER_KEY_INPUT:
+            case CODE_TRIGGER_TYPES.PLAYER_KEY_INPUT: {
                 const keysList = document.getElementById('trigger-keys-list');
                 config.keys = Array.from(keysList?.querySelectorAll('.trigger-key-tag') || [])
                     .map(tag => tag.dataset.key);
                 break;
+            }
                 
-            case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT:
+            case CODE_TRIGGER_TYPES.PLAYER_ACTION_INPUT: {
                 config.action = document.getElementById('trigger-config-action')?.value || '';
                 const actionValueEl = document.getElementById('trigger-config-action-value');
                 if (actionValueEl) {
                     config.actionValue = actionValueEl.value;
                 }
                 break;
+            }
                 
             case CODE_TRIGGER_TYPES.PLAYER_STATS:
                 config.stat = document.getElementById('trigger-config-stat')?.value || '';
@@ -1700,10 +1723,10 @@
         showDashboard();
     };
     
-    // Show action editor
-    const showActionEditor = (action) => {
-        currentView = 'editAction';
-        editingBlock = action;
+    // Show event editor
+    const showEventEditor = (event) => {
+        currentView = 'editEvent';
+        editingBlock = event;
         
         // Update header
         const backBtn = document.getElementById('code-editor-back');
@@ -1716,7 +1739,7 @@
         if (title) {
             title.innerHTML = `
                 <span class="material-symbols-outlined" style="color: #3b82f6;">code_blocks</span>
-                Edit Action
+                Edit Event
             `;
         }
         
@@ -1729,26 +1752,26 @@
         content.innerHTML = `
             <div class="trigger-editor">
                 <div class="trigger-form-group">
-                    <label class="trigger-form-label">Action Name</label>
-                    <input type="text" class="trigger-form-input" id="action-name" value="${escapeHtml(action.name)}" spellcheck="false">
+                    <label class="trigger-form-label">Event Name</label>
+                    <input type="text" class="trigger-form-input" id="event-name" value="${escapeHtml(event.name)}" spellcheck="false">
                 </div>
                 
                 <div class="code-empty-state" style="height: 40vh;">
                     <span class="material-symbols-outlined">construction</span>
-                    <p>Action code editor coming soon!</p>
-                    <small>Actions will allow you to write code that executes when triggers fire.</small>
+                    <p>Event code editor coming soon!</p>
+                    <small>Events will allow you to write code that executes when triggers fire.</small>
                 </div>
                 
-                <button class="btn btn-primary trigger-save-btn" id="action-save" style="width: 100%;">
+                <button class="btn btn-primary trigger-save-btn" id="event-save" style="width: 100%;">
                     <span class="material-symbols-outlined">save</span>
-                    Save Action
+                    Save Event
                 </button>
             </div>
         `;
         
         // Save button
-        document.getElementById('action-save').addEventListener('click', () => {
-            const name = document.getElementById('action-name')?.value.trim();
+        document.getElementById('event-save').addEventListener('click', () => {
+            const name = document.getElementById('event-name')?.value.trim();
             
             if (!isValidName(name)) {
                 showToast('Invalid name. Cannot use reserved names.', 'error');
@@ -1765,7 +1788,7 @@
             const codeData = getCodeData();
             saveCodeData(codeData);
             
-            showToast('Action saved', 'success');
+            showToast('Event saved', 'success');
             showDashboard();
         });
     };
