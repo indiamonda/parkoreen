@@ -2775,7 +2775,11 @@
 
             // Update buttons based on mode (level vs editor/multiplayer)
             if (window.isLevelMode) {
-                actionsDiv.innerHTML = `
+                const levelName = window.currentPlayingLevel || '';
+                const isGroup0 = levelName.startsWith('0_');
+                const showExit = isGroup0;
+
+                let buttonsHtml = `
                     <button class="btn btn-primary" id="end-game-play-again">
                         <span class="material-symbols-outlined">replay</span>
                         Play Again
@@ -2785,29 +2789,51 @@
                         Next Level
                     </button>
                 `;
+                if (showExit) {
+                    buttonsHtml += `
+                        <button class="btn btn-secondary" id="end-game-exit">
+                            <span class="material-symbols-outlined">exit_to_app</span>
+                            Exit
+                        </button>
+                    `;
+                }
+
+                actionsDiv.innerHTML = buttonsHtml;
 
                 // Add Play Again handler for level mode
                 document.getElementById('end-game-play-again').addEventListener('click', () => {
                     hideEndGameScreen();
-                    const levelName = window.currentPlayingLevel;
-                    if (levelName) {
-                        playLevelByName(levelName);
+                    const ln = window.currentPlayingLevel;
+                    if (ln) {
+                        playLevelByName(ln);
                     }
                 });
 
                 // Add Next Level handler
                 document.getElementById('end-game-next-level').addEventListener('click', () => {
-                    const levelName = window.currentPlayingLevel;
+                    const ln = window.currentPlayingLevel;
                     hideEndGameScreen();
 
                     // Get next level info
-                    const nextLevel = getNextLevelInfo(levelName);
+                    const nextLevel = getNextLevelInfo(ln);
                     if (nextLevel) {
                         playLevelByName(nextLevel);
                     } else {
                         window.location.href = 'index.html';
                     }
                 });
+
+                // Add Exit handler for group 0 levels
+                if (showExit) {
+                    document.getElementById('end-game-exit').addEventListener('click', () => {
+                        const ln = window.currentPlayingLevel;
+                        if (ln === '0_3') {
+                            // Special case: after 0_3, scroll to group 2 on levels page
+                            sessionStorage.setItem('parkoreen_level_complete_special', 'true');
+                        }
+                        window.location.href = 'index.html';
+                    });
+                }
             } else {
                 actionsDiv.innerHTML = `
                     <button class="btn btn-primary" id="end-game-play-again">

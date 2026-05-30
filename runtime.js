@@ -1468,3 +1468,48 @@ document.addEventListener('DOMContentLoaded', () => {
         pageContainer.appendChild(createFooter());
     }
 });
+
+// Redirect to levels if level group 0 not completed (and not on exempt pages)
+const LEVEL_GROUP_0 = ['0_1', '0_2', '0_3'];
+const EXEMPT_PATHS = ['/parkoreen/login/', '/parkoreen/signup/', '/parkoreen/wiki/', '/parkoreen/settings/', '/parkoreen/index.html', '/parkoreen/host.html'];
+
+function checkLevelGroup0Required() {
+    const path = window.location.pathname;
+
+    // Check if on exempt page
+    if (EXEMPT_PATHS.some(p => path.startsWith(p))) {
+        return;
+    }
+
+    // Check if already logged in (wait for Auth to initialize)
+    if (!window.Auth || !window.Auth.isLoggedIn()) {
+        return;
+    }
+
+    // Check level progress
+    const saved = localStorage.getItem('parkoreen_level_progress');
+    if (!saved) {
+        // No progress means need to play levels
+        window.location.href = '/parkoreen/index.html';
+        return;
+    }
+
+    try {
+        const data = JSON.parse(saved);
+        const completed = new Set(data.completed || []);
+        const allGroup0Done = LEVEL_GROUP_0.every(l => completed.has(l));
+        if (!allGroup0Done) {
+            window.location.href = '/parkoreen/index.html';
+        }
+    } catch (e) {
+        // Invalid progress data, redirect to levels
+        window.location.href = '/parkoreen/index.html';
+    }
+}
+
+// Run after Auth initializes
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(checkLevelGroup0Required, 200));
+} else {
+    setTimeout(checkLevelGroup0Required, 200);
+}

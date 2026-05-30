@@ -3154,21 +3154,39 @@ class GameEngine {
         if (!player.isOnGround || player.isFlying) return;
         const moving = Math.abs(player.vx) > 0.5;
         if (!moving) return;
-        const px = player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 0.6;
-        const py = player.y + player.height;
-        this.particles.push({
-            x: px,
-            y: py,
-            vx: (Math.random() - 0.5) * 30,
-            vy: -(10 + Math.random() * 20),
-            size: 2 + Math.random() * 2,
-            color: player.color,
-            alpha: 0.5,
-            life: 0.5 + Math.random() * 0.3,
-            decay: 0.04 + Math.random() * 0.02,
-            maxAlpha: 0.5,
-            shape: 'circle'
-        });
+
+        // Get the block color under the player
+        let blockColor = '#888888'; // default gray
+        const footBox = player.getGroundTouchbox();
+        const checkY = footBox.y + footBox.height; // just below feet
+        const checkX = footBox.x + footBox.width / 2;
+        const nearby = this.world.queryNear(checkX - 4, checkY - 2, 8, 4);
+        for (const obj of nearby) {
+            if (obj.collision && obj.actingType === 'ground') {
+                blockColor = obj.color || '#888888';
+                break;
+            }
+        }
+
+        // Spawn more particles with the block color
+        const particleCount = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < particleCount; i++) {
+            const px = player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 0.8;
+            const py = player.y + player.height;
+            this.particles.push({
+                x: px,
+                y: py,
+                vx: (Math.random() - 0.5) * 40,
+                vy: -(8 + Math.random() * 25),
+                size: 2 + Math.random() * 3,
+                color: blockColor,
+                alpha: 0.6,
+                life: 0.4 + Math.random() * 0.3,
+                decay: 0.04 + Math.random() * 0.02,
+                maxAlpha: 0.6,
+                shape: 'circle'
+            });
+        }
     }
 
     updateParticles(dt) {

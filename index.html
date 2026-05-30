@@ -150,6 +150,17 @@
             border-color: var(--primary);
         }
 
+        .level-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .level-card.locked:hover {
+            transform: none;
+            box-shadow: none;
+            border-color: transparent;
+        }
+
         .level-card.completed::after {
             content: '';
             position: absolute;
@@ -532,12 +543,50 @@
         }
 
         // Get highest unlocked level (first uncompleted after completed)
+        // Challenge levels unlock when all non-challenge levels in the group are completed
+        function isUnlocked(groupIndex, levelIndex) {
+            const levelName = LEVEL_GROUPS[groupIndex].levels[levelIndex];
+            if (completedLevels.has(levelName)) return false; // already completed
+
+            // Check if this is a challenge level (contains 'challenge' case-insensitive)
+            const isChallenge = levelName.toLowerCase().includes('challenge');
+
+            if (isChallenge) {
+                // Challenge unlocks when ALL non-challenge levels in this group are completed
+                const nonChallengeLevels = LEVEL_GROUPS[groupIndex].levels.filter(l => !l.toLowerCase().includes('challenge'));
+                return nonChallengeLevels.every(l => completedLevels.has(l));
+            } else {
+                // Regular level unlocks when previous level in sequence is completed
+                if (levelIndex === 0) {
+                    // First level in group - check if previous group's challenge is completed
+                    if (groupIndex === 0) return true; // first group, first level always unlocked
+                    // Check if previous group's challenge is completed
+                    const prevGroup = LEVEL_GROUPS[groupIndex - 1];
+                    const prevChallenge = prevGroup.levels.find(l => l.toLowerCase().includes('challenge'));
+                    if (prevChallenge) {
+                        return completedLevels.has(prevChallenge);
+                    }
+                    return true;
+                }
+
+                const prevLevelName = LEVEL_GROUPS[groupIndex].levels[levelIndex - 1];
+                const prevIsChallenge = prevLevelName.toLowerCase().includes('challenge');
+
+                if (prevIsChallenge) {
+                    // Previous is challenge - need challenge completed
+                    return completedLevels.has(prevLevelName);
+                } else {
+                    // Previous is regular level - just need it completed
+                    return completedLevels.has(prevLevelName);
+                }
+            }
+        }
+
         function getHighestUnlockedLevel() {
             for (let g = 0; g < LEVEL_GROUPS.length; g++) {
                 for (let l = 0; l < LEVEL_GROUPS[g].levels.length; l++) {
-                    const levelId = LEVEL_GROUPS[g].levels[l];
-                    if (!completedLevels.has(levelId)) {
-                        return { group: g, level: l, levelId: levelId };
+                    if (isUnlocked(g, l)) {
+                        return { group: g, level: l, levelId: LEVEL_GROUPS[g].levels[l] };
                     }
                 }
             }
@@ -585,8 +634,9 @@
 
                 group.levels.forEach((levelName, levelIndex) => {
                     const isCompleted = completedLevels.has(levelName);
+                    const isLocked = !isCompleted && !isUnlocked(groupIndex, levelIndex);
                     const card = document.createElement('div');
-                    card.className = 'level-card' + (isCompleted ? ' completed' : '');
+                    card.className = 'level-card' + (isCompleted ? ' completed' : '') + (isLocked ? ' locked' : '');
                     card.dataset.level = levelName;
                     card.dataset.group = groupIndex;
 
@@ -594,10 +644,13 @@
                         ? 'Level ' + (levelIndex + 1)
                         : levelName.replace(/^[0-9]_/, '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
+                    const icon = isCompleted ? 'check_circle' : (isLocked ? 'lock' : 'play_circle');
+                    const status = isCompleted ? 'Completed' : (isLocked ? 'Locked' : 'Play');
+
                     card.innerHTML = `
-                        <span class="level-card-icon material-symbols-outlined">${isCompleted ? 'check_circle' : 'play_circle'}</span>
+                        <span class="level-card-icon material-symbols-outlined">${icon}</span>
                         <span class="level-card-name">${displayName}</span>
-                        <span class="level-card-status">${isCompleted ? 'Completed' : 'Not completed'}</span>
+                        <span class="level-card-status">${status}</span>
                         <div class="level-card-download" title="Download map">
                             <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         </div>
@@ -606,7 +659,7 @@
                     card.addEventListener('click', (e) => {
                         if (e.target.closest('.level-card-download')) {
                             downloadLevel(levelName);
-                        } else {
+                        } else if (!isLocked) {
                             playLevel(levelName);
                         }
                     });
@@ -765,9 +818,7 @@
 
         // Initialize
         function init() {
-            console.log('[Levels] Init called, completedLevels:', completedLevels.size);
             loadProgress();
-            console.log('[Levels] After loadProgress, completedLevels:', completedLevels.size, 'group1Completed:', group1Completed);
             renderLevelGroups();
             updateGroupVisibility();
             checkGroup1Completed();
@@ -783,7 +834,6 @@
 
             // Check if coming back from completing 0_3 (special case)
             const specialReturn = sessionStorage.getItem('parkoreen_level_complete_special');
-            console.log('[Levels] specialReturn:', specialReturn);
             if (specialReturn === 'true') {
                 sessionStorage.removeItem('parkoreen_level_complete_special');
                 completeLevel('0_3');
@@ -791,11 +841,9 @@
                 return;
             }
 
-            // Always try to enter level directly on first visit (no referrer means fresh visit)
-            // This handles the case where user bookmarks or types URL directly
-            console.log('[Levels] Checking direct entry, completedLevels.size:', completedLevels.size);
-            if (completedLevels.size === 0) {
-                console.log('[Levels] Calling playBasedOnProgress directly');
+            // If coming from host.html after completing levels, show the levels page normally
+            // Only auto-enter if group 0 is NOT yet complete AND user came directly (no referrer)
+            if (completedLevels.size === 0 && !document.referrer) {
                 playBasedOnProgress();
                 return;
             }
