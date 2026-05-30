@@ -135,6 +135,10 @@
         <div class="page-container">
             <header class="page-header">
             <div class="page-header-left">
+                <button class="btn btn-secondary" id="btn-home">
+                    <span class="material-symbols-outlined">home</span>
+                    Home
+                </button>
                 <button class="btn btn-secondary" id="btn-join">
                     <span class="material-symbols-outlined">play_arrow</span>
                     Join
@@ -351,6 +355,7 @@
             if (!Auth.requireAuth()) return;
             await loadMaps();
 
+            document.getElementById('btn-home').onclick = function() { window.location.href = '../index.html'; };
             document.getElementById('btn-join').onclick = function() { navigateTo('../join.html'); };
 
             var dashBackdrop = document.getElementById('dash-menu-backdrop');

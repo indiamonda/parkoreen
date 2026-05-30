@@ -278,15 +278,8 @@
                 <span class="end-game-time-value" id="end-game-time">0:00.000</span>
             </div>
             <div class="end-game-player" id="end-game-player">Player Name</div>
-            <div class="end-game-actions">
-                <button class="btn btn-primary" id="end-game-play-again">
-                    <span class="material-symbols-outlined">replay</span>
-                    Play Again
-                </button>
-                <button class="btn btn-secondary" id="end-game-back">
-                    <span class="material-symbols-outlined">arrow_back</span>
-                    Back to Editor
-                </button>
+            <div class="end-game-actions" id="end-game-actions">
+                <!-- Buttons will be dynamically set based on mode -->
             </div>
         </div>
     </div>
@@ -1135,7 +1128,7 @@
                     // Fallback: fetch and load (if pre-fetch failed)
                 await loadMap(currentMapId);
                 }
-                
+
                 if (currentMode === 'host') {
                     // Directly start hosting after map is loaded
                     setTimeout(() => {
@@ -1143,6 +1136,53 @@
                             editor.hostGame();
                         }
                     }, 500);
+                }
+            } else if (params.get('level') === 'true') {
+                // Direct level play mode (from index.html levels page)
+                resourceLoader.updateProgress('Loading level...');
+                const levelDataStr = sessionStorage.getItem('parkoreen_current_level');
+                const levelName = sessionStorage.getItem('parkoreen_current_level_name');
+
+                if (levelDataStr) {
+                    try {
+                        const levelData = JSON.parse(levelDataStr);
+                        engine.world.fromJSON(levelData);
+                        engine.world.mapName = levelName || 'Level';
+
+                        // Initialize plugins from world data
+                        if (window.PluginManager) {
+                            await window.PluginManager.discoverPlugins();
+                            await window.PluginManager.initFromWorld(engine.world);
+                        }
+
+                        // Hide editor UI, show game HUD
+                        document.getElementById('editor-ui')?.classList.add('hidden');
+                        document.getElementById('toolbar')?.classList.add('hidden');
+                        document.getElementById('game-hud').classList.remove('hidden');
+
+                        // Start game as single player
+                        const user = Auth.getUser();
+                        engine.startGame(user?.name || 'Player', user?.color || '#4ECDC4');
+
+                        // Store level info for completion handling
+                        window.currentPlayingLevel = levelName;
+
+                        // Mark as level mode for special completion handling
+                        window.isLevelMode = true;
+
+                        // Start music playback
+                        if (editor && editor.startMusicPlayback) {
+                            editor.startMusicPlayback();
+                        }
+
+                        mapLoadedSuccessfully = true;
+                    } catch (e) {
+                        console.error('[Level] Failed to load level data:', e);
+                        toastError('Failed to load level');
+                    }
+                } else {
+                    // No level data, redirect back
+                    window.location.href = 'index.html';
                 }
             } else {
                 // New map - no existing data to corrupt
@@ -2662,7 +2702,39 @@
             // Back to Editor button
             document.getElementById('end-game-back').addEventListener('click', () => {
                 hideEndGameScreen();
-                
+
+                // Check if this was a level (not multiplayer)
+                if (window.isLevelMode && window.currentPlayingLevel) {
+                    // Mark level as completed
+                    const levelName = window.currentPlayingLevel;
+
+                    // Post message to parent (index.html) for progress tracking
+                    if (window.parent !== window) {
+                        window.parent.postMessage({
+                            type: 'levelComplete',
+                            levelName: levelName
+                        }, '*');
+                    }
+
+                    // Clear level state
+                    window.isLevelMode = false;
+                    window.currentPlayingLevel = null;
+                    sessionStorage.removeItem('parkoreen_current_level');
+                    sessionStorage.removeItem('parkoreen_current_level_name');
+
+                    // Special handling for 0_3
+                    if (levelName === '0_3') {
+                        // Save progress and redirect to levels page with scroll to group 2
+                        sessionStorage.setItem('parkoreen_level_complete_special', 'true');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+
+                    // For other levels, go back to levels page
+                    window.location.href = 'index.html';
+                    return;
+                }
+
                 if (currentMode === 'play') {
                     // Leave the multiplayer room
                     if (window.MultiplayerManager?.leaveRoom) {
@@ -2681,23 +2753,139 @@
             const overlay = document.getElementById('end-game-overlay');
             const timeValue = document.getElementById('end-game-time');
             const playerName = document.getElementById('end-game-player');
-            const backBtn = document.getElementById('end-game-back');
-            
+            const actionsDiv = document.getElementById('end-game-actions');
+
             // Set the time
             timeValue.textContent = data.time || '0:00.000';
-            
+
             // Set player name
             playerName.textContent = data.playerName || 'Player';
-            
-            // Update button text based on mode
-            if (data.wasTestMode) {
-                backBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> Back to Editor';
+
+            // Update buttons based on mode (level vs editor/multiplayer)
+            if (window.isLevelMode) {
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-primary" id="end-game-play-again">
+                        <span class="material-symbols-outlined">replay</span>
+                        Play Again
+                    </button>
+                    <button class="btn btn-secondary" id="end-game-next-level">
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                        Next Level
+                    </button>
+                `;
+
+                // Add Next Level handler
+                document.getElementById('end-game-next-level').addEventListener('click', () => {
+                    const levelName = window.currentPlayingLevel;
+                    hideEndGameScreen();
+
+                    // Get next level info
+                    const nextLevel = getNextLevelInfo(levelName);
+                    if (nextLevel) {
+                        playLevelByName(nextLevel);
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                });
             } else {
-                backBtn.innerHTML = '<span class="material-symbols-outlined">arrow_back</span> Leave Game';
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-primary" id="end-game-play-again">
+                        <span class="material-symbols-outlined">replay</span>
+                        Play Again
+                    </button>
+                    <button class="btn btn-secondary" id="end-game-back">
+                        <span class="material-symbols-outlined">arrow_back</span>
+                        Back
+                    </button>
+                `;
             }
-            
+
+            // Re-setup Play Again handler (it may have changed based on mode)
+            document.getElementById('end-game-play-again').addEventListener('click', () => {
+                hideEndGameScreen();
+
+                // Restart the game
+                if (lastEndGameData && lastEndGameData.wasTestMode) {
+                    // Restart test mode
+                    engine.startTestGame();
+                    if (editor && editor.startMusicPlayback) {
+                        editor.startMusicPlayback();
+                    }
+                } else if (window.isLevelMode) {
+                    // Restart level
+                    const levelName = window.currentPlayingLevel;
+                    if (levelName) {
+                        playLevelByName(levelName);
+                    }
+                } else {
+                    // Restart play mode
+                    const user = Auth.getUser();
+                    engine.startGame(user.name, user.color);
+                    if (editor && editor.startMusicPlayback) {
+                        editor.startMusicPlayback();
+                    }
+                }
+            });
+
             // Show the overlay
             overlay.classList.remove('hidden');
+        }
+
+        // Helper to get next level info
+        function getNextLevelInfo(currentLevel) {
+            const LEVEL_GROUPS = [
+                { id: 0, levels: ['0_1', '0_2', '0_3'] },
+                { id: 1, levels: ['1_1', '1_2', '1_3', '1_x_challenge_level'] },
+                { id: 2, levels: ['2_1', '2_2', '2_x_challenge_level'] },
+                { id: 3, levels: ['3_1', '3_2', '3_3', '3_4', '3_5'] }
+            ];
+
+            for (let g = 0; g < LEVEL_GROUPS.length; g++) {
+                const levelIdx = LEVEL_GROUPS[g].levels.indexOf(currentLevel);
+                if (levelIdx !== -1) {
+                    // Check if there's a next level in this group
+                    if (levelIdx + 1 < LEVEL_GROUPS[g].levels.length) {
+                        return LEVEL_GROUPS[g].levels[levelIdx + 1];
+                    }
+                    // Check next group
+                    if (g + 1 < LEVEL_GROUPS.length && LEVEL_GROUPS[g + 1].levels.length > 0) {
+                        return LEVEL_GROUPS[g + 1].levels[0];
+                    }
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        // Helper to play a level by name
+        async function playLevelByName(levelName) {
+            try {
+                const response = await fetch('assets/pkrn/levels/' + levelName + '.pkrn');
+                if (!response.ok) throw new Error('Level not found');
+
+                const buffer = await response.arrayBuffer();
+                const importManager = new ImportManager();
+                const data = await importManager.importFromFile(new File([buffer], levelName + '.pkrn'));
+
+                sessionStorage.setItem('parkoreen_current_level', JSON.stringify(data));
+                sessionStorage.setItem('parkoreen_current_level_name', levelName);
+                window.currentPlayingLevel = levelName;
+
+                engine.world.fromJSON(data);
+                engine.world.mapName = levelName;
+
+                // Reinitialize plugins
+                if (window.PluginManager) {
+                    await window.PluginManager.discoverPlugins();
+                    await window.PluginManager.initFromWorld(engine.world);
+                }
+
+                engine.startGame(Auth.getUser()?.name || 'Player', Auth.getUser()?.color || '#4ECDC4');
+                if (editor && editor.startMusicPlayback) editor.startMusicPlayback();
+            } catch (err) {
+                console.error('[Level] Failed to play level:', err);
+                toastError('Failed to load level');
+            }
         }
 
         function hideEndGameScreen() {
