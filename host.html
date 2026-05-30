@@ -2667,7 +2667,7 @@
             // Set up the game end callback
             engine.onGameEndCallback = (data) => {
                 showEndGameScreen(data);
-                
+
                 // If in multiplayer, notify other players
                 if (window.MultiplayerManager && window.MultiplayerManager.send && currentMode === 'play') {
                     window.MultiplayerManager.send({
@@ -2678,74 +2678,86 @@
                 }
             };
 
-            // Play Again button
-            document.getElementById('end-game-play-again').addEventListener('click', () => {
-                hideEndGameScreen();
-                
-                // Restart the game
-                if (lastEndGameData && lastEndGameData.wasTestMode) {
-                    // Restart test mode
-                    engine.startTestGame();
-                    if (editor && editor.startMusicPlayback) {
-                        editor.startMusicPlayback();
+            // Play Again button - only add if element exists (it's dynamically created in level mode)
+            const playAgainBtn = document.getElementById('end-game-play-again');
+            if (playAgainBtn) {
+                playAgainBtn.addEventListener('click', () => {
+                    hideEndGameScreen();
+
+                    // Restart the game
+                    if (lastEndGameData && lastEndGameData.wasTestMode) {
+                        // Restart test mode
+                        engine.startTestGame();
+                        if (editor && editor.startMusicPlayback) {
+                            editor.startMusicPlayback();
+                        }
+                    } else if (window.isLevelMode) {
+                        // Restart level
+                        const levelName = window.currentPlayingLevel;
+                        if (levelName) {
+                            playLevelByName(levelName);
+                        }
+                    } else {
+                        // Restart play mode
+                        const user = Auth.getUser();
+                        engine.startGame(user.name, user.color);
+                        if (editor && editor.startMusicPlayback) {
+                            editor.startMusicPlayback();
+                        }
                     }
-                } else {
-                    // Restart play mode
-                    const user = Auth.getUser();
-                    engine.startGame(user.name, user.color);
-                    if (editor && editor.startMusicPlayback) {
-                        editor.startMusicPlayback();
-                    }
-                }
-            });
+                });
+            }
 
-            // Back to Editor button
-            document.getElementById('end-game-back').addEventListener('click', () => {
-                hideEndGameScreen();
+            // Back button - only add if element exists
+            const backBtn = document.getElementById('end-game-back');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    hideEndGameScreen();
 
-                // Check if this was a level (not multiplayer)
-                if (window.isLevelMode && window.currentPlayingLevel) {
-                    // Mark level as completed
-                    const levelName = window.currentPlayingLevel;
+                    // Check if this was a level (not multiplayer)
+                    if (window.isLevelMode && window.currentPlayingLevel) {
+                        // Mark level as completed
+                        const levelName = window.currentPlayingLevel;
 
-                    // Post message to parent (index.html) for progress tracking
-                    if (window.parent !== window) {
-                        window.parent.postMessage({
-                            type: 'levelComplete',
-                            levelName: levelName
-                        }, '*');
-                    }
+                        // Post message to parent (index.html) for progress tracking
+                        if (window.parent !== window) {
+                            window.parent.postMessage({
+                                type: 'levelComplete',
+                                levelName: levelName
+                            }, '*');
+                        }
 
-                    // Clear level state
-                    window.isLevelMode = false;
-                    window.currentPlayingLevel = null;
-                    sessionStorage.removeItem('parkoreen_current_level');
-                    sessionStorage.removeItem('parkoreen_current_level_name');
+                        // Clear level state
+                        window.isLevelMode = false;
+                        window.currentPlayingLevel = null;
+                        sessionStorage.removeItem('parkoreen_current_level');
+                        sessionStorage.removeItem('parkoreen_current_level_name');
 
-                    // Special handling for 0_3
-                    if (levelName === '0_3') {
-                        // Save progress and redirect to levels page with scroll to group 2
-                        sessionStorage.setItem('parkoreen_level_complete_special', 'true');
+                        // Special handling for 0_3
+                        if (levelName === '0_3') {
+                            // Save progress and redirect to levels page with scroll to group 2
+                            sessionStorage.setItem('parkoreen_level_complete_special', 'true');
+                            window.location.href = 'index.html';
+                            return;
+                        }
+
+                        // For other levels, go back to levels page
                         window.location.href = 'index.html';
                         return;
                     }
 
-                    // For other levels, go back to levels page
-                    window.location.href = 'index.html';
-                    return;
-                }
-
-                if (currentMode === 'play') {
-                    // Leave the multiplayer room
-                    if (window.MultiplayerManager?.leaveRoom) {
-                        window.MultiplayerManager.leaveRoom();
+                    if (currentMode === 'play') {
+                        // Leave the multiplayer room
+                        if (window.MultiplayerManager?.leaveRoom) {
+                            window.MultiplayerManager.leaveRoom();
+                        }
+                        Navigation.toDashboard();
+                    } else {
+                        // Stop testing and return to editor
+                        editor.stopTest();
                     }
-                    Navigation.toDashboard();
-                } else {
-                    // Stop testing and return to editor
-                    editor.stopTest();
-                }
-            });
+                });
+            }
         }
         
         function showEndGameScreen(data) {
@@ -2774,6 +2786,15 @@
                     </button>
                 `;
 
+                // Add Play Again handler for level mode
+                document.getElementById('end-game-play-again').addEventListener('click', () => {
+                    hideEndGameScreen();
+                    const levelName = window.currentPlayingLevel;
+                    if (levelName) {
+                        playLevelByName(levelName);
+                    }
+                });
+
                 // Add Next Level handler
                 document.getElementById('end-game-next-level').addEventListener('click', () => {
                     const levelName = window.currentPlayingLevel;
@@ -2798,34 +2819,37 @@
                         Back
                     </button>
                 `;
+
+                // Add Play Again handler for non-level mode
+                document.getElementById('end-game-play-again').addEventListener('click', () => {
+                    hideEndGameScreen();
+                    if (lastEndGameData && lastEndGameData.wasTestMode) {
+                        engine.startTestGame();
+                        if (editor && editor.startMusicPlayback) {
+                            editor.startMusicPlayback();
+                        }
+                    } else {
+                        const user = Auth.getUser();
+                        engine.startGame(user.name, user.color);
+                        if (editor && editor.startMusicPlayback) {
+                            editor.startMusicPlayback();
+                        }
+                    }
+                });
+
+                // Add Back handler for non-level mode
+                document.getElementById('end-game-back').addEventListener('click', () => {
+                    hideEndGameScreen();
+                    if (currentMode === 'play') {
+                        if (window.MultiplayerManager?.leaveRoom) {
+                            window.MultiplayerManager.leaveRoom();
+                        }
+                        Navigation.toDashboard();
+                    } else {
+                        editor.stopTest();
+                    }
+                });
             }
-
-            // Re-setup Play Again handler (it may have changed based on mode)
-            document.getElementById('end-game-play-again').addEventListener('click', () => {
-                hideEndGameScreen();
-
-                // Restart the game
-                if (lastEndGameData && lastEndGameData.wasTestMode) {
-                    // Restart test mode
-                    engine.startTestGame();
-                    if (editor && editor.startMusicPlayback) {
-                        editor.startMusicPlayback();
-                    }
-                } else if (window.isLevelMode) {
-                    // Restart level
-                    const levelName = window.currentPlayingLevel;
-                    if (levelName) {
-                        playLevelByName(levelName);
-                    }
-                } else {
-                    // Restart play mode
-                    const user = Auth.getUser();
-                    engine.startGame(user.name, user.color);
-                    if (editor && editor.startMusicPlayback) {
-                        editor.startMusicPlayback();
-                    }
-                }
-            });
 
             // Show the overlay
             overlay.classList.remove('hidden');
