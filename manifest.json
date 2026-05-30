@@ -2,7 +2,7 @@
     "name": "Parkoreen",
     "short_name": "Parkoreen",
     "description": "A multiplayer parkour game - build your own map and get it featured!",
-    "start_url": "/parkoreen/dashboard/",
+    "start_url": "/parkoreen/",
     "display": "fullscreen",
     "orientation": "landscape",
     "background_color": "#1a1a2e",
@@ -33,7 +33,14 @@
             "purpose": "any maskable"
         }
     ],
-    "categories": ["games", "entertainment"],
+    "categories": ["games", "entertainment", "parkour", "multiplayer", "social", "fun", "creativity", "building", "editing", "testing", "sharing"],
+    "screenshots": [
+        {
+            "src": "/parkoreen/assets/png/cover.png",
+            "type": "image/png"
+        }
+    ],
+    "keywords": ["parkour", "multiplayer", "social", "fun", "creativity", "building", "editing", "testing", "sharing", "game", "parkoreen", "parkoreen game", "parkoreen multiplayer", "parkoreen social", "parkoreen fun", "parkoreen creativity", "parkoreen building", "parkoreen editing", "parkoreen testing", "parkoreen sharing", "map making", "make map", "make maps", "troll", "jimmyqrg"],
     "lang": "en",
     "scope": "/parkoreen/",
     "id": "parkoreen-game"

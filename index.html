@@ -468,6 +468,7 @@
         <div class="levels-loading-text" id="loading-text">Loading...</div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="runtime.js?v=19"></script>
     <script src="assets/js/exportImport.js?v=12"></script>
     <script>
@@ -764,7 +765,9 @@
 
         // Initialize
         function init() {
+            console.log('[Levels] Init called, completedLevels:', completedLevels.size);
             loadProgress();
+            console.log('[Levels] After loadProgress, completedLevels:', completedLevels.size, 'group1Completed:', group1Completed);
             renderLevelGroups();
             updateGroupVisibility();
             checkGroup1Completed();
@@ -780,33 +783,21 @@
 
             // Check if coming back from completing 0_3 (special case)
             const specialReturn = sessionStorage.getItem('parkoreen_level_complete_special');
+            console.log('[Levels] specialReturn:', specialReturn);
             if (specialReturn === 'true') {
                 sessionStorage.removeItem('parkoreen_level_complete_special');
-                // Mark 0_3 as completed and scroll to group 2
                 completeLevel('0_3');
                 goToGroup(2);
-            }
-
-            // Check if user should directly enter a level (first time entry)
-            const enterDirect = sessionStorage.getItem('parkoreen_enter_level_direct');
-            sessionStorage.removeItem('parkoreen_enter_level_direct');
-            if (enterDirect === 'true') {
-                // User is entering from a direct entry, stay on levels page
                 return;
             }
 
-            // Check if this is a direct entry (no previous page interaction)
-            const referringPage = document.referrer;
-            const isDirectEntry = !referringPage || referringPage === '' ||
-                                  referringPage.includes('host.html') ||
-                                  referringPage.includes('dashboard/');
-
-            if (isDirectEntry && completedLevels.size === 0 && !specialReturn) {
-                // First time user - directly enter level based on progress
-                // (This will be called after progress is loaded)
-                setTimeout(() => {
-                    playBasedOnProgress();
-                }, 100);
+            // Always try to enter level directly on first visit (no referrer means fresh visit)
+            // This handles the case where user bookmarks or types URL directly
+            console.log('[Levels] Checking direct entry, completedLevels.size:', completedLevels.size);
+            if (completedLevels.size === 0) {
+                console.log('[Levels] Calling playBasedOnProgress directly');
+                playBasedOnProgress();
+                return;
             }
         }
 
