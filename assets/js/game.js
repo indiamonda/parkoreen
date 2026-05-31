@@ -3174,7 +3174,7 @@ class GameEngine {
             const px = player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 0.8;
             const py = player.y + player.height;
             // Add brightness offset to the block color
-            const brightnessOffset = 20 + Math.random() * 30; // +20 to +50 brightness variation
+            const brightnessOffset = -50 + Math.random() * 60; // -50 (50% darker) to +10 (10% brighter)
             const color = this.adjustColorBrightness(blockColor, brightnessOffset);
             this.particles.push({
                 x: px,
