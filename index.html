@@ -12,48 +12,9 @@
     <link rel="apple-touch-icon" href="assets/png/icons/icon-play-128.png">
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
-        body {
-            overflow: hidden;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-        }
+        body { overflow: hidden; }
 
         /* Levels Page */
-        .levels-page {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .levels-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--spacing-lg) var(--spacing-xl);
-            position: relative;
-        }
-
-        .levels-header-left,
-        .levels-header-right {
-            width: 80px;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-        }
-
-        .levels-title {
-            font-family: 'Tektur', sans-serif;
-            font-size: 2.2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            pointer-events: none;
-        }
-
         .levels-nav-btn {
             width: 48px;
             height: 48px;
@@ -84,16 +45,6 @@
             width: 24px;
             height: 24px;
             fill: currentColor;
-        }
-
-        /* Levels Content */
-        .levels-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--spacing-xl);
-            overflow: hidden;
         }
 
         .levels-groups-container {
@@ -170,9 +121,6 @@
             height: 24px;
             background: var(--primary);
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .level-card-icon {
@@ -224,45 +172,6 @@
             fill: white;
         }
 
-        /* Loading Screen */
-        .levels-loading {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .levels-loading.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .levels-loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--surface-light);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 24px;
-        }
-
-        .levels-loading-text {
-            font-size: 1.2rem;
-            color: var(--text-primary);
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         /* Group Indicator */
         .group-indicator {
             position: fixed;
@@ -290,171 +199,33 @@
             background: var(--primary);
             transform: scale(1.2);
         }
-
-        /* Menu Button */
-        .menu-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: var(--surface);
-            border: none;
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            box-shadow: var(--shadow);
-            position: relative;
-        }
-
-        .menu-btn:hover {
-            background: var(--primary);
-        }
-
-        .menu-btn-inner {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            width: 20px;
-        }
-
-        .menu-btn-inner span {
-            display: block;
-            height: 3px;
-            background: currentColor;
-            border-radius: 2px;
-        }
-
-        /* Menu Dropdown */
-        .menu-dropdown {
-            position: absolute;
-            top: calc(100% + 8px);
-            right: 0;
-            min-width: 180px;
-            background: rgba(15, 15, 25, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: var(--border-radius-lg);
-            padding: 6px;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-8px) scale(0.95);
-            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
-            z-index: 1000;
-        }
-
-        .menu-dropdown.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
-        }
-
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 10px 14px;
-            border: none;
-            border-radius: var(--border-radius);
-            background: transparent;
-            color: rgba(255, 255, 255, 0.88);
-            font-family: inherit;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: background 0.15s ease;
-            text-decoration: none;
-        }
-
-        .menu-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .menu-item .material-symbols-outlined {
-            font-size: 20px;
-            opacity: 0.8;
-        }
-
-        /* Map Editor Button */
-        .map-editor-btn {
-            padding: 8px 16px;
-            background: var(--surface);
-            border: none;
-            border-radius: var(--border-radius);
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 0.9rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .map-editor-btn:hover {
-            background: var(--primary);
-        }
-
-        .map-editor-btn.hidden {
-            display: none;
-        }
-
-        /* Level Group Label */
-        .level-group-label {
-            position: absolute;
-            top: -40px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            white-space: nowrap;
-        }
     </style>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
-    <div class="levels-page">
-        <header class="levels-header">
-            <div class="levels-header-left">
-                <button class="map-editor-btn hidden" id="btn-map-editor">
+    <div class="page-container">
+        <header class="page-header">
+            <div class="page-header-left">
+                <button class="btn btn-secondary hidden" id="btn-map-editor">
                     <span class="material-symbols-outlined">construction</span>
                     Map Editor
                 </button>
             </div>
-            <h1 class="levels-title">Parkoreen</h1>
-            <div class="levels-header-right">
-                <button class="menu-btn" id="btn-menu">
-                    <span class="menu-btn-inner">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </span>
+            <h1 class="page-title">Parkoreen</h1>
+            <div class="page-header-right">
+                <a href="dashboard/" class="btn btn-secondary">
+                    <span class="material-symbols-outlined">home</span>
+                    Home
+                </a>
+                <button class="btn btn-icon btn-ghost" id="btn-menu" title="Menu" aria-label="Menu">
+                    <span class="material-symbols-outlined">menu</span>
                 </button>
-                <div class="menu-dropdown" id="menu-dropdown">
-                    <a href="dashboard/" class="menu-item">
-                        <span class="material-symbols-outlined">home</span>
-                        Home
-                    </a>
-                    <a href="wiki/" target="_blank" class="menu-item">
-                        <span class="material-symbols-outlined">menu_book</span>
-                        Wiki
-                    </a>
-                    <a href="wiki/changelog/" target="_blank" class="menu-item">
-                        <span class="material-symbols-outlined">history</span>
-                        Changelog
-                    </a>
-                </div>
             </div>
         </header>
 
-        <main class="levels-content">
+        <main class="page-content" style="display: flex; align-items: center; justify-content: center; overflow: hidden;">
             <button class="levels-nav-btn" id="btn-prev" disabled>
                 <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
             </button>
@@ -473,11 +244,26 @@
         </div>
     </div>
 
-    <!-- Loading Screen -->
-    <div class="levels-loading" id="levels-loading">
-        <div class="levels-loading-spinner"></div>
-        <div class="levels-loading-text" id="loading-text">Loading...</div>
-    </div>
+    <!-- Menu Panel -->
+    <div class="dashboard-menu-backdrop" id="dash-menu-backdrop"></div>
+    <aside class="dashboard-menu-panel" id="dash-menu-panel">
+        <div class="dashboard-menu-panel-header">
+            <h2 class="dashboard-menu-panel-title">Menu</h2>
+            <button type="button" class="btn btn-icon btn-ghost" id="dash-menu-close" aria-label="Close menu">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="dashboard-menu-panel-body">
+            <a href="wiki/" target="_blank" class="dashboard-menu-row" style="text-decoration:none;">
+                <span class="material-symbols-outlined">menu_book</span>
+                <span>Wiki</span>
+            </a>
+            <a href="wiki/changelog/" target="_blank" class="dashboard-menu-row" style="text-decoration:none;">
+                <span class="material-symbols-outlined">history</span>
+                <span>Changelog</span>
+            </a>
+        </div>
+    </aside>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="runtime.js?v=19"></script>
@@ -504,10 +290,10 @@
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
         const btnMenu = document.getElementById('btn-menu');
-        const menuDropdown = document.getElementById('menu-dropdown');
+        const menuPanel = document.getElementById('dash-menu-panel');
+        const menuBackdrop = document.getElementById('dash-menu-backdrop');
+        const menuClose = document.getElementById('dash-menu-close');
         const btnMapEditor = document.getElementById('btn-map-editor');
-        const loadingScreen = document.getElementById('levels-loading');
-        const loadingText = document.getElementById('loading-text');
 
         // Load progress from API (account) or localStorage (guest fallback)
         async function loadProgress() {
@@ -580,14 +366,14 @@
         }
 
         // Show loading screen
-        function showLoading(text = 'Loading...') {
-            loadingText.textContent = text;
-            loadingScreen.classList.add('active');
+        function showLoading(text) {
+            // Could show a toast or overlay here
+            console.log('Loading:', text);
         }
 
         // Hide loading screen
         function hideLoading() {
-            loadingScreen.classList.remove('active');
+            // No-op now
         }
 
         // Get highest unlocked level (first uncompleted after completed)
@@ -853,20 +639,23 @@
         }
 
         // Toggle menu
-        function toggleMenu() {
-            menuDropdown.classList.toggle('active');
+        function openMenu() {
+            menuBackdrop.classList.add('active');
+            menuPanel.classList.add('active');
+            menuPanel.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
         }
 
-        // Close menu when clicking outside
-        function handleClickOutside(e) {
-            if (!btnMenu.contains(e.target) && !menuDropdown.contains(e.target)) {
-                menuDropdown.classList.remove('active');
-            }
+        function closeMenu() {
+            menuBackdrop.classList.remove('active');
+            menuPanel.classList.remove('active');
+            menuPanel.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
         }
 
         // Initialize
-        function init() {
-            loadProgress();
+        async function init() {
+            await loadProgress();
             renderLevelGroups();
             updateGroupVisibility();
             checkGroup1Completed();
@@ -874,17 +663,18 @@
             // Event listeners
             btnPrev.addEventListener('click', prevGroup);
             btnNext.addEventListener('click', nextGroup);
-            btnMenu.addEventListener('click', toggleMenu);
+            btnMenu.addEventListener('click', openMenu);
+            menuBackdrop.addEventListener('click', closeMenu);
+            menuClose.addEventListener('click', closeMenu);
             btnMapEditor.addEventListener('click', () => {
                 window.location.href = 'host.html';
             });
-            document.addEventListener('click', handleClickOutside);
 
             // Check if coming back from completing 0_3 (special case)
             const specialReturn = sessionStorage.getItem('parkoreen_level_complete_special');
             if (specialReturn === 'true') {
                 sessionStorage.removeItem('parkoreen_level_complete_special');
-                completeLevel('0_3');
+                await completeLevel('0_3');
                 goToGroup(2);
                 return;
             }
