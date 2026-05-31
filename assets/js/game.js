@@ -3173,13 +3173,16 @@ class GameEngine {
         for (let i = 0; i < particleCount; i++) {
             const px = player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 0.8;
             const py = player.y + player.height;
+            // Add brightness offset to the block color
+            const brightnessOffset = 20 + Math.random() * 30; // +20 to +50 brightness variation
+            const color = this.adjustColorBrightness(blockColor, brightnessOffset);
             this.particles.push({
                 x: px,
                 y: py,
                 vx: (Math.random() - 0.5) * 40,
                 vy: -(8 + Math.random() * 25),
                 size: 2 + Math.random() * 3,
-                color: blockColor,
+                color: color,
                 alpha: 0.6,
                 life: 0.4 + Math.random() * 0.3,
                 decay: 0.04 + Math.random() * 0.02,
@@ -3187,6 +3190,18 @@ class GameEngine {
                 shape: 'circle'
             });
         }
+    }
+
+    // Helper to adjust color brightness
+    adjustColorBrightness(hexColor, amount) {
+        hexColor = hexColor.replace('#', '');
+        const r = Math.min(255, parseInt(hexColor.substr(0, 2), 16) + amount);
+        const g = Math.min(255, parseInt(hexColor.substr(2, 2), 16) + amount);
+        const b = Math.min(255, parseInt(hexColor.substr(4, 2), 16) + amount);
+        const rr = Math.max(0, Math.min(255, r)).toString(16).padStart(2, '0');
+        const gg = Math.max(0, Math.min(255, g)).toString(16).padStart(2, '0');
+        const bb = Math.max(0, Math.min(255, b)).toString(16).padStart(2, '0');
+        return '#' + rr + gg + bb;
     }
 
     updateParticles(dt) {
