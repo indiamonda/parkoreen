@@ -509,8 +509,31 @@
         const loadingScreen = document.getElementById('levels-loading');
         const loadingText = document.getElementById('loading-text');
 
-        // Load progress from localStorage
-        function loadProgress() {
+        // Load progress from API (account) or localStorage (guest fallback)
+        async function loadProgress() {
+            // Check if user is logged in via runtime.js settings
+            const isLoggedIn = window.Settings && window.Settings.user && window.Settings.user.id;
+
+            if (isLoggedIn) {
+                try {
+                    const token = localStorage.getItem('parkoreen_token');
+                    const response = await fetch(window.Settings.apiUrl + '/level-progress', {
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        completedLevels = new Set(data.completed || []);
+                        group1Completed = data.group1Completed || false;
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to load progress from API:', e);
+                }
+            }
+
+            // Fallback to localStorage for guests or on error
             const saved = localStorage.getItem('parkoreen_level_progress');
             if (saved) {
                 try {
@@ -523,8 +546,33 @@
             }
         }
 
-        // Save progress to localStorage
-        function saveProgress() {
+        // Save progress to API (account) or localStorage (guest fallback)
+        async function saveProgress() {
+            const isLoggedIn = window.Settings && window.Settings.user && window.Settings.user.id;
+
+            if (isLoggedIn) {
+                try {
+                    const token = localStorage.getItem('parkoreen_token');
+                    const response = await fetch(window.Settings.apiUrl + '/level-progress', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            completed: Array.from(completedLevels),
+                            group1Completed: group1Completed
+                        })
+                    });
+                    if (response.ok) {
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to save progress to API:', e);
+                }
+            }
+
+            // Fallback to localStorage for guests or on error
             localStorage.setItem('parkoreen_level_progress', JSON.stringify({
                 completed: Array.from(completedLevels),
                 group1Completed: group1Completed
@@ -782,7 +830,7 @@
         }
 
         // Mark level as completed
-        function completeLevel(levelName) {
+        async function completeLevel(levelName) {
             completedLevels.add(levelName);
 
             // Check if group 1 (group 0) is completed
@@ -792,7 +840,7 @@
                 group1Completed = true;
             }
 
-            saveProgress();
+            await saveProgress();
             renderLevelGroups();
             updateGroupVisibility();
         }
@@ -850,10 +898,10 @@
         }
 
         // Listen for level completion messages from host.html
-        window.addEventListener('message', (e) => {
+        window.addEventListener('message', async (e) => {
             if (e.data.type === 'levelComplete') {
                 const levelName = e.data.levelName;
-                completeLevel(levelName);
+                await completeLevel(levelName);
 
                 // Special handling for 0_3
                 if (levelName === '0_3') {

@@ -632,6 +632,29 @@ async function handleDeleteMap(mapId, env, userId) {
 }
 
 // ============================================
+// LEVEL PROGRESS HANDLERS
+// ============================================
+async function handleGetLevelProgress(env, userId) {
+    const progressData = await env.USERS.get(`level_progress:${userId}`);
+    if (!progressData) {
+        return jsonResponse({ completed: [], group1Completed: false });
+    }
+    return jsonResponse(JSON.parse(progressData));
+}
+
+async function handleUpdateLevelProgress(request, env, userId) {
+    const { completed, group1Completed } = await request.json();
+
+    const progress = {
+        completed: Array.isArray(completed) ? completed : [],
+        group1Completed: !!group1Completed
+    };
+
+    await env.USERS.put(`level_progress:${userId}`, JSON.stringify(progress));
+    return jsonResponse({ success: true });
+}
+
+// ============================================
 // FLAG HANDLERS (EASTER EGGS)
 // ============================================
 async function handleGetFlag(flagName, env, userId) {
@@ -1623,6 +1646,14 @@ export default {
             }
             if (path === '/auth/password' && method === 'PUT') {
                 return handleChangePassword(request, env, userId);
+            }
+
+            // Level progress routes
+            if (path === '/level-progress' && method === 'GET') {
+                return handleGetLevelProgress(env, userId);
+            }
+            if (path === '/level-progress' && method === 'POST') {
+                return handleUpdateLevelProgress(request, env, userId);
             }
 
             // Flag routes (for easter eggs)
