@@ -3155,20 +3155,56 @@ class GameEngine {
         const moving = Math.abs(player.vx) > 0.5;
         if (!moving) return;
 
-        // Get the block color under the player
-        let blockColor = '#888888'; // default gray
+        // Find the block directly under the player. We sample a strip the width of
+        // the player's ground touchbox and pick the solid ground block with the
+        // most vertical overlap (i.e. the one the player is actually standing on).
+        // This avoids picking up checkpoints, teleportals, spikes, etc., and
+        // avoids a side-block leak from spatial-hash bucket order.
         const footBox = player.getGroundTouchbox();
-        const checkY = footBox.y + footBox.height; // just below feet
-        const checkX = footBox.x + footBox.width / 2;
-        const nearby = this.world.queryNear(checkX - 4, checkY - 2, 8, 4);
+        const probeLeft = footBox.x;
+        const probeRight = footBox.x + footBox.width;
+        const probeY = footBox.y + footBox.height; // seam at bottom of feet
+        const nearby = this.world.queryNear(probeLeft - 4, probeY - 2, footBox.width + 8, 4);
+
+        let bestBlock = null;
+        let bestOverlap = 0;
         for (const obj of nearby) {
-            if (obj.collision && obj.actingType === 'ground') {
-                blockColor = obj.color || '#888888';
-                break;
+            if (!obj.collision) continue;
+            if (obj.actingType !== 'ground') continue;
+            // Only true ground/solid block objects. Default `type` is 'block' but
+            // we accept any unset `type` defensively (matches historical behavior
+            // while still excluding portals/spikes/etc. via actingType).
+            const objType = obj.type;
+            if (objType && objType !== 'block') continue;
+
+            // Vertical overlap with the probe strip at the player's feet seam.
+            const objTop = obj.y;
+            const objBottom = obj.y + (obj.height || 0);
+            const overlap = Math.min(probeY, objBottom) - Math.max(probeY - 2, objTop);
+            if (overlap <= 0) continue;
+
+            // Prefer blocks whose horizontal range covers the player's center.
+            const objLeft = obj.x;
+            const objRight = obj.x + (obj.width || 0);
+            const centerX = (probeLeft + probeRight) / 2;
+            const coversCenter = centerX >= objLeft && centerX <= objRight;
+
+            // Score: prefer coverage, then deeper overlap.
+            const score = (coversCenter ? 1000 : 0) + overlap;
+            if (score > bestOverlap) {
+                bestOverlap = score;
+                bestBlock = obj;
             }
         }
 
-        // Spawn more particles with the block color
+        // No solid block directly under the player (e.g. standing on a portal,
+        // checkpoint, or empty space) — don't spawn dust.
+        if (!bestBlock) return;
+
+        const blockColor = bestBlock.color || '#888888';
+        const blockOpacity = (bestBlock.opacity !== undefined && bestBlock.opacity !== null) ? bestBlock.opacity : 1;
+
+        // Spawn more particles with the block color & opacity
         const particleCount = 3 + Math.floor(Math.random() * 3);
         for (let i = 0; i < particleCount; i++) {
             const px = player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 0.8;
@@ -3183,10 +3219,10 @@ class GameEngine {
                 vy: -(8 + Math.random() * 25),
                 size: 2 + Math.random() * 3,
                 color: color,
-                alpha: 0.6,
+                alpha: blockOpacity,
                 life: 0.4 + Math.random() * 0.3,
                 decay: 0.04 + Math.random() * 0.02,
-                maxAlpha: 0.6,
+                maxAlpha: blockOpacity,
                 shape: 'circle'
             });
         }

@@ -1477,38 +1477,81 @@ document.addEventListener('DOMContentLoaded', () => {
 const LEVEL_GROUP_0 = ['0_1', '0_2', '0_3'];
 const EXEMPT_PATHS = ['/parkoreen/login/', '/parkoreen/signup/', '/parkoreen/wiki/', '/parkoreen/settings/', '/parkoreen/index.html', '/parkoreen/host.html'];
 
-function checkLevelGroup0Required() {
-    const path = window.location.pathname;
-
-    // Check if on exempt page
-    if (EXEMPT_PATHS.some(p => path.startsWith(p))) {
-        return;
+function getNextUnfinishedGroup0(completedSet) {
+    for (const lvl of LEVEL_GROUP_0) {
+        if (!completedSet.has(lvl)) return lvl;
     }
+    return null;
+}
 
-    // Check if already logged in (wait for Auth to initialize)
-    if (!window.Auth || !window.Auth.isLoggedIn()) {
-        return;
-    }
-
-    // Check level progress
-    const saved = localStorage.getItem('parkoreen_level_progress');
-    if (!saved) {
-        // No progress means need to play levels
-        window.location.href = '/parkoreen/index.html';
-        return;
-    }
+// Fetch level progress from the server (authoritative source) and cache into
+// localStorage. Falls back to localStorage on failure.
+async function fetchAndCacheLevelProgress() {
+    const token = localStorage.getItem('parkoreen_token');
+    if (!token) return null;
 
     try {
-        const data = JSON.parse(saved);
-        const completed = new Set(data.completed || []);
-        const allGroup0Done = LEVEL_GROUP_0.every(l => completed.has(l));
-        if (!allGroup0Done) {
-            window.location.href = '/parkoreen/index.html';
-        }
+        const res = await fetch(API_URL + '/level-progress', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        // Cache server response for offline use / fallback
+        localStorage.setItem('parkoreen_level_progress', JSON.stringify({
+            completed: data.completed || [],
+            group1Completed: data.group1Completed || false
+        }));
+        return data;
     } catch (e) {
-        // Invalid progress data, redirect to levels
-        window.location.href = '/parkoreen/index.html';
+        console.warn('[LevelProgress] Server fetch failed, using cache:', e);
+        return null;
     }
+}
+
+function readCachedLevelProgress() {
+    try {
+        const raw = localStorage.getItem('parkoreen_level_progress');
+        if (!raw) return { completed: [], group1Completed: false };
+        const data = JSON.parse(raw);
+        return {
+            completed: Array.isArray(data.completed) ? data.completed : [],
+            group1Completed: !!data.group1Completed
+        };
+    } catch (e) {
+        return { completed: [], group1Completed: false };
+    }
+}
+
+async function checkLevelGroup0Required() {
+    const path = window.location.pathname;
+
+    // Exempt pages: don't gate
+    if (EXEMPT_PATHS.some(p => path.startsWith(p))) return;
+
+    // Only enforce for logged-in users
+    if (!window.Auth || !window.Auth.isLoggedIn()) return;
+
+    // Try server first (authoritative)
+    let progress = await fetchAndCacheLevelProgress();
+    if (!progress) {
+        // Fall back to local cache
+        progress = readCachedLevelProgress();
+    }
+
+    const completedSet = new Set(progress.completed || []);
+    const nextLevel = getNextUnfinishedGroup0(completedSet);
+
+    if (nextLevel) {
+        // Send user straight to the next unfinished group-0 level, preserving
+        // the page they were trying to reach via sessionStorage for later.
+        const intended = path + window.location.search;
+        if (intended !== '/parkoreen/index.html') {
+            sessionStorage.setItem('parkoreen_intended_path', intended);
+        }
+        // Hand off to index.html which has ImportManager + playLevelByName
+        window.location.href = '/parkoreen/index.html?continue=' + encodeURIComponent(nextLevel);
+    }
+    // If all group 0 done, do nothing — user can browse normally.
 }
 
 // Run after Auth initializes

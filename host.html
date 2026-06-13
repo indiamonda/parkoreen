@@ -348,6 +348,7 @@
         let currentMode = 'edit'; // 'edit', 'host', 'play'
         let isHost = false;
         let mapLoadedSuccessfully = false; // Track if map loaded properly to prevent saving corrupted/blank data
+        let mapDirty = false; // Tracks unsaved editor changes for beforeunload prompt
         let adminEditMapSession = false; // Admin UI: load/save any map via /admin/maps (requires ?admin=1 + admin role)
 
         function resolveAdminEditMapSession(params) {
@@ -1176,6 +1177,7 @@
                         }
 
                         mapLoadedSuccessfully = true;
+                        applyHudForMode();
                     } catch (e) {
                         console.error('[Level] Failed to load level data:', e);
                         toastError('Failed to load level');
@@ -1210,13 +1212,15 @@
                 // Setup save-on-change callback
                 editor.onMapChange = debounce(async () => {
                     if (engine && engine.state === GameState.EDITOR) {
+                        mapDirty = true;
                         console.log('[AutoSave] Change detected, saving...');
                         await saveMapSilent();
                     }
                 }, 2000); // Debounce: wait 2 seconds after last change before saving
-                
+
                 // Setup save-before-test callback
                 editor.onBeforeTest = async () => {
+                    mapDirty = true;
                     console.log('[AutoSave] Saving before test...');
                     await saveMapSilent();
                 };
@@ -1246,6 +1250,7 @@
                 } else {
                     await window.MapManager.saveMap.call(window.MapManager, currentMapId, { data });
                 }
+                mapDirty = false;
                 console.log('[AutoSave] Saved silently');
             } catch (error) {
                 console.error('[AutoSave] Silent save failed:', error);
@@ -1354,7 +1359,7 @@
                 toastError('No map to save');
                 return;
             }
-            
+
             if (!mapLoadedSuccessfully) {
                 console.warn('[SaveMap] Skipping save - map was not loaded successfully');
                 toastError('Cannot save: map failed to load properly');
@@ -1368,6 +1373,7 @@
                 } else {
                     await window.MapManager.saveMap.call(window.MapManager, currentMapId, { data });
                 }
+                mapDirty = false;
                 toastSuccess('Map saved!');
             } catch (error) {
                 toastError('Failed to save map: ' + error.message);
@@ -1425,6 +1431,7 @@
             // Start position update loop
             startPositionUpdates();
             initAdminMode();
+            applyHudForMode();
         }
         
         async function reconnectToRoom(roomCode) {
@@ -1603,6 +1610,36 @@
                     refreshChatMessageNameDisplay();
                 });
             });
+        }
+
+        // Show/hide multiplayer-only HUD elements (chat, players list, room code)
+        // based on the current play mode. Levels and single-player test mode
+        // should not show these.
+        function applyHudForMode() {
+            const isMultiplayer =
+                !window.isLevelMode &&
+                !!(window.MultiplayerManager && (window.MultiplayerManager.roomCode || isHost));
+
+            // Always hide room-code display unless we're hosting a multiplayer game
+            const roomCode = document.getElementById('room-code-display');
+            if (roomCode) {
+                if (isHost && !window.isLevelMode) {
+                    roomCode.classList.remove('hidden');
+                } else {
+                    roomCode.classList.add('hidden');
+                }
+            }
+
+            const ids = ['hud-chat', 'hud-players', 'chat-panel', 'players-panel'];
+            for (const id of ids) {
+                const el = document.getElementById(id);
+                if (!el) continue;
+                if (isMultiplayer) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            }
         }
 
         function sendChatMessage() {
@@ -1872,6 +1909,7 @@
             }
             
             // Start sending position updates
+            applyHudForMode();
             startPositionUpdates();
             
             toastSuccess('Room created! Share the code: ' + roomCode);
@@ -1922,6 +1960,21 @@
                 }
             } else if (currentMapId && !mapLoadedSuccessfully) {
                 console.warn('[AutoSave] Skipping unload save - map was not loaded successfully');
+            }
+
+            // Confirm-leave prompt only when in editor/test mode with unsaved
+            // changes. Skip in level mode and hosted/joined multiplayer — those
+            // have no unsaved work to lose.
+            const inUnsavedMode =
+                engine && (
+                    engine.state === GameState.EDITOR ||
+                    engine.state === GameState.TESTING
+                ) && currentMapId && mapLoadedSuccessfully;
+            const isUnsaved = !!mapDirty;
+            if (inUnsavedMode && isUnsaved && !window.isLevelMode && !isHost) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
             }
         });
 
@@ -2814,6 +2867,21 @@
                     const ln = window.currentPlayingLevel;
                     hideEndGameScreen();
 
+                    // Bug 8: If this was the last non-challenge level in its
+                    // group, defer to index.html to record completion and run
+                    // the challenge-unlock animation (or, for group 0, scroll
+                    // to the next group with the locked-to-unlocked transition).
+                    if (isLastNonChallengeLevel(ln)) {
+                        sessionStorage.setItem('parkoreen_pending_complete', ln);
+                        // Clean up level state
+                        window.isLevelMode = false;
+                        window.currentPlayingLevel = null;
+                        sessionStorage.removeItem('parkoreen_current_level');
+                        sessionStorage.removeItem('parkoreen_current_level_name');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+
                     // Get next level info
                     const nextLevel = getNextLevelInfo(ln);
                     if (nextLevel) {
@@ -2905,6 +2973,25 @@
                 }
             }
             return null;
+        }
+
+        // Bug 8: True when `levelName` is the last non-challenge level in its
+        // group. Triggers the challenge-unlock animation flow.
+        function isLastNonChallengeLevel(levelName) {
+            const LEVEL_GROUPS = [
+                { id: 0, levels: ['0_1', '0_2', '0_3'] },
+                { id: 1, levels: ['1_1', '1_2', '1_3', '1_x_challenge_level'] },
+                { id: 2, levels: ['2_1', '2_2', '2_x_challenge_level'] },
+                { id: 3, levels: ['3_1', '3_2', '3_3', '3_4', '3_5'] }
+            ];
+            for (let g = 0; g < LEVEL_GROUPS.length; g++) {
+                const idx = LEVEL_GROUPS[g].levels.indexOf(levelName);
+                if (idx === -1) continue;
+                const after = LEVEL_GROUPS[g].levels.slice(idx + 1)
+                    .filter(l => !l.toLowerCase().includes('challenge'));
+                return after.length === 0;
+            }
+            return false;
         }
 
         // Helper to play a level by name
