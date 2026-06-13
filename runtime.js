@@ -1002,8 +1002,11 @@ class JimmyQrgManager {
     async getServer() {
         try {
             const token = window.Auth?.getToken();
+            // Skip the request entirely if not logged in — avoids a noisy 401 in the
+            // network log for every page load when no session is present.
             if (!token) return false;
-            
+            if (!window.Auth?.isLoggedIn()) return false;
+
             const response = await fetch(`${API_URL}/flag/${this.FLAG_KEY}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -1019,8 +1022,9 @@ class JimmyQrgManager {
         try {
             const token = window.Auth?.getToken();
             if (!token) return false;
-            
-            await fetch(`${API_URL}/flag/${this.FLAG_KEY}`, {
+            if (!window.Auth?.isLoggedIn()) return false;
+
+            const response = await fetch(`${API_URL}/flag/${this.FLAG_KEY}`, {
                 method: value ? 'PUT' : 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -1028,7 +1032,7 @@ class JimmyQrgManager {
                 },
                 body: JSON.stringify({ value: true })
             });
-            return true;
+            return response.ok;
         } catch {
             return false;
         }
