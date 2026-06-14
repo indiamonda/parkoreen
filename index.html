@@ -489,7 +489,15 @@
         // The first level of a non-group-0 unlocks when all non-challenge levels of the
         // previous group are completed (challenge is optional — the user's spec).
         function isUnlocked(groupIndex, levelIndex) {
+            // Defensive: ensure indices are valid
+            if (!LEVEL_GROUPS[groupIndex] || !LEVEL_GROUPS[groupIndex].levels[levelIndex]) {
+                return false;
+            }
             const levelName = LEVEL_GROUPS[groupIndex].levels[levelIndex];
+
+            // 0_1 is ALWAYS unlocked so brand-new users have something to play.
+            if (levelName === '0_1') return true;
+
             if (completedLevels.has(levelName)) return false; // already completed
 
             // Check if this is a challenge level (contains 'challenge' case-insensitive)
@@ -569,6 +577,13 @@
 
         function isAnyLevelAccessible(groupIndex) {
             const group = LEVEL_GROUPS[groupIndex];
+            // Defensive: ensure group/levels exist
+            if (!group || !Array.isArray(group.levels)) return false;
+
+            // First level of group 0 is ALWAYS accessible (so brand-new users
+            // can always start playing, regardless of any state weirdness).
+            if (groupIndex === 0) return true;
+
             for (let i = 0; i < group.levels.length; i++) {
                 const name = group.levels[i];
                 if (completedLevels.has(name)) return true;
@@ -630,7 +645,11 @@
                     card.addEventListener('click', (e) => {
                         if (e.target.closest('.level-card-download')) {
                             downloadLevel(levelName);
-                        } else if (!isLocked) {
+                            return;
+                        }
+                        // Always allow playing 0_1, and any level that's
+                        // currently unlocked. Defensive against stale state.
+                        if (levelName === '0_1' || !isLocked) {
                             playLevel(levelName);
                         }
                     });
