@@ -93,23 +93,30 @@ class AuthManager {
             return this.localLogin(username, password);
         }
 
-        const response = await fetchWithTimeout(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
+        try {
+            const response = await fetchWithTimeout(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            }, API_TIMEOUT * 4);
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Login failed' }));
-            throw new Error(error.message);
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ message: 'Login failed' }));
+                throw new Error(error.message);
+            }
+
+            const data = await response.json();
+            this.user = data.user;
+            this.token = data.token;
+            this.saveToStorage();
+
+            return data;
+        } catch (err) {
+            if (err.message === 'Request timed out. Please check your connection.') {
+                throw new Error('Login timed out. Please check your connection and try again.');
+            }
+            throw err;
         }
-
-        const data = await response.json();
-        this.user = data.user;
-        this.token = data.token;
-        this.saveToStorage();
-        
-        return data;
     }
 
     async signup(name, username, password) {
