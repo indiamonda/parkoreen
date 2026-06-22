@@ -15,7 +15,15 @@ class ThemeManager {
      * Initialize theme from storage
      */
     init() {
-        const savedTheme = localStorage.getItem('parkoreen_theme');
+        // Theme is now per-account via SettingsManager. Falls back to the
+        // legacy parkoreen_theme localStorage during the migration window.
+        let savedTheme = null;
+        if (window.Settings && typeof window.Settings.get === 'function') {
+            savedTheme = window.Settings.get('theme');
+        }
+        if (!savedTheme) {
+            try { savedTheme = localStorage.getItem('parkoreen_theme'); } catch (e) {}
+        }
         if (savedTheme) {
             this.setTheme(savedTheme);
         }
@@ -28,7 +36,11 @@ class ThemeManager {
     setTheme(theme) {
         this.currentTheme = theme;
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('parkoreen_theme', theme);
+        if (window.Settings && typeof window.Settings.set === 'function') {
+            window.Settings.set('theme', theme);
+        } else {
+            try { localStorage.setItem('parkoreen_theme', theme); } catch (e) {}
+        }
     }
 
     /**

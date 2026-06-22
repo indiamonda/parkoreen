@@ -214,8 +214,18 @@ class Editor {
         
         // Debug tools
         this.invincibilityEnabled = false;
+        // Pull persisted touchbox preference from per-account settings (falls
+        // back to localStorage for the migration window, then defaults to off).
+        let persistedTouchboxes = false;
+        if (window.Settings && typeof window.Settings.get === 'function') {
+            persistedTouchboxes = !!window.Settings.get('testerShowTouchboxes');
+        } else {
+            try {
+                persistedTouchboxes = localStorage.getItem('parkoreen_tester_show_touchboxes') === '1';
+            } catch (e) {}
+        }
         this.showTouchboxes = false; // Always off in editor; restored per-tester-session via _testerTouchboxState
-        this._testerTouchboxState = false; // Touchbox state remembered across tester sessions within the same page load
+        this._testerTouchboxState = persistedTouchboxes; // Touchbox state remembered across tester sessions within the same page load
         
         // Erase settings
         this.eraseSettings = {
@@ -242,8 +252,10 @@ class Editor {
         // Pending teleportal (waiting for naming)
         this.pendingTeleportal = null;
         
-        // Recent fonts
-        this.recentFonts = JSON.parse(localStorage.getItem('parkoreen_recent_fonts') || '[]');
+        // Recent fonts — pull from EditorPrefs (server-backed, local cache fallback)
+        this.recentFonts = (window.EditorPrefs && Array.isArray(window.EditorPrefs.fonts))
+            ? window.EditorPrefs.fonts.slice()
+            : JSON.parse(localStorage.getItem('parkoreen_recent_fonts') || '[]');
         
         // UI Elements (will be set by initUI)
         this.ui = {};
@@ -5102,6 +5114,7 @@ class Editor {
         volumeRange.addEventListener('input', (e) => {
             volumeNumber.value = e.target.value;
             this.engine.audioManager.setVolume(parseInt(e.target.value) / 100);
+            Settings.set('volume', parseInt(e.target.value));
         });
 
         volumeNumber.addEventListener('change', (e) => {
@@ -5109,6 +5122,7 @@ class Editor {
             volumeRange.value = vol;
             volumeNumber.value = vol;
             this.engine.audioManager.setVolume(vol / 100);
+            Settings.set('volume', vol);
         });
 
         // Font size listeners
@@ -5163,9 +5177,18 @@ class Editor {
             this.updateTouchControls();
         }
 
-        const savedVolume = localStorage.getItem('parkoreen_volume');
-        if (savedVolume !== null) {
-            const vol = Math.round(parseFloat(savedVolume) * 100);
+        // Volume now lives in SettingsManager (account-bound). Falls back to legacy
+        // parkoreen_volume localStorage only if SettingsManager isn't ready.
+        let vol = null;
+        if (window.Settings && typeof window.Settings.get === 'function') {
+            const v = window.Settings.get('volume');
+            if (typeof v === 'number') vol = v;
+        }
+        if (vol === null) {
+            const savedVolume = localStorage.getItem('parkoreen_volume');
+            if (savedVolume !== null) vol = Math.round(parseFloat(savedVolume) * 100);
+        }
+        if (vol !== null) {
             volumeRange.value = vol;
             volumeNumber.value = vol;
         }
@@ -5615,14 +5638,28 @@ class Editor {
         if (this.recentFonts.length > 6) {
             this.recentFonts.pop();
         }
-        localStorage.setItem('parkoreen_recent_fonts', JSON.stringify(this.recentFonts));
+        if (window.EditorPrefs) {
+            window.EditorPrefs.fonts = this.recentFonts.slice();
+            window.EditorPrefs._saveLocal();
+            // Push the full current list to the server (EditorPrefs.add rebuilds
+            // the list from a single font — we want the trimmed 6-item list).
+            window.EditorPrefs._syncList();
+        } else {
+            localStorage.setItem('parkoreen_recent_fonts', JSON.stringify(this.recentFonts));
+        }
     }
 
     removeRecentFont(font) {
         const index = this.recentFonts.indexOf(font);
         if (index !== -1) {
             this.recentFonts.splice(index, 1);
-            localStorage.setItem('parkoreen_recent_fonts', JSON.stringify(this.recentFonts));
+            if (window.EditorPrefs) {
+                window.EditorPrefs.fonts = this.recentFonts.slice();
+                window.EditorPrefs._saveLocal();
+                window.EditorPrefs._syncList();
+            } else {
+                localStorage.setItem('parkoreen_recent_fonts', JSON.stringify(this.recentFonts));
+            }
             this.populateFontDropdown();
         }
     }
@@ -5835,7 +5872,13 @@ class Editor {
             this._testerTouchboxState = this.showTouchboxes;
         }
         try {
-            localStorage.setItem('parkoreen_tester_show_touchboxes', this.showTouchboxes ? '1' : '0');
+            // Persist to per-account settings (falls back to localStorage if
+            // SettingsManager isn't available yet).
+            if (window.Settings && typeof window.Settings.set === 'function') {
+                window.Settings.set('testerShowTouchboxes', this.showTouchboxes);
+            } else {
+                localStorage.setItem('parkoreen_tester_show_touchboxes', this.showTouchboxes ? '1' : '0');
+            }
         } catch (e) { /* ignore quota / private mode */ }
         const btn = this.ui.toolbar.querySelector('[data-action="toggle-touchboxes"]');
         if (btn) btn.classList.toggle('active', this.showTouchboxes);

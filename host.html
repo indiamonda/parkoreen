@@ -333,8 +333,8 @@
     
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="runtime.js?v=20"></script>
-    <script src="assets/js/style.js?v=11"></script>
+    <script src="runtime.js?v=21"></script>
+    <script src="assets/js/style.js?v=12"></script>
     <script src="assets/js/plugins.js?v=1"></script>
     <script src="assets/js/game.js?v=18"></script>
     <!-- Code plugin loader (scripts loaded before editor, see DOMContentLoaded) -->
@@ -2056,15 +2056,54 @@
         // ADMIN COMMANDS
         // ========================================
         const roomBans = new Map(); // playerId -> { name, expiresAt }
+        let globalBansCache = {}; // Mirrors server-side state; admin-only.
 
-        function loadGlobalBans() {
+        async function loadGlobalBans() {
+            // Server-backed for admins. Falls back to localStorage if offline
+            // and the user is a designated admin (rare; mostly survives tab
+            // reloads while waiting for the network).
+            try {
+                const user = Auth.getUser();
+                if (user && typeof isParkoreenAdminUsername === 'function' && isParkoreenAdminUsername(user.username)) {
+                    const token = Auth.getToken();
+                    const res = await fetch(`${API_URL}/admin/global-bans`, {
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        globalBansCache = (data && typeof data.bans === 'object') ? data.bans : {};
+                        return globalBansCache;
+                    }
+                }
+            } catch (e) {
+                // Network failure — fall through to local cache
+            }
             try {
                 const raw = localStorage.getItem('parkoreen_global_bans');
-                return raw ? JSON.parse(raw) : {};
-            } catch { return {}; }
+                globalBansCache = raw ? JSON.parse(raw) : {};
+            } catch { globalBansCache = {}; }
+            return globalBansCache;
         }
-        function saveGlobalBans(bans) {
-            localStorage.setItem('parkoreen_global_bans', JSON.stringify(bans));
+
+        async function saveGlobalBans(bans) {
+            globalBansCache = (bans && typeof bans === 'object') ? bans : {};
+            try {
+                const user = Auth.getUser();
+                if (user && typeof isParkoreenAdminUsername === 'function' && isParkoreenAdminUsername(user.username)) {
+                    const token = Auth.getToken();
+                    await fetch(`${API_URL}/admin/global-bans`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({ bans: globalBansCache })
+                    });
+                }
+            } catch (e) {
+                // Best-effort: still cache locally so /banall isn't lost offline.
+            }
+            try { localStorage.setItem('parkoreen_global_bans', JSON.stringify(globalBansCache)); } catch (e) {}
         }
 
         function isPlayerBanned(name) {
@@ -2225,7 +2264,9 @@
                     if (targets.length === 0) { addCommandFeedback('No player found for: ' + selector); return; }
                     const duration = parseBanDuration(parts, 2);
                     const expiresAt = duration === Infinity ? null : Date.now() + duration;
-                    const global = loadGlobalBans();
+                    // handleAdminCommand is sync; use the in-memory cache (kept in sync via
+                    // loadGlobalBans() at session start) instead of awaiting fetch.
+                    const global = globalBansCache;
                     for (const t of targets) {
                         if (t.id === '__self__') continue;
                         global[t.name] = { expiresAt };
@@ -2235,6 +2276,9 @@
                         }
                         addCommandFeedback('Globally banned ' + t.name + ' for ' + formatDuration(duration));
                     }
+                    // Fire-and-forget: kick off the server PUT without awaiting.
+                    // The in-memory globalBansCache and roomBans are already updated
+                    // synchronously above so the local session is correct.
                     saveGlobalBans(global);
                     break;
                 }
@@ -2372,6 +2416,9 @@
 
             const toolbar = document.getElementById('admin-toolbar');
             toolbar.classList.remove('hidden');
+
+            // Pull server-side global bans so /banall works on first admin command.
+            loadGlobalBans();
 
             // Unlock zoom limits for admin
             engine.camera.minZoom = 0.5;

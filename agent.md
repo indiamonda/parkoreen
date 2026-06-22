@@ -8,7 +8,9 @@ Parkoreen is a multiplayer 2D platformer with a full map editor, real-time multi
 
 - **Frontend**: pure static HTML/JS/CSS — no build step. Plain `<canvas>` 2D rendering, ES6 classes, no framework.
 - **Backend**: Cloudflare Worker (Workers + KV + Durable Object) for auth, map storage, mail, admin tools, and WebSocket multiplayer.
-- **PWA**: service worker caches `parkoreen-v25`. Skips `/admin/` and `/mails/` (stale HTML causes bugs).
+- **PWA**: service worker caches the `parkoreen-v*` cache name (currently `parkoreen-v28`). Skips `/admin/` and `/mails/` (stale HTML causes bugs).
+- **Note**: `agent.md` in the repo root is a duplicate of this file (kept for an external tool). Edit `CLAUDE.md` and re-sync `agent.md` if you change either.
+- **Cloudflare dashboard is blocked in the user's home network in China.** Deploy via `wrangler deploy` works (the API at `api.cloudflare.com` is reachable), but `wrangler login` (OAuth to `dash.cloudflare.com`) does not. Plan accordingly if iterating from a blocked network.
 
 The frontend can be opened directly (`index.html`) or served from any static host. For full multiplayer/admin features, deploy the Worker from `cloudflare-worker/`.
 
@@ -25,7 +27,9 @@ wrangler deploy
 
 Required KV namespaces: `USERS`, `MAPS`, `SESSIONS`. Optional: `GAME_ROOMS` (Durable Object for WebSocket).
 
-There is **no test suite, no linter, and no build step** in this project. Verify changes by opening the relevant HTML page and observing behavior.
+Already-deployed Worker URL and KV namespace IDs live in `cloudflare-worker/README.md` — read it before redeploying to avoid clobbering existing bindings.
+
+**No test suite, no linter, no build step.** Verify changes by opening the relevant HTML page in a browser and observing behavior. For the editor, `host.html` is the all-in-one entry; for backend changes, hit the relevant route with `curl` from the deployed Worker URL.
 
 ## Project Structure
 
@@ -51,7 +55,9 @@ assets/
 runtime.js              # Auth, MapManager, MultiplayerManager, Settings (shared across pages)
 cloudflare-worker/
   worker.js             # All backend routes + GameRoom Durable Object
+  README.md             # Deployed URL + KV namespace IDs + redeploy steps
 sw.js                   # Service worker
+CHANGELOG.md            # Pointer to wiki/changelog (the canonical changelog)
 ```
 
 ## Key Architecture
@@ -108,7 +114,14 @@ RLE encoding: `0xFF, count, byte` for runs ≥4 identical bytes; `0xFF, 0x00` to
 - **Auth**: SHA-256 of `password + JWT_SECRET`, base64 token `{userId, exp, iat}`. Sessions in KV `SESSIONS` with 7-day TTL.
 - **Reserved display names**: `jimmyqrg`, `parkoreen`, `jimmyqrg160`, `jimmyqrgschool` may only be used by those exact usernames. Server auto-renames unauthorized users to "Change Me" on login.
 - **Admin**: defaults `jimmyqrg`, `parkoreen` plus `ADMIN_USERNAMES` env var. Required for `/admin/*` routes and the editor's "impersonate edit any map" mode (`?admin=1&map=ID`).
-- Routes: `/auth/{signup,login,profile,password}`, `/level-progress`, `/flag/{name}`, `/maps`, `/maps/{id}`, `/mail`, `/mail/unread`, `/mail/{id}`, `/ws`, `/admin/{users,rooms,maps,...}`.
+- Routes: `/auth/{signup,login,profile,password}`, `/level-progress`, `/flag/{name}`, `/maps`, `/maps/{id}`, `/mail`, `/mail/unread`, `/mail/{id}`, `/ws`, `/settings`, `/editor/recent-fonts`, `/admin/{users,rooms,maps,global-bans,...}`.
+- The Wrangler config (`wrangler.toml` or `wrangler.jsonc`) and binding IDs are tracked in `cloudflare-worker/`. KV namespace IDs are listed in `cloudflare-worker/README.md`.
+- **Per-account state (post-`/settings` migration)**: game data is account-bound, not device-bound. KV keys owned per-user:
+  - `settings:{userId}` — JSON blob with `{volume, touchscreenMode, fontSize, keyboardLayout, roleMode, testerShowTouchboxes, theme}`. Whitelisted server-side.
+  - `recent_fonts:{userId}` — JSON array (capped at 20 server-side).
+  - `global_bans` — single shared JSON blob (admin-only via `resolveAdminUser`).
+  - Plus the pre-existing `level_progress:{userId}`, `flag:{userId}:{name}`, and `user:{userId}`.
+- **Frontend sync pattern** (`runtime.js`): `SettingsManager.syncWithServer()` and `EditorPrefs.syncWithServer()` run on module load (no-op if logged out) and again after `Auth.login()`. On first login they do a **one-time migration**: if the server has nothing for this user but the local cache does, push local → server. After that, the server is authoritative and the local cache is purely a fallback for offline use. All mutations do a fire-and-forget `fetch(...PUT...)` while keeping the local cache in sync synchronously.
 
 ### Level Progression
 
@@ -127,6 +140,8 @@ RLE encoding: `0xFF, count, byte` for runs ≥4 identical bytes; `0xFF, 0x00` to
 - **Keyboard layouts**: two supported — `JimmyQrg` (default) and `hk` (Hollow Knight — `Z` jump, `X` attack, `A` heal, `C` dash, `S` super-dash). Selected in Settings.
 - **Color name `defaultBlockColor`, `defaultSpikeColor`, `defaultPortalColor`, `defaultBouncerColor`** on `World` are the colors new objects seed from when placed.
 - **Editor undo/redo transactions** use `beginUndoTransaction()` / `endUndoTransaction()` to group multiple mutations into one undo step. Brush strokes and multi-select moves use this.
+- **Cache-busting**: `runtime.js` and `style.js` are loaded with a hardcoded `?v=N` query string in every HTML page that uses them. When you change either file, bump the version in all references. Pages also reference these via different relative paths (`runtime.js?v=N`, `/parkoreen/runtime.js?v=N`, `../runtime.js?v=N`) — `grep` first to find them all.
+- **Adding new server-backed state**: follow the `SettingsManager` / `EditorPrefs` pattern. Server-side: write `handleGet*` / `handleUpdate*` functions with input sanitization (whitelist allowed keys, type-check), route them in the auth-gated dispatch block, and use a `{userId}`-scoped KV key. Client-side: extend the relevant `*Manager` with `syncWithServer()` (try server → fall back to local → migrate local up on first login) and a `save()` that does a fire-and-forget PUT while keeping local state synchronous. See `runtime.js:SettingsManager` and `runtime.js:EditorPrefs` as templates.
 
 ## Known Pitfalls
 
@@ -137,3 +152,5 @@ RLE encoding: `0xFF, count, byte` for runs ≥4 identical bytes; `0xFF, 0x00` to
 - **`action` → `event` rename** in code plugin data: legacy maps with `codeData.actions` are auto-migrated to `codeData.events` on `World.fromJSON`. New code should use `events`.
 - **`parkoreen_` prefix** is used for all `localStorage` keys (volume, user, token, level progress, recent fonts, etc.). Use this prefix for any new localStorage entries.
 - **`API_URL`** in `runtime.js` is hardcoded to `https://parkoreen.ikunbeautiful.workers.dev`. Don't introduce new URLs without coordinating with deployment.
+- **Service worker cache name must bump on frontend changes**: `CACHE_NAME` in `sw.js` is the cache key for the PWA. Bump the suffix (`parkoreen-vN` → `parkoreen-v{N+1}`) whenever `runtime.js`, `style.js`, `assets/js/game.js`, `assets/js/editor.js`, or any plugin is changed, otherwise users on stale installs won't see the update.
+- **`activate-minimax.sh` at the repo root contains a hardcoded API token** (committed to git history). If you find yourself editing or referencing it, do not paste the token anywhere. Suggest to the user that they rotate it and either gitignore the file or move the token to an env var.

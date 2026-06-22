@@ -676,6 +676,126 @@ async function handleDeleteFlag(flagName, env, userId) {
 }
 
 // ============================================
+// SETTINGS HANDLERS (per-account preferences)
+// ============================================
+async function handleGetSettings(env, userId) {
+    const data = await env.USERS.get(`settings:${userId}`);
+    if (!data) {
+        return jsonResponse({ settings: null });
+    }
+    try {
+        return jsonResponse({ settings: JSON.parse(data) });
+    } catch (e) {
+        return jsonResponse({ settings: null });
+    }
+}
+
+async function handleUpdateSettings(request, env, userId) {
+    let body;
+    try {
+        body = await request.json();
+    } catch (e) {
+        return errorResponse('Invalid JSON body', 400);
+    }
+    const { settings } = body;
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+        return errorResponse('settings must be an object', 400);
+    }
+    // Whitelist allowed keys to prevent KV bloat / injection
+    const allowed = ['volume', 'touchscreenMode', 'fontSize', 'keyboardLayout', 'roleMode', 'testerShowTouchboxes', 'theme'];
+    const sanitized = {};
+    for (const key of allowed) {
+        if (key in settings) sanitized[key] = settings[key];
+    }
+    await env.USERS.put(`settings:${userId}`, JSON.stringify(sanitized));
+    return jsonResponse({ success: true, settings: sanitized });
+}
+
+// ============================================
+// EDITOR PREFERENCES HANDLERS (recent fonts)
+// ============================================
+async function handleGetRecentFonts(env, userId) {
+    const data = await env.USERS.get(`recent_fonts:${userId}`);
+    if (!data) {
+        return jsonResponse({ fonts: [] });
+    }
+    try {
+        const fonts = JSON.parse(data);
+        return jsonResponse({ fonts: Array.isArray(fonts) ? fonts : [] });
+    } catch (e) {
+        return jsonResponse({ fonts: [] });
+    }
+}
+
+async function handleUpdateRecentFonts(request, env, userId) {
+    let body;
+    try {
+        body = await request.json();
+    } catch (e) {
+        return errorResponse('Invalid JSON body', 400);
+    }
+    const { fonts } = body;
+    if (!Array.isArray(fonts)) {
+        return errorResponse('fonts must be an array', 400);
+    }
+    // Cap to last 20, stringify-only entries
+    const sanitized = fonts.slice(-20).map(f => String(f));
+    await env.USERS.put(`recent_fonts:${userId}`, JSON.stringify(sanitized));
+    return jsonResponse({ success: true, fonts: sanitized });
+}
+
+// ============================================
+// ADMIN GLOBAL BANS
+// ============================================
+// Stored as a single JSON blob per ban-list (shared across admins):
+//   key: `global_bans`
+//   value: { "<playerName>": { expiresAt: <ms|null> } }
+async function handleGetGlobalBans(env, userId) {
+    const admin = await resolveAdminUser(env, userId);
+    if (!admin) return errorResponse('Admin only', 403);
+    const raw = await env.USERS.get('global_bans');
+    if (!raw) return jsonResponse({ bans: {} });
+    try {
+        const bans = JSON.parse(raw);
+        return jsonResponse({ bans: (bans && typeof bans === 'object') ? bans : {} });
+    } catch (e) {
+        return jsonResponse({ bans: {} });
+    }
+}
+
+async function handleUpdateGlobalBans(request, env, userId) {
+    const admin = await resolveAdminUser(env, userId);
+    if (!admin) return errorResponse('Admin only', 403);
+    let body;
+    try {
+        body = await request.json();
+    } catch (e) {
+        return errorResponse('Invalid JSON body', 400);
+    }
+    const { bans } = body;
+    if (!bans || typeof bans !== 'object' || Array.isArray(bans)) {
+        return errorResponse('bans must be an object', 400);
+    }
+    // Sanitize: each entry must have expiresAt: number|null
+    const sanitized = {};
+    for (const [name, entry] of Object.entries(bans)) {
+        if (!entry || typeof entry !== 'object') continue;
+        if (typeof name !== 'string' || name.length === 0 || name.length > 50) continue;
+        let expiresAt = null;
+        if (entry.expiresAt === null || entry.expiresAt === undefined) {
+            expiresAt = null;
+        } else if (typeof entry.expiresAt === 'number' && entry.expiresAt > 0) {
+            expiresAt = entry.expiresAt;
+        } else {
+            continue;
+        }
+        sanitized[name] = { expiresAt };
+    }
+    await env.USERS.put('global_bans', JSON.stringify(sanitized));
+    return jsonResponse({ success: true, bans: sanitized });
+}
+
+// ============================================
 // WEBSOCKET HANDLER (MULTIPLAYER)
 // ============================================
 class GameRoom {
@@ -1059,8 +1179,7 @@ class GameRoom {
             });
         }
     }
-                playerName: session.user?.name,
-                playerUsername: session.user?.username
+
     handlePosition(session, data) {
         if (!session.roomCode) return;
 
@@ -1654,6 +1773,30 @@ export default {
             }
             if (path === '/level-progress' && method === 'POST') {
                 return handleUpdateLevelProgress(request, env, userId);
+            }
+
+            // Settings routes (per-account preferences)
+            if (path === '/settings' && method === 'GET') {
+                return handleGetSettings(env, userId);
+            }
+            if (path === '/settings' && method === 'PUT') {
+                return handleUpdateSettings(request, env, userId);
+            }
+
+            // Editor recent-fonts routes
+            if (path === '/editor/recent-fonts' && method === 'GET') {
+                return handleGetRecentFonts(env, userId);
+            }
+            if (path === '/editor/recent-fonts' && method === 'PUT') {
+                return handleUpdateRecentFonts(request, env, userId);
+            }
+
+            // Admin global bans
+            if (path === '/admin/global-bans' && method === 'GET') {
+                return handleGetGlobalBans(env, userId);
+            }
+            if (path === '/admin/global-bans' && method === 'PUT') {
+                return handleUpdateGlobalBans(request, env, userId);
             }
 
             // Flag routes (for easter eggs)

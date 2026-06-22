@@ -110,6 +110,11 @@ class AuthManager {
             this.token = data.token;
             this.saveToStorage();
 
+            // Pull per-account prefs now that we have a token (constructor-time
+            // syncWithServer ran before the user was logged in).
+            if (window.Settings) await window.Settings.syncWithServer();
+            if (window.EditorPrefs) await window.EditorPrefs.syncWithServer();
+
             return data;
         } catch (err) {
             if (err.message === 'Request timed out. Please check your connection.') {
@@ -1327,19 +1332,24 @@ class SettingsManager {
             fontSize: 100, // percentage (50-150)
             keyboardLayout: 'jimmyqrg',
             roleMode: 'normal',
-            controllableJumpEnabled: false
+            controllableJumpEnabled: false,
+            testerShowTouchboxes: false,
+            theme: 'default'
         };
         this.settings = { ...this.defaults };
-        this.load();
+        // Load synchronously from local cache so the constructor stays usable
+        // for callers that read settings immediately. The async sync with the
+        // server is started after construction by `syncWithServer()`.
+        this.loadFromLocal();
         this.applyFontSize();
     }
-    
+
     applyFontSize() {
         const size = this.settings.fontSize || 100;
         document.documentElement.style.fontSize = `${size}%`;
     }
 
-    load() {
+    loadFromLocal() {
         const saved = localStorage.getItem('parkoreen_settings');
         if (saved) {
             try {
@@ -1352,13 +1362,67 @@ class SettingsManager {
             const user = JSON.parse(localStorage.getItem('parkoreen_user') || '{}');
             if (!isParkoreenAdminUsername(user.username)) {
                 this.settings.roleMode = 'normal';
-                this.save();
+                this._saveLocal();
             }
         }
     }
 
-    save() {
+    _saveLocal() {
         localStorage.setItem('parkoreen_settings', JSON.stringify(this.settings));
+    }
+
+    // Fetch the server-side settings for the logged-in user. If the server
+    // has nothing yet but local cache has data, push local → server (one-time
+    // migration from device-bound to account-bound storage). If both have
+    // data, server wins (account is the source of truth).
+    async syncWithServer() {
+        if (!window.Auth || !Auth.isLoggedIn()) return;
+        const token = Auth.getToken();
+        if (!token) return;
+        try {
+            const res = await fetchWithTimeout(`${API_URL}/settings`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.settings && typeof data.settings === 'object') {
+                this.settings = { ...this.defaults, ...this.settings, ...data.settings };
+                this._saveLocal();
+                this.applyFontSize();
+            } else {
+                // Server has no settings yet — migrate local cache up
+                const localRaw = localStorage.getItem('parkoreen_settings');
+                if (localRaw) {
+                    await fetchWithTimeout(`${API_URL}/settings`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ settings: this.settings })
+                    });
+                }
+            }
+        } catch (e) {
+            // Network failure: keep using local cache; will retry next page load.
+        }
+    }
+
+    save() {
+        this._saveLocal();
+        if (!window.Auth || !Auth.isLoggedIn()) return;
+        const token = Auth.getToken();
+        if (!token) return;
+        // Fire-and-forget server write. Failures are silent (local cache wins
+        // for this session; next syncWithServer() will reconcile).
+        fetch(`${API_URL}/settings`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ settings: this.settings })
+        }).catch(() => {});
     }
 
     get(key) {
@@ -1368,7 +1432,7 @@ class SettingsManager {
     set(key, value) {
         this.settings[key] = value;
         this.save();
-        
+
         // Apply font size immediately when changed
         if (key === 'fontSize') {
             this.applyFontSize();
@@ -1378,6 +1442,82 @@ class SettingsManager {
     reset() {
         this.settings = { ...this.defaults };
         this.save();
+    }
+}
+
+// ============================================
+// EDITOR PREFERENCES (recent fonts)
+// ============================================
+class EditorPrefs {
+    constructor() {
+        this.fonts = this._loadLocal();
+    }
+
+    _loadLocal() {
+        try {
+            return JSON.parse(localStorage.getItem('parkoreen_recent_fonts') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    _saveLocal() {
+        localStorage.setItem('parkoreen_recent_fonts', JSON.stringify(this.fonts));
+    }
+
+    // Sync with server. If server has data, replace local; otherwise push
+    // local → server (one-time migration).
+    async syncWithServer() {
+        if (!window.Auth || !Auth.isLoggedIn()) return;
+        const token = Auth.getToken();
+        if (!token) return;
+        try {
+            const res = await fetchWithTimeout(`${API_URL}/editor/recent-fonts`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (Array.isArray(data.fonts) && data.fonts.length > 0) {
+                this.fonts = data.fonts;
+                this._saveLocal();
+            } else if (this.fonts.length > 0) {
+                await fetchWithTimeout(`${API_URL}/editor/recent-fonts`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ fonts: this.fonts })
+                });
+            }
+        } catch (e) {
+            // Offline: keep local cache.
+        }
+    }
+
+    add(font) {
+        if (!font || typeof font !== 'string') return;
+        this.fonts = this.fonts.filter(f => f !== font);
+        this.fonts.push(font);
+        if (this.fonts.length > 20) this.fonts = this.fonts.slice(-20);
+        this._saveLocal();
+        this._syncList();
+    }
+
+    // Push the current list verbatim to the server. Use after mutations that
+    // don't fit the add() pattern (e.g. removal, trim).
+    _syncList() {
+        if (!window.Auth || !Auth.isLoggedIn()) return;
+        const token = Auth.getToken();
+        if (!token) return;
+        fetch(`${API_URL}/editor/recent-fonts`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ fonts: this.fonts })
+        }).catch(() => {});
     }
 }
 
@@ -1461,6 +1601,11 @@ window.Auth = new AuthManager();
 window.MapManager = new MapManager(window.Auth);
 window.MultiplayerManager = new MultiplayerManager(window.Auth);
 window.Settings = new SettingsManager();
+window.EditorPrefs = new EditorPrefs();
+// Pull per-account settings/fonts from the server once on startup (no-op if
+// not logged in; silently uses local cache on network failure).
+window.Settings.syncWithServer();
+window.EditorPrefs.syncWithServer();
 window.isParkoreenAdminUsername = isParkoreenAdminUsername;
 window.PARKOREEN_ADMIN_USERNAMES = PARKOREEN_ADMIN_USERNAMES;
 window.Navigation = Navigation;

@@ -62,7 +62,13 @@ class AudioManager {
         Object.values(this.sounds).forEach(sound => {
             sound.volume = this.volume;
         });
-        localStorage.setItem('parkoreen_volume', this.volume);
+        // Volume is owned by SettingsManager (account-bound). Settings.set()
+        // writes both the local cache and (if logged in) the server.
+        if (window.Settings && typeof window.Settings.set === 'function') {
+            window.Settings.set('volume', Math.round(this.volume * 100));
+        } else {
+            try { localStorage.setItem('parkoreen_volume', this.volume); } catch (e) {}
+        }
     }
 
     play(soundName) {
@@ -74,6 +80,14 @@ class AudioManager {
     }
 
     loadVolumeFromStorage() {
+        // Prefer SettingsManager (account-bound); fall back to legacy localStorage.
+        if (window.Settings && typeof window.Settings.get === 'function') {
+            const v = window.Settings.get('volume');
+            if (typeof v === 'number') {
+                this.setVolume(v / 100);
+                return;
+            }
+        }
         const saved = localStorage.getItem('parkoreen_volume');
         if (saved !== null) {
             this.setVolume(parseFloat(saved));
