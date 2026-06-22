@@ -495,8 +495,8 @@
             }
             const levelName = LEVEL_GROUPS[groupIndex].levels[levelIndex];
 
-            // 0_1 is ALWAYS unlocked so brand-new users have something to play.
-            if (levelName === '0_1') return true;
+            // Group 0 (0_1, 0_2, 0_3) is ALWAYS unlocked so brand-new users have something to play.
+            if (LEVEL_GROUPS[groupIndex] && LEVEL_GROUPS[groupIndex].id === 0) return true;
 
             if (completedLevels.has(levelName)) return false; // already completed
 
@@ -647,9 +647,10 @@
                             downloadLevel(levelName);
                             return;
                         }
-                        // Always allow playing 0_1, and any level that's
+                        // Always allow playing group 0 levels (0_1, 0_2, 0_3), and any level that's
                         // currently unlocked. Defensive against stale state.
-                        if (levelName === '0_1' || !isLocked) {
+                        const isGroup0 = LEVEL_GROUPS[groupIndex] && LEVEL_GROUPS[groupIndex].id === 0;
+                        if (isGroup0 || !isLocked) {
                             playLevel(levelName);
                         }
                     });
